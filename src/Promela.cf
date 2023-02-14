@@ -1,0 +1,130 @@
+comment "//";
+comment "/*" "*/";
+
+-- Type tokens
+position token PInt {"int"};
+position token PBool {"bool"};
+position token PChan {"chan"};
+
+-- Boolean tokens
+position token PTrue {"true"};
+position token PFalse {"false"};
+position token PInteger (digit)+;
+
+-- Identifiers
+position token PLen {"len"};
+position token PAssert {"assert"};
+position token PIdent (letter|["_"]) ((digit|letter|["_"])*);
+
+-- Statement tokens
+position token PSkip {"skip"};
+position token PBreak {"break"};
+
+-- Entry point
+Program. Spec ::= [Module];
+[]. [Module] ::= ;
+(:). [Module] ::= Module [Module];
+
+-- Modules
+Define. Module ::= "#define" PIdent Const;
+Init. Module ::= "init" "{" [Step] "}";
+---- Proctype
+Proctype. Module ::= "proctype" PIdent "(" [Param] ")" "{" [Step] "}";
+separator Param ";";
+Param. Param ::= Type PIdent; 
+
+Typedef. Module ::= "typedef" PIdent "{" [Field] "}";
+TopDecl. Module ::= Decl;
+
+terminator nonempty Field ";";
+Field. Field ::= Decl;
+
+ChanDecl. Decl ::= PChan PIdent "=" "[" Const "]" "of" "{" [Type] "}";
+ValDecl. Decl ::= Type PIdent "=" Exp;
+VarDecl. Decl ::= Type PIdent;
+
+-- Steps
+separator Step "->";
+
+StepDecl. Step ::= Decl;
+StepStmt. Step ::= Stmt;
+
+-- Statements
+separator nonempty Option "::";
+OptionSt. Option ::= [Step];
+OptionEls. Option ::= "else" "->" [Step];
+
+StmtIf. Stmt ::= "if" "::" [Option] "fi";
+StmtDo. Stmt ::= "do" "::" [Option] "od";
+StmtFor. Stmt ::= "for" "(" Range ")" "{" [Step] "}";
+StmtGoto. Stmt ::= "goto" PIdent;
+StmtLabel. Stmt ::= PIdent ":" Stmt;
+StmtAssign. Stmt ::= LVal "=" Exp;
+StmtIncr. Stmt ::= LVal "++";
+StmtDecr. Stmt ::= LVal "--";
+StmtSend. Stmt ::= LVal "!" [Exp];
+StmtRcv. Stmt ::= LVal "?" [Exp];
+StmtExpr. Stmt ::= Cond;
+StmtSkip. Stmt ::= PSkip;
+StmtBreak. Stmt ::= PBreak;
+StmtAssert. Stmt ::= PAssert Cond;
+
+---- Conditional expression
+coercions Cond 2;
+CondOr. Cond ::= Cond1 "||" Cond2;
+CondAnd. Cond1 ::= Cond2 "&&" Cond2;
+CondExp. Cond2 ::= Exp;
+
+---- Range expression
+RangeExps. Range ::= PIdent ":" Exp ".." Exp;
+RangeArrs. Range ::= PIdent "in" PIdent;
+
+---- Expressions
+separator nonempty Exp ",";
+coercions Exp 5;
+
+---- Binary expressions
+ExpEq. Exp ::= Exp1 "==" Exp1;
+ExpNe. Exp ::= Exp1 "!=" Exp1;
+ExpLe. Exp ::= Exp1 "<=" Exp1;
+ExpGe. Exp ::= Exp1 ">=" Exp1;
+ExpLt. Exp ::= Exp1 "<" Exp1;
+ExpGt. Exp ::= Exp1 ">" Exp1;
+ExpPlus. Exp1 ::= Exp1 "+" Exp2;
+ExpMinus. Exp1 ::= Exp1 "-" Exp2;
+ExpProd. Exp2 ::= Exp2 "*" Exp3;
+ExpDiv. Exp2 ::= Exp2 "/" Exp3;
+ExpAnd. Exp3 ::= Exp3 "&" Exp4;
+ExpOr. Exp3 ::= Exp3 "|" Exp4;
+
+---- Unary expressions
+-- ExpNeg. Exp4 ::= "-" Exp5;
+ExpNot. Exp4 ::= "!" Exp5;
+
+---- Calls
+ExpRun. Exp5 ::= "run" PIdent "(" [Exp] ")";
+ExpLen. Exp5 ::= PLen "(" LVal ")";
+
+---- Terminal expressions
+ExpConst. Exp5 ::= Const;
+ExpLVal. Exp5 ::= LVal;
+
+---- L-Values
+ValId. LVal ::= PIdent;
+ValArr. LVal ::= LVal "[" Exp "]";
+ValField. LVal ::= LVal "." PIdent;
+
+-- Types
+separator nonempty Type ",";
+TypeChan. Type ::= PChan;
+TypeInt. Type ::= PInt;
+TypeBool. Type ::= PBool;
+TypeNamed. Type ::= PIdent;
+
+-- Constants
+CInt. Const ::= PInteger;
+CNInt. Const ::= "-" PInteger;
+CTrue. Const ::= PTrue;
+CFalse. Const ::= PFalse;
+
+entrypoints Spec;
