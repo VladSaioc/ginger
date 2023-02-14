@@ -1,0 +1,90 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.35.1.
+--
+-- see: https://github.com/sol/hpack
+
+name:           goinvgen
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/githubuser/goinvgen#readme>
+homepage:       https://github.com/githubuser/goinvgen#readme
+bug-reports:    https://github.com/githubuser/goinvgen/issues
+author:         Author name here
+maintainer:     example@example.com
+copyright:      2023 Author name here
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    CHANGELOG.md
+
+source-repository head
+  type: git
+  location: https://github.com/githubuser/goinvgen
+
+library
+  exposed-modules:
+      Promela.AbsPromela
+      Promela.ErrM
+      Promela.LexPromela
+      Promela.ParPromela
+      Promela.PrintPromela
+      Promela.SkelPromela
+  other-modules:
+      Paths_goinvgen
+  hs-source-dirs:
+      src
+  default-extensions:
+      LambdaCase
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+  build-depends:
+      array
+    , base >=4.7 && <5
+    , containers
+    , directory
+    , pretty-simple
+    , split
+    , text
+  default-language: Haskell2010
+
+executable goinvgen-exe
+  main-is: Main.hs
+  other-modules:
+      Paths_goinvgen
+  hs-source-dirs:
+      app
+  default-extensions:
+      LambdaCase
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      array
+    , base >=4.7 && <5
+    , containers
+    , directory
+    , goinvgen
+    , pretty-simple
+    , split
+    , text
+  default-language: Haskell2010
+
+test-suite goinvgen-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Paths_goinvgen
+  hs-source-dirs:
+      test
+  default-extensions:
+      LambdaCase
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      array
+    , base >=4.7 && <5
+    , containers
+    , directory
+    , goinvgen
+    , pretty-simple
+    , split
+    , text
+  default-language: Haskell2010

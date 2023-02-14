@@ -1,0 +1,19 @@
+*.o
+*.exe
+*.hi
+*.bak
+ignored
+sketches
+
+dist
+dist-newstyle
+
+# Generated front-end
+src/Promela/*.hs
+src/Promela/*.x
+src/Promela/*.y
+src/Promela/*.txt
+
+# Stack-generated
+.stack-work/
+*~
