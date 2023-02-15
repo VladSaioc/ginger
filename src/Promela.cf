@@ -1,47 +1,95 @@
 comment "//";
 comment "/*" "*/";
 
--- Type tokens
-position token PInt {"int"};
-position token PBool {"bool"};
-position token PChan {"chan"};
+-- Module tokens
+position token PROCTYPE {"proctype"};
+position token TYPEDEF {"typedef"};
+position token INIT {"init"};
+position token DEFINE {"#define"};
 
--- Boolean tokens
-position token PTrue {"true"};
-position token PFalse {"false"};
-position token PInteger (digit)+;
+-- Type tokens
+position token INT {"int"};
+position token BOOL {"bool"};
+position token CHAN {"chan"};
+position token OF {"of"};
+
+-- BOOLean tokens
+position token TRUE {"true"};
+position token FALSE {"false"};
+position token NUMBER (digit)+;
 
 -- Identifiers
-position token PLen {"len"};
-position token PAssert {"assert"};
-position token PIdent (letter|["_"]) ((digit|letter|["_"])*);
+position token LEN {"len"};
+position token ASSERT {"assert"};
 
 -- Statement tokens
-position token PSkip {"skip"};
-position token PBreak {"break"};
+position token SKIP {"skip"};
+position token BREAK {"break"};
+position token RUN {"run"};
+position token ELSE {"else"};
+position token IF {"if"};
+position token DO {"do"};
+position token FOR {"for"};
+position token GOTO {"goto"};
+position token INCR {"++"};
+position token DECR {"--"};
 
--- Entry point
+position token AS {"="};
+
+-- Range tokens
+position token BETWEEN {".."};
+position token IN {"in"};
+position token COL {":"};
+
+-- L-Value tokens
+position token DOT {"."};
+
+-- Expression tokens
+position token OR {"||"};
+position token AND {"&&"};
+position token EQ {"=="};
+position token NE {"!="};
+position token LE {"<="};
+position token LT {"<"};
+position token GE {">="};
+position token GT {">"};
+position token PLUS {"+"};
+position token MINUS {"-"};
+position token MULT {"*"};
+position token DIV {"/"};
+
+-- Message passing tokens
+position token BANG {"!"};
+position token RECV {"?"};
+
+position token ID (letter|["_"]) ((digit|letter|["_"])*);
+
+-- Entry poINT
 Program. Spec ::= [Module];
 []. [Module] ::= ;
 (:). [Module] ::= Module [Module];
 
 -- Modules
-Define. Module ::= "#define" PIdent Const;
-Init. Module ::= "init" "{" [Step] "}";
+Define. Module ::= DEFINE ID Exp;
+Init. Module ::= INIT "{" [Step] "}";
 ---- Proctype
-Proctype. Module ::= "proctype" PIdent "(" [Param] ")" "{" [Step] "}";
+Proctype. Module ::= PROCTYPE ID "(" [Param] ")" "{" [Step] "}";
 separator Param ";";
-Param. Param ::= Type PIdent; 
+Param. Param ::= Decl;
 
-Typedef. Module ::= "typedef" PIdent "{" [Field] "}";
+---- Typedef
+Typedef. Module ::= TYPEDEF ID "{" [Field] "}";
 TopDecl. Module ::= Decl;
 
 terminator nonempty Field ";";
 Field. Field ::= Decl;
 
-ChanDecl. Decl ::= PChan PIdent "=" "[" Const "]" "of" "{" [Type] "}";
-ValDecl. Decl ::= Type PIdent "=" Exp;
-VarDecl. Decl ::= Type PIdent;
+-- Declarations
+Decl. Decl ::= Type ID DeclBody ;
+
+DBodyEmpty. DeclBody ::= ;
+DBodyExp. DeclBody ::= AS Exp;
+DBodyCHAN. DeclBody ::= AS "[" Const "]" OF "{" [Type] "}";
 
 -- Steps
 separator Step "->";
@@ -52,79 +100,76 @@ StepStmt. Step ::= Stmt;
 -- Statements
 separator nonempty Option "::";
 OptionSt. Option ::= [Step];
-OptionEls. Option ::= "else" "->" [Step];
+OptionEls. Option ::= ELSE "->" [Step];
 
-StmtIf. Stmt ::= "if" "::" [Option] "fi";
-StmtDo. Stmt ::= "do" "::" [Option] "od";
-StmtFor. Stmt ::= "for" "(" Range ")" "{" [Step] "}";
-StmtGoto. Stmt ::= "goto" PIdent;
-StmtLabel. Stmt ::= PIdent ":" Stmt;
-StmtAssign. Stmt ::= LVal "=" Exp;
-StmtIncr. Stmt ::= LVal "++";
-StmtDecr. Stmt ::= LVal "--";
-StmtSend. Stmt ::= LVal "!" [Exp];
-StmtRcv. Stmt ::= LVal "?" [Exp];
+StmtIf. Stmt ::= IF "::" [Option] "fi";
+StmtDo. Stmt ::= DO "::" [Option] "od";
+StmtFor. Stmt ::= FOR "(" Range ")" "{" [Step] "}";
+StmtGoto. Stmt ::= GOTO ID;
+StmtLabel. Stmt ::= ID COL Stmt;
+StmtAssign. Stmt ::= LVal AS Exp;
+StmtIncr. Stmt ::= LVal INCR;
+StmtDecr. Stmt ::= LVal DECR;
+StmtSend. Stmt ::= LVal BANG [Exp];
+StmtRcv. Stmt ::= LVal RECV [Exp];
 StmtExpr. Stmt ::= Cond;
-StmtSkip. Stmt ::= PSkip;
-StmtBreak. Stmt ::= PBreak;
-StmtAssert. Stmt ::= PAssert Cond;
+StmtSkip. Stmt ::= SKIP;
+StmtBreak. Stmt ::= BREAK;
+StmtAssert. Stmt ::= ASSERT Cond;
 
 ---- Conditional expression
 coercions Cond 2;
-CondOr. Cond ::= Cond1 "||" Cond2;
-CondAnd. Cond1 ::= Cond2 "&&" Cond2;
+CondOr. Cond ::= Cond OR Cond1;
+CondAnd. Cond1 ::= Cond1 AND Cond2;
 CondExp. Cond2 ::= Exp;
 
 ---- Range expression
-RangeExps. Range ::= PIdent ":" Exp ".." Exp;
-RangeArrs. Range ::= PIdent "in" PIdent;
+RangeExps. Range ::= ID COL Exp BETWEEN Exp;
+RangeArrs. Range ::= ID IN ID;
 
 ---- Expressions
 separator nonempty Exp ",";
-coercions Exp 5;
+coercions Exp 4;
 
 ---- Binary expressions
-ExpEq. Exp ::= Exp1 "==" Exp1;
-ExpNe. Exp ::= Exp1 "!=" Exp1;
-ExpLe. Exp ::= Exp1 "<=" Exp1;
-ExpGe. Exp ::= Exp1 ">=" Exp1;
-ExpLt. Exp ::= Exp1 "<" Exp1;
-ExpGt. Exp ::= Exp1 ">" Exp1;
-ExpPlus. Exp1 ::= Exp1 "+" Exp2;
-ExpMinus. Exp1 ::= Exp1 "-" Exp2;
-ExpProd. Exp2 ::= Exp2 "*" Exp3;
-ExpDiv. Exp2 ::= Exp2 "/" Exp3;
-ExpAnd. Exp3 ::= Exp3 "&" Exp4;
-ExpOr. Exp3 ::= Exp3 "|" Exp4;
+ExpEq. Exp ::= Exp1 EQ Exp1;
+ExpNe. Exp ::= Exp1 NE Exp1;
+ExpLe. Exp ::= Exp1 LE Exp1;
+ExpGe. Exp ::= Exp1 GE Exp1;
+ExpLt. Exp ::= Exp1 LT Exp1;
+ExpGt. Exp ::= Exp1 GT Exp1;
+ExpPlus. Exp1 ::= Exp1 PLUS Exp2;
+ExpMinus. Exp1 ::= Exp1 MINUS Exp2;
+ExpProd. Exp2 ::= Exp2 MULT Exp3;
+ExpDiv. Exp2 ::= Exp2 DIV Exp3;
 
 ---- Unary expressions
--- ExpNeg. Exp4 ::= "-" Exp5;
-ExpNot. Exp4 ::= "!" Exp5;
+ExpNeg. Exp3 ::= MINUS Exp4;
+ExpNot. Exp3 ::= BANG Exp4;
 
 ---- Calls
-ExpRun. Exp5 ::= "run" PIdent "(" [Exp] ")";
-ExpLen. Exp5 ::= PLen "(" LVal ")";
+ExRun. Exp4 ::= RUN ID "(" [Exp] ")";
+ExLen. Exp4 ::= LEN "(" LVal ")";
 
 ---- Terminal expressions
-ExpConst. Exp5 ::= Const;
-ExpLVal. Exp5 ::= LVal;
+ExpConst. Exp4 ::= Const;
+ExpLVal. Exp4 ::= LVal;
 
 ---- L-Values
-ValId. LVal ::= PIdent;
+ValId. LVal ::= ID;
 ValArr. LVal ::= LVal "[" Exp "]";
-ValField. LVal ::= LVal "." PIdent;
+ValField. LVal ::= LVal DOT ID;
 
 -- Types
 separator nonempty Type ",";
-TypeChan. Type ::= PChan;
-TypeInt. Type ::= PInt;
-TypeBool. Type ::= PBool;
-TypeNamed. Type ::= PIdent;
+TypeChan. Type ::= CHAN;
+TypeInt. Type ::= INT;
+TypeBool. Type ::= BOOL;
+TypeNamed. Type ::= ID;
 
 -- Constants
-CInt. Const ::= PInteger;
-CNInt. Const ::= "-" PInteger;
-CTrue. Const ::= PTrue;
-CFalse. Const ::= PFalse;
+CInt. Const ::= NUMBER;
+CTrue. Const ::= TRUE;
+CFalse. Const ::= FALSE;
 
 entrypoints Spec;
