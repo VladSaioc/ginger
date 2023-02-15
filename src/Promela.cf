@@ -13,7 +13,7 @@ position token BOOL {"bool"};
 position token CHAN {"chan"};
 position token OF {"of"};
 
--- BOOLean tokens
+-- Constants tokens
 position token TRUE {"true"};
 position token FALSE {"false"};
 position token NUMBER (digit)+;
@@ -47,12 +47,12 @@ position token DOT {"."};
 -- Expression tokens
 position token OR {"||"};
 position token AND {"&&"};
-position token EQ {"=="};
-position token NE {"!="};
-position token LE {"<="};
-position token LT {"<"};
-position token GE {">="};
-position token GT {">"};
+position token CEQ {"=="};
+position token CNE {"!="};
+position token CLE {"<="};
+position token CLT {"<"};
+position token CGE {">="};
+position token CGT {">"};
 position token PLUS {"+"};
 position token MINUS {"-"};
 position token MULT {"*"};
@@ -89,7 +89,7 @@ Decl. Decl ::= Type ID DeclBody ;
 
 DBodyEmpty. DeclBody ::= ;
 DBodyExp. DeclBody ::= AS Exp;
-DBodyCHAN. DeclBody ::= AS "[" Const "]" OF "{" [Type] "}";
+DBodyChan. DeclBody ::= AS "[" NUMBER "]" OF "{" [Type] "}";
 
 -- Steps
 separator Step "->";
@@ -132,12 +132,12 @@ separator nonempty Exp ",";
 coercions Exp 4;
 
 ---- Binary expressions
-ExpEq. Exp ::= Exp1 EQ Exp1;
-ExpNe. Exp ::= Exp1 NE Exp1;
-ExpLe. Exp ::= Exp1 LE Exp1;
-ExpGe. Exp ::= Exp1 GE Exp1;
-ExpLt. Exp ::= Exp1 LT Exp1;
-ExpGt. Exp ::= Exp1 GT Exp1;
+ExpEq. Exp ::= Exp1 CEQ Exp1;
+ExpNe. Exp ::= Exp1 CNE Exp1;
+ExpLe. Exp ::= Exp1 CLE Exp1;
+ExpGe. Exp ::= Exp1 CGE Exp1;
+ExpLt. Exp ::= Exp1 CLT Exp1;
+ExpGt. Exp ::= Exp1 CGT Exp1;
 ExpPlus. Exp1 ::= Exp1 PLUS Exp2;
 ExpMinus. Exp1 ::= Exp1 MINUS Exp2;
 ExpProd. Exp2 ::= Exp2 MULT Exp3;
