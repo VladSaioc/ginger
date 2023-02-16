@@ -8,11 +8,21 @@ sketches
 dist
 dist-newstyle
 
-# Generated front-end
+# Generated Promela front-end
 src/Promela/*.hs
 src/Promela/*.x
 src/Promela/*.y
 src/Promela/*.txt
+!src/Promela/Ast.hs
+!src/Promela/GetAst.hs
+
+# Generated Trace front-end
+src/Trace/*.hs
+src/Trace/*.x
+src/Trace/*.y
+src/Trace/*.txt
+!src/Trace/Ast.hs
+!src/Trace/GetAst.hs
 
 # Stack-generated
 .stack-work/
