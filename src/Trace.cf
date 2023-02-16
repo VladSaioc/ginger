@@ -1,0 +1,80 @@
+comment "spin:";
+
+token PATH (letter|digit|[".-_/+"])+;
+
+-- Entry point
+Trace. Trace ::= [Step] "timeout" "#processes:" [Final] Integer "processes" "created";
+[]. [Step] ::= ;
+(:). [Step] ::= Step [Step];
+
+InitProc. Proc ::= ":init:" ":" Integer; 
+FunProc. Proc ::= Ident ":" Integer;
+
+Pref. Pref ::= Integer ":" "proc" Integer "(" Proc ")";
+Path. Path ::= PATH ":" Integer;
+State. State ::= "(" "state" Integer ")";
+
+StepStmt. Step ::= Pref Path State "[" Stmt "]";
+StepStart. Step ::= "Starting" Ident "with" "pid" Integer;
+
+-- Statement steps
+StmtGotoIn. Stmt ::= ".(goto)";
+StmtGoto. Stmt ::= "goto" ":" Ident;
+StmtLabel. Stmt ::= Ident ":" Stmt;
+StmtAssign. Stmt ::= LVal "=" Exp;
+StmtIncr. Stmt ::= LVal "++";
+StmtDecr. Stmt ::= LVal "--";
+StmtSend. Stmt ::= LVal "!" [Exp];
+StmtRcv. Stmt ::= LVal "?" [Exp];
+StmtExpr. Stmt ::= Exp;
+StmtAssert. Stmt ::= "assert" Exp;
+
+---- Expressions
+separator nonempty Exp ",";
+coercions Exp 6;
+
+---- Binary expressions
+ExpOr. Exp ::= Exp "||" Exp1;
+ExpAnd. Exp1 ::= Exp1 "&&" Exp2;
+ExpEq. Exp2 ::= Exp3 "==" Exp3;
+ExpNe. Exp2 ::= Exp3 "!=" Exp3;
+ExpLe. Exp2 ::= Exp3 "<=" Exp3;
+ExpGe. Exp2 ::= Exp3 ">=" Exp3;
+ExpLt. Exp2 ::= Exp3 "<" Exp3;
+ExpGt. Exp2 ::= Exp3 ">" Exp3;
+ExpPlus. Exp3 ::= Exp3 "+" Exp4;
+ExpMinus. Exp3 ::= Exp3 "-" Exp4;
+ExpProd. Exp4 ::= Exp4 "*" Exp5;
+ExpDiv. Exp4 ::= Exp4 "/" Exp5;
+ExpAnd. Exp5 ::= Exp5 "&" Exp6;
+ExpOr. Exp5 ::= Exp5 "|" Exp6;
+
+---- Unary expressions
+ExpNeg. Exp6 ::= "-" Exp7;
+ExpNot. Exp6 ::= "!" Exp7;
+
+---- Calls
+ExpRun. Exp7 ::= "run" Ident "(" [Exp] ")";
+ExpLen. Exp7 ::= "len" "(" LVal ")";
+
+---- Terminal expressions
+ExpConst. Exp5 ::= Const;
+ExpLVal. Exp5 ::= LVal;
+
+---- L-Values
+ValId. LVal ::= Ident;
+ValArr. LVal ::= LVal "[" Exp "]";
+ValField. LVal ::= LVal "." Ident;
+
+-- Constants
+CInt. Const ::= Integer;
+
+[]. [Final] ::= ;
+(:). [Final] ::= Final [Final];
+
+FinalValid. Final ::= FinalLoc "<valid end state>";
+FinalInv. Final ::= FinalLoc;
+
+FinalLoc. FinalLoc ::= Pref Path State;
+
+entrypoints Trace;
