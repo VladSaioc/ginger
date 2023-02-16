@@ -148,8 +148,8 @@ ExpNeg. Exp3 ::= MINUS Exp4;
 ExpNot. Exp3 ::= BANG Exp4;
 
 ---- Calls
-ExRun. Exp4 ::= RUN ID "(" [Exp] ")";
-ExLen. Exp4 ::= LEN "(" LVal ")";
+ExpRun. Exp4 ::= RUN ID "(" [Exp] ")";
+ExpLen. Exp4 ::= LEN "(" LVal ")";
 
 ---- Terminal expressions
 ExpConst. Exp4 ::= Const;
