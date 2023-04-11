@@ -24,8 +24,8 @@ instance Functor Pos where
 instance Show a => Show (Pos a) where
   show (Pos l n) = "Line " ++ show l ++ ": " ++ show n ++ "\n"
 
-(@) :: Int -> alpha -> Pos alpha
+(@) :: Int -> a -> Pos a
 (@) p = Pos p
 
-(@>) :: Pos alpha -> (alpha -> beta) -> Pos beta
+(@>) :: Pos a -> (a -> b) -> Pos b
 (@>) (Pos l a) f = Pos l (f a)
