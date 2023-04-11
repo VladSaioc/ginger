@@ -24,6 +24,9 @@ src/Trace/*.txt
 !src/Trace/Ast.hs
 !src/Trace/GetAst.hs
 
+# Miscellaneous
+*.pre
+
 # Stack-generated
 .stack-work/
 *~
