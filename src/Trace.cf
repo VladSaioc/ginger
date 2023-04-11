@@ -7,73 +7,69 @@ Trace. Trace ::= [Step] "timeout" "#processes:" [Final] Integer "processes" "cre
 []. [Step] ::= ;
 (:). [Step] ::= Step [Step];
 
-InitProc. Proc ::= ":init:" ":" Integer; 
-FunProc. Proc ::= Ident ":" Integer;
+Init. Proc ::= ":init:" ":" Integer; 
+Fun. Proc ::= Ident ":" Integer;
 
 Pref. Pref ::= Integer ":" "proc" Integer "(" Proc ")";
 Path. Path ::= PATH ":" Integer;
 State. State ::= "(" "state" Integer ")";
 
-StepStmt. Step ::= Pref Path State "[" Stmt "]";
-StepStart. Step ::= "Starting" Ident "with" "pid" Integer;
+Stmt. Step ::= Pref Path State "[" Stmt "]";
+Start. Step ::= "Starting" Ident "with" "pid" Integer;
 
 -- Statement steps
-StmtGotoIn. Stmt ::= ".(goto)";
-StmtGoto. Stmt ::= "goto" ":" Ident;
-StmtLabel. Stmt ::= Ident ":" Stmt;
-StmtAssign. Stmt ::= LVal "=" Exp;
-StmtIncr. Stmt ::= LVal "++";
-StmtDecr. Stmt ::= LVal "--";
-StmtSend. Stmt ::= LVal "!" [Exp];
-StmtRcv. Stmt ::= LVal "?" [Exp];
-StmtExpr. Stmt ::= Exp;
-StmtAssert. Stmt ::= "assert" Exp;
+GotoIn. Stmt ::= ".(goto)";
+Goto. Stmt ::= "goto" ":" Ident;
+Assign. Stmt ::= LVal "=" Exp;
+Send. Stmt ::= LVal "!" [Exp];
+Rcv. Stmt ::= LVal "?" [Exp];
+Expr. Stmt ::= Exp;
+Do. Stmt ::= "DO";
+Else. Stmt ::= "else";
+Assert. Stmt ::= "assert" Exp;
 
 ---- Expressions
 separator nonempty Exp ",";
 coercions Exp 6;
 
 ---- Binary expressions
-ExpOr. Exp ::= Exp "||" Exp1;
-ExpAnd. Exp1 ::= Exp1 "&&" Exp2;
-ExpEq. Exp2 ::= Exp3 "==" Exp3;
-ExpNe. Exp2 ::= Exp3 "!=" Exp3;
-ExpLe. Exp2 ::= Exp3 "<=" Exp3;
-ExpGe. Exp2 ::= Exp3 ">=" Exp3;
-ExpLt. Exp2 ::= Exp3 "<" Exp3;
-ExpGt. Exp2 ::= Exp3 ">" Exp3;
-ExpPlus. Exp3 ::= Exp3 "+" Exp4;
-ExpMinus. Exp3 ::= Exp3 "-" Exp4;
-ExpProd. Exp4 ::= Exp4 "*" Exp5;
-ExpDiv. Exp4 ::= Exp4 "/" Exp5;
-ExpAnd. Exp5 ::= Exp5 "&" Exp6;
-ExpOr. Exp5 ::= Exp5 "|" Exp6;
+Or. Exp ::= Exp "||" Exp1;
+And. Exp1 ::= Exp1 "&&" Exp2;
+Eq. Exp2 ::= Exp3 "==" Exp3;
+Ne. Exp2 ::= Exp3 "!=" Exp3;
+Le. Exp2 ::= Exp3 "<=" Exp3;
+Ge. Exp2 ::= Exp3 ">=" Exp3;
+Lt. Exp2 ::= Exp3 "<" Exp3;
+Gt. Exp2 ::= Exp3 ">" Exp3;
+Plus. Exp3 ::= Exp3 "+" Exp4;
+Minus. Exp3 ::= Exp3 "-" Exp4;
+Prod. Exp4 ::= Exp4 "*" Exp5;
+Div. Exp4 ::= Exp4 "/" Exp5;
+And. Exp5 ::= Exp5 "&" Exp6;
+Or. Exp5 ::= Exp5 "|" Exp6;
 
 ---- Unary expressions
-ExpNeg. Exp6 ::= "-" Exp7;
-ExpNot. Exp6 ::= "!" Exp7;
+Neg. Exp6 ::= "-" Exp7;
+Not. Exp6 ::= "!" Exp7;
 
 ---- Calls
-ExpRun. Exp7 ::= "run" Ident "(" [Exp] ")";
-ExpLen. Exp7 ::= "len" "(" LVal ")";
+Run. Exp7 ::= "run" Ident "(" [Exp] ")";
+Len. Exp7 ::= "len" "(" LVal ")";
 
 ---- Terminal expressions
-ExpConst. Exp5 ::= Const;
-ExpLVal. Exp5 ::= LVal;
+Const. Exp5 ::= Integer;
+Var. Exp5 ::= LVal;
 
 ---- L-Values
-ValId. LVal ::= Ident;
-ValArr. LVal ::= LVal "[" Exp "]";
-ValField. LVal ::= LVal "." Ident;
-
--- Constants
-CInt. Const ::= Integer;
+Id. LVal ::= Ident;
+Arr. LVal ::= LVal "[" Exp "]";
+Field. LVal ::= LVal "." Ident;
 
 []. [Final] ::= ;
 (:). [Final] ::= Final [Final];
 
-FinalValid. Final ::= FinalLoc "<valid end state>";
-FinalInv. Final ::= FinalLoc;
+Valid. Final ::= FinalLoc "<valid end state>";
+Invalid. Final ::= FinalLoc;
 
 FinalLoc. FinalLoc ::= Pref Path State;
 
