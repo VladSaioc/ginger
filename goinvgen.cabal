@@ -25,18 +25,34 @@ source-repository head
 
 library
   exposed-modules:
+      Backend.Ast
       Promela.AbsPromela
+      Promela.Ast
       Promela.ErrM
+      Promela.GetAst
       Promela.LexPromela
       Promela.ParPromela
       Promela.PrintPromela
       Promela.SkelPromela
+      Trace.AbsTrace
+      Trace.Ast
+      Trace.ErrM
+      Trace.GetAst
+      Trace.LexTrace
+      Trace.ParTrace
+      Trace.PrintTrace
+      Trace.SkelTrace
+      Utilities.Err
+      Utilities.General
+      Utilities.Position
   other-modules:
       Paths_goinvgen
   hs-source-dirs:
       src
   default-extensions:
       LambdaCase
+      StandaloneDeriving
+      UndecidableInstances
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       array
@@ -56,6 +72,8 @@ executable goinvgen-exe
       app
   default-extensions:
       LambdaCase
+      StandaloneDeriving
+      UndecidableInstances
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       array
@@ -77,6 +95,8 @@ test-suite goinvgen-test
       test
   default-extensions:
       LambdaCase
+      StandaloneDeriving
+      UndecidableInstances
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       array

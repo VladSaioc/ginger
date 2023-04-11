@@ -55,6 +55,8 @@ executables:
 
 default-extensions:
   - LambdaCase
+  - StandaloneDeriving
+  - UndecidableInstances
 
 tests:
   goinvgen-test:
