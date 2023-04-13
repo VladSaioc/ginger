@@ -59,6 +59,7 @@ default-extensions:
   - UndecidableInstances
   - ImportQualifiedPost
   - PostfixOperators
+  - PatternSynonyms
 
 tests:
   goinvgen-test:

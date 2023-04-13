@@ -61,6 +61,7 @@ library
       UndecidableInstances
       ImportQualifiedPost
       PostfixOperators
+      PatternSynonyms
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       array
@@ -84,6 +85,7 @@ executable goinvgen-exe
       UndecidableInstances
       ImportQualifiedPost
       PostfixOperators
+      PatternSynonyms
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       array
@@ -109,6 +111,7 @@ test-suite goinvgen-test
       UndecidableInstances
       ImportQualifiedPost
       PostfixOperators
+      PatternSynonyms
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       array
