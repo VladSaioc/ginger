@@ -31,6 +31,8 @@ library
       IR.Homogeneity
       IR.Stratification
       Pipeline.Callgraph
+      Pipeline.Translation.AlphaConversion
+      Pipeline.Translation.PromelaToIR
       Pipeline.Utilities
       Promela.AbsPromela
       Promela.Ast
