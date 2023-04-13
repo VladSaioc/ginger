@@ -26,6 +26,12 @@ source-repository head
 library
   exposed-modules:
       Backend.Ast
+      IR.Ast
+      IR.ChanString
+      IR.Homogeneity
+      IR.Stratification
+      Pipeline.Callgraph
+      Pipeline.Utilities
       Promela.AbsPromela
       Promela.Ast
       Promela.ErrM
@@ -53,6 +59,8 @@ library
       LambdaCase
       StandaloneDeriving
       UndecidableInstances
+      ImportQualifiedPost
+      PostfixOperators
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       array
@@ -74,6 +82,8 @@ executable goinvgen-exe
       LambdaCase
       StandaloneDeriving
       UndecidableInstances
+      ImportQualifiedPost
+      PostfixOperators
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       array
@@ -97,6 +107,8 @@ test-suite goinvgen-test
       LambdaCase
       StandaloneDeriving
       UndecidableInstances
+      ImportQualifiedPost
+      PostfixOperators
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       array

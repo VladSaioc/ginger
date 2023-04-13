@@ -57,6 +57,8 @@ default-extensions:
   - LambdaCase
   - StandaloneDeriving
   - UndecidableInstances
+  - ImportQualifiedPost
+  - PostfixOperators
 
 tests:
   goinvgen-test:
