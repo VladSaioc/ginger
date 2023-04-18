@@ -1,0 +1,51 @@
+-- Structural keywords
+position token GO {"go"};
+position token FOR {"for"};
+
+-- Channel operations
+position token SND {"!"};
+position token RCV {"?"};
+
+-- Expression tokens
+position token PLUS {"+"};
+position token MINUS {"-"};
+position token MULT {"*"};
+position token DIV {"/"};
+
+-- Constants
+position token NUMBER (digit)+;
+
+-- Identifiers
+position token ID (letter|["'_"]) ((digit|letter|["'_"])*);
+
+-- Program
+Program. Prog ::= [Chan] [Go];
+
+-- Channel declaration
+separator Chan ";";
+Chan. Chan ::= ID "=" "[" Exp "]";
+
+-- Process declaration
+separator Go "\n";
+Proc. Go ::= GO "{" [Stm] "}";
+
+-- Statement
+separator Stm ";";
+SOp. Stm ::= Op;
+SFor. Stm ::= FOR Ident ":" Exp ".." Exp "{" [Op] "}";
+
+-- Atomic channel operations
+separator Op ";";
+Snd. Op ::= ID SND;
+Rcv. Op ::= ID RCV;
+
+-- Expressions
+coercions Exp 2;
+Plus. Exp ::= Exp PLUS Exp1;
+Minus. Exp ::= Exp MINUS Exp1;
+Mult. Exp1 ::= Exp1 MULT Exp2;
+Div. Exp1 ::= Exp1 DIV Exp2;
+Var. Exp2 ::= ID;
+Const. Exp2 ::= NUMBER;
+
+entrypoints Prog;

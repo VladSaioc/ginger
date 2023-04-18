@@ -15,6 +15,7 @@ src/Promela/*.y
 src/Promela/*.txt
 !src/Promela/Ast.hs
 !src/Promela/GetAst.hs
+!src/Promela/Utilities.hs
 
 # Generated Trace front-end
 src/Trace/*.hs
@@ -23,6 +24,13 @@ src/Trace/*.y
 src/Trace/*.txt
 !src/Trace/Ast.hs
 !src/Trace/GetAst.hs
+
+# Generated IR front-end
+src/IR/*.x
+src/IR/*.y
+src/IR/*.txt
+src/IR/*IR.hs
+src/IR/ErrM.hs
 
 # Miscellaneous
 *.pre
