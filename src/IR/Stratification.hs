@@ -21,9 +21,10 @@ getChanStrStmt = \case
     cs1 <- getChanStrStmt s1
     cs2 <- getChanStrStmt s2
     Just (cs1 ++ cs2)
-  For _ _ s ->
+  For _ _ _ s ->
     let cs = canonicalForm (L.map getChanStrAtomic s)
      in if L.length cs == 1
           then return cs
           else Nothing
   Atomic o -> return [getChanStrAtomic o]
+  Skip -> return []

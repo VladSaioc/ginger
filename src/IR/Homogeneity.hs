@@ -23,7 +23,8 @@ homogeneousStmt d = \case
     d'' <- homogeneousStmt d s1
     homogeneousStmt (Just d'') s2
   Atomic o -> homogeneousOp d o
-  For _ _ os -> foldl homogeneousOp d os
+  For _ _ _ os -> foldl homogeneousOp d os
+  Skip -> d
 
 homogeneousOp :: DirEnv -> Op -> DirEnv
 homogeneousOp d commOp =
