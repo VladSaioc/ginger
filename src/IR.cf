@@ -19,20 +19,20 @@ position token NUMBER (digit)+;
 position token ID (letter|["'_"]) ((digit|letter|["'_"])*);
 
 -- Program
-Program. Prog ::= [Chan] [Go];
+Prog. Prog ::= [Chan] [Proc];
 
 -- Channel declaration
 separator Chan ";";
 Chan. Chan ::= ID "=" "[" Exp "]";
 
 -- Process declaration
-separator Go "\n";
-Proc. Go ::= GO "{" [Stm] "}";
+separator Proc "\n";
+Proc. Proc ::= GO "{" [Stm] "}";
 
 -- Statement
 separator Stm ";";
 SOp. Stm ::= Op;
-SFor. Stm ::= FOR Ident ":" Exp ".." Exp "{" [Op] "}";
+For. Stm ::= FOR ID ":" Exp ".." Exp "{" [Op] "}";
 
 -- Atomic channel operations
 separator Op ";";
