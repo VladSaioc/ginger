@@ -4,6 +4,7 @@ import IR.AbsIR qualified as R'
 import IR.Ast
 import IR.ErrM qualified as R''
 import IR.ParIR
+import IR.SanityCheck
 import Utilities.Err as U
 import Utilities.General
 
@@ -26,7 +27,10 @@ foldM f rs =
 -- Parses the given string as a Promela program and
 -- performs additional refinement on the existing parse tree.
 getAst :: String -> Err Prog
-getAst = pProgram . pProg . myLexer
+getAst sprog = do
+  p <- (pProgram . pProg . myLexer) sprog
+  _ <- sanityCheck p
+  return p
 
 pProgram :: R''.Err R'.Prog -> Err Prog
 pProgram = \case
