@@ -1,0 +1,17 @@
+case $1 in
+  "IR")
+  ;;
+  "Promela")
+  ;;
+  "Trace")
+  ;;
+  *) 
+    echo "Unrecognized grammar."
+    exit 1
+  ;;
+esac 
+
+bnfc --haskell --outputdir=src -p $1 src/$1.cf
+alex src/$1/Lex$1.x
+happy src/$1/Par$1.y
+rm src/$1/Test$1.hs
