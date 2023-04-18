@@ -64,7 +64,7 @@ position token RECV {"?"};
 
 position token ID (letter|["_"]) ((digit|letter|["_"])*);
 
--- Entry poINT
+-- Entry point
 Program. Spec ::= [Module];
 []. [Module] ::= ;
 (:). [Module] ::= Module [Module];
