@@ -41,6 +41,7 @@ sanityCheck (Prog chs prc) = do
 
 sanityCheckChan :: Ctx -> Chan -> Err Ctx
 sanityCheckChan ctx (Chan c e) = do
+  _ <- multiGuard [(S.member c (chenv ctx), "Duplicate channel declaration: " ++ c)]
   let ctx' = ctx {chenv = S.insert c (chenv ctx)}
   sanityCheckExp ctx' e
 
