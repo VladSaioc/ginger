@@ -54,6 +54,8 @@ executables:
     - goinvgen
 
 default-extensions:
+  - TupleSections
+  - NamedFieldPuns
   - LambdaCase
   - StandaloneDeriving
   - ImportQualifiedPost
