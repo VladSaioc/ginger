@@ -3,38 +3,37 @@ module IR.Homogeneity (homogeneous) where
 import Data.Map qualified as M
 import IR.Ast
 import IR.Utilities
+import Utilities.Err
 
-type DirEnv = Maybe (M.Map String OpDir)
+type DirEnv = Err (M.Map String OpDir)
 
-homogeneous :: Prog -> Bool
+homogeneous :: Prog -> Err ()
 homogeneous (Prog _ gos) =
-  foldl homogeneousProc True gos
+  Prelude.foldl homogeneousProc (Ok ()) gos
 
-homogeneousProc :: Bool -> Stmt -> Bool
-homogeneousProc ok s =
-  ok && case homogeneousStmt (Just M.empty) s of
-    Just _ -> True
-    Nothing -> False
+homogeneousProc :: Err () -> Stmt -> Err ()
+homogeneousProc es s = do
+  _ <- es
+  _ <- homogeneousStmt (Ok M.empty) s
+  return ()
 
 homogeneousStmt :: DirEnv -> Stmt -> DirEnv
 homogeneousStmt d = \case
   Seq s1 s2 -> do
-    d'' <- homogeneousStmt d s1
-    homogeneousStmt (Just d'') s2
+    d' <- homogeneousStmt d s1
+    homogeneousStmt (Ok d') s2
   Atomic o -> homogeneousOp d o
   For _ _ _ os -> foldl homogeneousOp d os
   Skip -> d
 
 homogeneousOp :: DirEnv -> Op -> DirEnv
-homogeneousOp d commOp =
-  let (ch, dir) = case commOp of
-        Send c -> (c, S)
-        Recv c -> (c, R)
+homogeneousOp menv op =
+  let (c, d) = (chName op, chDir op)
    in do
-        env <- d
-        case M.lookup ch env of
+        env <- menv
+        case M.lookup c env of
           Just op ->
-            if op == dir
+            if op == d
               then return env
-              else Nothing
-          Nothing -> return (M.insert ch dir env)
+              else Bad ("Operations of channel " ++ c ++ " are not homogeneous.")
+          Nothing -> return (M.insert c d env)
