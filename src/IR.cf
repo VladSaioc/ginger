@@ -26,8 +26,8 @@ separator Chan ";";
 Chan. Chan ::= ID "=" "[" Exp "]";
 
 -- Process declaration
-separator Proc "\n";
-Proc. Proc ::= GO "{" [Stm] "}";
+terminator Proc "}";
+Proc. Proc ::= GO "{" [Stm] ;
 
 -- Statement
 separator Stm ";";
