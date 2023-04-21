@@ -34,7 +34,7 @@ data Stmt
   deriving (Eq, Ord, Read, Show)
 
 data Exp
-  = Chan Integer
+  = Chan Int
   | Const Val
   | And Exp Exp
   | Or Exp Exp
@@ -66,7 +66,7 @@ data LVal
   | Arr LVal Exp
   deriving (Eq, Ord, Read, Show)
 
-data Val = VInt Integer | VBool Bool deriving (Eq, Ord, Read, Show)
+data Val = VInt Int | VBool Bool deriving (Eq, Ord, Read, Show)
 
 data Type
   = TInt

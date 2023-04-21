@@ -8,8 +8,8 @@ import Utilities.Err as U
 import Utilities.General
 import Utilities.Position
 
-(#) :: Raw.NUMBER -> Integer
-(#) (Raw.NUMBER (_, i)) = read i :: Integer
+(#) :: Raw.NUMBER -> Int
+(#) (Raw.NUMBER (_, i)) = read i :: Int
 
 (&) :: Raw.ID -> Ident
 (&) (Raw.ID (_, x)) = x
@@ -111,7 +111,7 @@ pDecl (Raw.Decl t x e) =
 
 pDeclBody :: Type -> Raw.DeclBody -> Err (Type, Maybe Exp)
 pDeclBody t b = case (t, b) of
-  -- Integer variable declarations
+  -- Int variable declarations
   (TInt, Raw.DBodyEmpty) ->
     let v = return (Const (VInt 0))
      in return (t, v)
@@ -252,46 +252,46 @@ pCond =
 pExp :: Raw.Exp -> Pos Exp
 pExp =
   let bin = binaryCons pExp
-   in let un = unaryCons pExp
-       in let unVar = unaryCons pLVal
-           in let unConst = unaryCons pConst
-               in \case
-                    -- e1 == e2
-                    Raw.ExpEq e1 _ e2 -> bin Eq e1 e2
-                    -- e1 != e2
-                    Raw.ExpNe e1 _ e2 -> bin Ne e1 e2
-                    -- e1 <= e2
-                    Raw.ExpLe e1 _ e2 -> bin Le e1 e2
-                    -- e1 >= e2
-                    Raw.ExpGe e1 _ e2 -> bin Ge e1 e2
-                    -- e1 < e2
-                    Raw.ExpLt e1 _ e2 -> bin Lt e1 e2
-                    -- e1 > e2
-                    Raw.ExpGt e1 _ e2 -> bin Gt e1 e2
-                    -- e1 + e2
-                    Raw.ExpPlus e1 _ e2 -> bin Plus e1 e2
-                    -- e1 - e2
-                    Raw.ExpMinus e1 _ e2 -> bin Minus e1 e2
-                    -- e1 * e2
-                    Raw.ExpProd e1 _ e2 -> bin Mult e1 e2
-                    -- e1 / e2
-                    Raw.ExpDiv e1 _ e2 -> bin Div e1 e2
-                    -- -e1
-                    Raw.ExpNeg _ e -> un Neg e
-                    -- !e1
-                    Raw.ExpNot _ e -> un Not e
-                    -- len(v)
-                    Raw.ExpLen _ v -> unVar Len v
-                    -- v
-                    Raw.ExpLVal v -> unVar EVar v
-                    -- c
-                    Raw.ExpConst c -> unConst Const c
-                    -- run f (es...)
-                    Raw.ExpRun (Raw.RUN tok) f' es' -> do
-                      _ <- pToken tok
-                      let f = (f' &)
-                      es <- results (map pExp es')
-                      return (Run f es)
+      un = unaryCons pExp
+      unVar = unaryCons pLVal
+      unConst = unaryCons pConst
+   in \case
+        -- e1 == e2
+        Raw.ExpEq e1 _ e2 -> bin Eq e1 e2
+        -- e1 != e2
+        Raw.ExpNe e1 _ e2 -> bin Ne e1 e2
+        -- e1 <= e2
+        Raw.ExpLe e1 _ e2 -> bin Le e1 e2
+        -- e1 >= e2
+        Raw.ExpGe e1 _ e2 -> bin Ge e1 e2
+        -- e1 < e2
+        Raw.ExpLt e1 _ e2 -> bin Lt e1 e2
+        -- e1 > e2
+        Raw.ExpGt e1 _ e2 -> bin Gt e1 e2
+        -- e1 + e2
+        Raw.ExpPlus e1 _ e2 -> bin Plus e1 e2
+        -- e1 - e2
+        Raw.ExpMinus e1 _ e2 -> bin Minus e1 e2
+        -- e1 * e2
+        Raw.ExpProd e1 _ e2 -> bin Mult e1 e2
+        -- e1 / e2
+        Raw.ExpDiv e1 _ e2 -> bin Div e1 e2
+        -- -e1
+        Raw.ExpNeg _ e -> un Neg e
+        -- !e1
+        Raw.ExpNot _ e -> un Not e
+        -- len(v)
+        Raw.ExpLen _ v -> unVar Len v
+        -- v
+        Raw.ExpLVal v -> unVar EVar v
+        -- c
+        Raw.ExpConst c -> unConst Const c
+        -- run f (es...)
+        Raw.ExpRun (Raw.RUN tok) f' es' -> do
+          _ <- pToken tok
+          let f = (f' &)
+          es <- results (map pExp es')
+          return (Run f es)
 
 pLVal :: Raw.LVal -> Pos LVal
 pLVal = \case
