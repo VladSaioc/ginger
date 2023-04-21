@@ -6,12 +6,12 @@ cabal-version: 1.12
 
 name:           goinvgen
 version:        0.1.0.0
-description:    Please see the README on GitHub at <https://github.com/githubuser/goinvgen#readme>
-homepage:       https://github.com/githubuser/goinvgen#readme
-bug-reports:    https://github.com/githubuser/goinvgen/issues
-author:         Author name here
-maintainer:     example@example.com
-copyright:      2023 Author name here
+description:    Please see the README on GitHub at <https://github.com/VladSaioc/goinvgen#readme>
+homepage:       https://github.com/VladSaioc/goinvgen#readme
+bug-reports:    https://github.com/VladSaioc/goinvgen/issues
+author:         Georgian-Vlad Saioc
+maintainer:     gvsaioc@cs.au.dk
+copyright:      2023 Georgian-Vlad Saioc
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
@@ -21,19 +21,46 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/githubuser/goinvgen
+  location: https://github.com/VladSaioc/goinvgen
 
 library
   exposed-modules:
       Backend.Ast
+      Backend.Utilities
+      IR.AbsIR
       IR.Ast
       IR.ChanString
+      IR.ErrM
+      IR.GetAst
       IR.Homogeneity
+      IR.LexIR
+      IR.ParIR
+      IR.PrintIR
+      IR.SanityCheck
+      IR.SkelIR
       IR.Stratification
+      IR.Utilities
       Pipeline.Callgraph
+      Pipeline.IRTranslation.Boilerplate
+      Pipeline.IRTranslation.Channels
+      Pipeline.IRTranslation.ChInstructions
+      Pipeline.IRTranslation.CommResources
+      Pipeline.IRTranslation.Enabled
+      Pipeline.IRTranslation.Exps
+      Pipeline.IRTranslation.FreeVars
+      Pipeline.IRTranslation.Invariant.ChannelBound
+      Pipeline.IRTranslation.Invariant.ChannelMonitor
+      Pipeline.IRTranslation.Invariant.CounterBound
+      Pipeline.IRTranslation.Invariant.Loop
+      Pipeline.IRTranslation.Loops
+      Pipeline.IRTranslation.Postcondition
+      Pipeline.IRTranslation.Precondition
+      Pipeline.IRTranslation.Processes
+      Pipeline.IRTranslation.Utilities
       Pipeline.Translation.AlphaConversion
+      Pipeline.Translation.CallgraphOk
       Pipeline.Translation.PromelaToIR
-      Pipeline.Utilities
+      Pipeline.Translation.SyntaxOk
       Promela.AbsPromela
       Promela.Ast
       Promela.ErrM
@@ -42,6 +69,7 @@ library
       Promela.ParPromela
       Promela.PrintPromela
       Promela.SkelPromela
+      Promela.Utilities
       Trace.AbsTrace
       Trace.Ast
       Trace.ErrM
@@ -60,7 +88,6 @@ library
   default-extensions:
       LambdaCase
       StandaloneDeriving
-      UndecidableInstances
       ImportQualifiedPost
       PostfixOperators
       PatternSynonyms
@@ -84,7 +111,6 @@ executable goinvgen-exe
   default-extensions:
       LambdaCase
       StandaloneDeriving
-      UndecidableInstances
       ImportQualifiedPost
       PostfixOperators
       PatternSynonyms
@@ -110,7 +136,6 @@ test-suite goinvgen-test
   default-extensions:
       LambdaCase
       StandaloneDeriving
-      UndecidableInstances
       ImportQualifiedPost
       PostfixOperators
       PatternSynonyms
