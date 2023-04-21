@@ -34,7 +34,7 @@ data Exp
   | -- e1 / e2
     Div Exp Exp
   | -- n ∈ ℤ
-    Const Integer
+    Const Int
   | -- x
     Var String
   deriving (Eq, Ord, Read)
