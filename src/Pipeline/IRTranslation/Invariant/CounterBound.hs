@@ -1,15 +1,23 @@
-module Pipeline.IRTranslation.Invariant.CounterBound (buildPCBoundInvs) where
+module Pipeline.IRTranslation.Invariant.CounterBound (counterInvariants) where
 
 import Backend.Ast
+import Backend.Utilities
 import Data.Map qualified as M
 import Pipeline.IRTranslation.Utilities
 
-buildPCBoundInvs :: Procs -> [Exp]
-buildPCBoundInvs = map buildPCBoundInv . M.toList
+-- Composes all counter invariants under conjunction
+counterInvariants :: Procs -> [Exp]
+counterInvariants = map counterInvariant . M.toList
 
-buildPCBoundInv :: (Integer, ProgPoints) -> Exp
-buildPCBoundInv (pid, pp) =
-  let terminated = ECon (CNum (end pp))
+{- Constrict the value of pc(π) over viable program points.
+Depends on: π, ϕ
+
+Produces:
+0 <= pc(π) ∧ pc(π) <= (max ∘ dom)(ϕ)
+-}
+counterInvariant :: (Pid, ProgPoints) -> Exp
+counterInvariant (pid, pp) =
+  let terminated = ((pp -|) #)
       pc = EVar (pid <|)
       zero = ECon (CNum 0)
       lower = Leq zero pc
