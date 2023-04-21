@@ -1,24 +1,22 @@
 module Trace.GetAst where
 
 import Control.Monad
-import qualified Data.Set as Set
-import qualified Data.Map as Map
-
+import Data.Map qualified as Map
+import Data.Set qualified as Set
+import Trace.AbsTrace qualified as Raw
+import Trace.Ast
+import Trace.ErrM qualified as RawErr
+import Trace.ParTrace qualified as Parser
 import Utilities.Err
 import Utilities.General
 import Utilities.Position
 
-import qualified Trace.ErrM as RawErr
-import qualified Trace.AbsTrace as Raw
-import qualified Trace.ParTrace as Parser
-
-import Trace.Ast
-
-initTrace = Trace{
-    steps = []
-  , notTerminated = Set.empty
-  , processes = Map.empty
-}
+initTrace =
+  Trace
+    { steps = [],
+      notTerminated = Set.empty,
+      processes = Map.empty
+    }
 
 -- Parses the given string as a Trace and performs
 -- additional refinement on the existing parse tree.
@@ -33,7 +31,7 @@ pTrace = \case
 -- pPos :: Monad m => Raw.Path -> m Int
 -- pPos (Raw.Path _ n) = return (fromIntegral n :: Int)
 
--- pPid :: Monad m => Raw.Pref -> m Integer
+-- pPid :: Monad m => Raw.Pref -> m Int
 -- pPid (Raw.Pref _ pid _) = return pid
 
 -- pSteps :: Trace Pos -> [Raw.Step] -> Err (Trace Pos)
@@ -59,7 +57,7 @@ pTrace = \case
 --           in let
 --             updatedProcesses = ps
 --               $ (Map.insert cid (f, []))
---               $ (Map.insert pid (fun, step : pss))  
+--               $ (Map.insert pid (fun, step : pss))
 --           in trace {
 --             steps = step : ss,
 --             processes = updatedProcesses

@@ -2,18 +2,17 @@ module Trace.Ast where
 
 import Data.Map.Strict
 import Data.Set
-
 import Utilities.Position
 
 type Ident = String
 
-type Pid = Integer
+type Pid = Int
 
-data Trace m = Trace{
-    steps         :: [m Step]
-  , notTerminated :: Set Integer
-  , processes     :: Map Integer (Ident, [m Step])
-}
+data Trace m = Trace
+  { steps :: [m Step],
+    notTerminated :: Set Int,
+    processes :: Map Int (Ident, [m Step])
+  }
 
 data Step = Step Pid Stmt deriving (Eq, Ord, Show, Read)
 
@@ -44,7 +43,7 @@ data Exp
   | Not Exp
   | Len LVal
   | Var LVal
-  | Const Integer
+  | Const Int
   deriving (Eq, Ord, Show, Read)
 
 data LVal = Id Ident | Arr LVal Exp | Field LVal Ident
