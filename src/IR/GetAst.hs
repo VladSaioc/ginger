@@ -8,8 +8,8 @@ import IR.SanityCheck
 import Utilities.Err as U
 import Utilities.General
 
-(#) :: R'.NUMBER -> Integer
-(#) (R'.NUMBER (_, i)) = read i :: Integer
+(#) :: R'.NUMBER -> Int
+(#) (R'.NUMBER (_, i)) = read i :: Int
 
 (&) :: R'.ID -> String
 (&) (R'.ID (_, x)) = x
