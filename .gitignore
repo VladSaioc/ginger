@@ -8,6 +8,8 @@ sketches
 dist
 dist-newstyle
 
+goinvgen.cabal
+
 # Generated Promela front-end
 src/Promela/*.hs
 src/Promela/*.x
