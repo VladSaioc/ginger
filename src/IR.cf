@@ -16,7 +16,7 @@ position token DIV {"/"};
 position token NUMBER (digit)+;
 
 -- Identifiers
-position token ID (letter|["'_"]) ((digit|letter|["'_"])*);
+position token ID (letter|["_"]) ((digit|letter|["_"])*);
 
 -- Program
 Prog. Prog ::= [Chan] [Proc];
