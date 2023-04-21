@@ -2,10 +2,9 @@ module IR.Homogeneity (homogeneous) where
 
 import Data.Map qualified as M
 import IR.Ast
+import IR.Utilities
 
-data Dir = S | R deriving (Eq)
-
-type DirEnv = Maybe (M.Map String Dir)
+type DirEnv = Maybe (M.Map String OpDir)
 
 homogeneous :: Prog -> Bool
 homogeneous (Prog _ gos) =
