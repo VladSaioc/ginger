@@ -4,17 +4,18 @@ import Data.Map qualified as M
 import IR.Ast
 import IR.Utilities
 import Utilities.Err
+import Utilities.General
 
 type DirEnv = Err (M.Map String OpDir)
 
 homogeneous :: Prog -> Err ()
-homogeneous (Prog _ gos) =
-  Prelude.foldl homogeneousProc (Ok ()) gos
+homogeneous (Prog _ gos) = do
+  _ <- results (Prelude.map homogeneousProc gos)
+  return ()
 
-homogeneousProc :: Err () -> Stmt -> Err ()
-homogeneousProc es s = do
-  _ <- es
-  _ <- homogeneousStmt (Ok M.empty) s
+homogeneousProc :: Stmt -> Err ()
+homogeneousProc s = do
+  _ <- homogeneousStmt (return M.empty) s
   return ()
 
 homogeneousStmt :: DirEnv -> Stmt -> DirEnv
