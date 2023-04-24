@@ -4,7 +4,7 @@ import Data.Maybe (isJust)
 import Data.Set qualified as S
 
 -- The canonical form of a channel string ρ removes duplicate neighbors.
-canonicalForm :: Ord a => [a] -> [a]
+canonicalForm :: Eq a => [a] -> [a]
 canonicalForm = \case
   [] -> []
   [c1] -> [c1]
@@ -13,8 +13,7 @@ canonicalForm = \case
       then canonicalForm (c2 : s)
       else c1 : canonicalForm (c2 : s)
 
--- Takes a channel string ρ and produces its canonical form,
--- which it then checks for duplicates.
+-- Checks the canonical form of a channel string ρ for duplicates.
 validate :: Ord a => [a] -> Maybe [a]
 validate s =
   let cs = canonicalForm s
