@@ -8,8 +8,10 @@ import Utilities.General
 
 stratified :: Prog -> Bool
 stratified (Prog _ gos) =
-  let chs = do results (Prelude.map getChanStrStmt gos)
-   in all (\c -> all (congruent c) chs) chs
+  let mcss = do results (Prelude.map getChanStrStmt gos)
+  in case mcss of
+    Just css -> all (\c -> all (congruent c) css) css
+    Nothing -> False
 
 getChanStrStmt :: Stmt -> Maybe [String]
 getChanStrStmt = \case
