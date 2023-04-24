@@ -11,14 +11,6 @@ data Ctx = Ctx
   }
   deriving (Eq, Ord, Read)
 
-multiGuard :: [(Bool, String)] -> Err ()
-multiGuard = \case
-  [] -> return ()
-  (g, msg) : guards ->
-    if not g
-      then multiGuard guards
-      else Bad msg
-
 sanityCheckList :: Monad m => (Ctx -> a -> m Ctx) -> Ctx -> [a] -> m Ctx
 sanityCheckList f ctx =
   Prelude.foldl
