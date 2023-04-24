@@ -40,3 +40,6 @@ src/IR/ErrM.hs
 # Stack-generated
 .stack-work/
 *~
+
+# Output
+output
