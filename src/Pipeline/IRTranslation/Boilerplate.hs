@@ -139,8 +139,8 @@ var pc(π)₁, ..., pc(π)ₙ = 0, ..., 0
 -}
 counterDef :: Procs -> Stmt
 counterDef =
-  let def pid = ((pid <|), Nothing, (0 #))
-   in VarDef False . L.map def . M.keys
+  let def pid = ((pid <|), (0 #))
+   in Assign . L.map def . M.keys
 
 {- Constructs an initial assignment for all loop variables.
 Depends on: loop(P)
@@ -163,6 +163,11 @@ chanDef :: KEnv -> Stmt
 chanDef =
   let def c = (c, Nothing, (0 #))
    in VarDef False . L.map def . M.keys
+
+{- Construcs the "isSchedule(S)" precondition.
+-}
+isSchedule :: Exp
+isSchedule = Call "isSchedule" [("S" @)]
 
 {- Constructs the main program encoding.
 Depends on: κ, Π, nonloop(P), loop(P), fv(P)
@@ -196,7 +201,8 @@ progEncoding fvs kenv ps atomicOps loops =
             ensures = postconditions ps,
             decreases = [Any],
             requires =
-              asyncPreconditions kenv
+              isSchedule
+                : asyncPreconditions kenv
                 ++ preconditions kenv atomicOps loops
           },
       methodBody =
