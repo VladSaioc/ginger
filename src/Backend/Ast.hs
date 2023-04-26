@@ -1,5 +1,8 @@
 module Backend.Ast where
 
+import Data.List (intercalate)
+import Utilities.PrettyPrint
+
 data Type
   = -- int
     TInt
@@ -151,3 +154,168 @@ data Decl
 
 -- Back-end program
 newtype Program = Program [Decl] deriving (Eq, Ord, Read)
+
+instance PrettyPrint Type where
+  prettyPrint _ =
+    let pp = prettyPrint 0
+     in \case
+          TInt -> "int"
+          TNat -> "nat"
+          TBool -> "bool"
+          TypeVar x -> x
+          Arrow t1 t2 -> concat [pp t1, " -> ", pp t2]
+          Tuple ts -> "(" ++ intercalate ", " (map pp ts) ++ ")"
+
+instance PrettyPrint Pattern where
+  prettyPrint _ =
+    let pp = prettyPrint 0
+     in \case
+          Wildcard -> "_"
+          PCon c -> pp c
+
+instance PrettyPrint Stmt where
+  prettyPrint i s =
+    let pp = prettyPrint i
+        ind = indent i
+        s' = case s of
+          Assign xes ->
+            unwords [intercalate ", " (map fst xes), ":=", intercalate ", " (map (prettyPrint 0 . snd) xes) ++ ";"]
+          Block ss ->
+            if null ss
+              then ""
+              else
+                "{\n"
+                  ++ ind
+                  ++ intercalate ("\n" ++ ind) (map (prettyPrint $ i + 2) ss)
+                  ++ "\n"
+                  ++ ind
+                  ++ "}"
+          VarDef g xs ->
+            let def (x, mt, e) =
+                  let t = case mt of
+                        Just t' -> [":", prettyPrint 0 t']
+                        Nothing -> []
+                   in (unwords $ x : t, prettyPrint 0 e)
+                defs = map def xs
+                (xs', es') = (intercalate ", " (map fst defs), intercalate ", " (map snd defs))
+                g' = (["ghost" | g])
+             in unwords (g' ++ ["var", xs', ":=", es' ++ ";"])
+          If e s1 ms2 ->
+            let s2 = case ms2 of
+                  Just s2' -> ind ++ unwords ["else", pp s2']
+                  Nothing -> ""
+             in unwords ["if", prettyPrint 0 e, prettyPrint i s1]
+                  ++ "\n"
+                  ++ s2
+                  ++ "\n"
+          Assert e -> unwords ["assert", prettyPrint 0 e] ++ ";"
+          MatchStmt e cs ->
+            let def (p, s'') = ind ++ unwords ["case", prettyPrint 0 p, "=>\n" ++ indent (i + 2) ++ prettyPrint (i + 2) s'']
+                cs' = map def cs
+             in unwords ["match", prettyPrint 0 e, "{\n"]
+                  ++ concat cs'
+                  ++ ("\n" ++ ind ++ "}")
+          While e es1 es2 s'' ->
+            let e' = prettyPrint 0 e
+                cons kw e'' = unwords [ind, kw, prettyPrint 0 e'']
+                es' = intercalate "\n" (map (cons "invariant") es1 ++ map (cons "decreases") es2) ++ "\n"
+             in unwords ["while", e'] ++ es' ++ prettyPrint (i + 2) s''
+          Return es -> unwords ["return", intercalate ", " (map (prettyPrint 0) es)]
+     in s'
+
+instance PrettyPrint Const where
+  prettyPrint _ = \case
+    CTrue -> "true"
+    CFalse -> "false"
+    CNum n -> show n
+
+instance PrettyPrint Exp where
+  prettyPrint i =
+    let pp = prettyPrint 0
+        quantifier q xs e =
+          let def (x, mt) =
+                let t' = case mt of
+                      Just t -> " " ++ prettyPrint 0 t
+                      Nothing -> ""
+                 in x ++ t'
+              xs' = intercalate ", " $ map def xs
+              e' = pp e
+           in unwords [q, xs', "::", e']
+        bin e1 op e2 = unwords ["(" ++ pp e1 ++ ")", op, "(" ++ pp e2 ++ ")"]
+        un op e = unwords [op, "(" ++ pp e ++ ")"]
+     in \case
+          Any -> "*"
+          EVar x -> x
+          ECon c -> prettyPrint 0 c
+          Exists xs e -> quantifier "exists" xs e
+          Forall xs e -> quantifier "forall" xs e
+          Implies e1 e2 -> bin e1 "==>" e2
+          Equiv e1 e2 -> bin e1 "<==>" e2
+          And e1 e2 -> bin e1 "&&" e2
+          Or e1 e2 -> bin e1 "||" e2
+          Not e -> un "!" e
+          Eq e1 e2 -> bin e1 "==" e2
+          Ne e1 e2 -> bin e1 "!=" e2
+          Geq e1 e2 -> bin e1 ">=" e2
+          Gt e1 e2 -> bin e1 ">" e2
+          Leq e1 e2 -> bin e1 "<=" e2
+          Lt e1 e2 -> bin e1 "<" e2
+          Plus e1 e2 -> bin e1 "+" e2
+          Minus e1 e2 -> bin e1 "-" e2
+          Mult e1 e2 -> bin e1 "*" e2
+          Div e1 e2 -> bin e1 "/" e2
+          Mod e1 e2 -> bin e1 "%" e2
+          IfElse e1 e2 e3 -> unwords ["if", pp e1, "then", pp e2, "else", pp e3]
+          Match e cs ->
+            let def (p, e') = unwords ["case", prettyPrint 0 p, "=>", pp e']
+                cs' = map def cs
+             in unwords ["match", pp e, "{\n"]
+                  ++ intercalate ("\n" ++ indent i) cs'
+                  ++ ("\n" ++ indent i ++ "}")
+          Call f es -> f ++ "(" ++ intercalate ", " (map pp es) ++ ")"
+
+instance PrettyPrint Cons where
+  prettyPrint _ (Cons n fs) =
+    let fdef (f, t) = unwords [f, ":", prettyPrint 0 t]
+     in n ++ "(" ++ intercalate ", " (map fdef fs) ++ ")"
+
+instance PrettyPrint Function where
+  prettyPrint _ (Function {ghost, yields, funcHoare, funcBody}) = case funcHoare of
+    HoareWrap {name, params, decreases, requires, ensures} ->
+      let ps = intercalate "," (map (\(x, t) -> unwords [x, ":", prettyPrint 0 t]) params)
+          header = unwords $ ["ghost" | ghost] ++ ["function", name, "(" ++ ps ++ ")", ":", prettyPrint 0 yields]
+          pre = prop "requires" requires
+          post = prop "ensures" ensures
+          dec = prop "decreases" decreases
+          props = intercalate "\n" (pre ++ post ++ dec)
+          body = prettyPrint 2 funcBody
+          prop kw = map (((indent 2 ++ kw) ++) . prettyPrint 2)
+       in intercalate "\n" [header, props ++ "{", body, "}"]
+
+instance PrettyPrint Method where
+  prettyPrint _ (Method {returns, methodHoare, methodBody}) = case methodHoare of
+    HoareWrap {name, params, decreases, requires, ensures} ->
+      let ps = intercalate "," (map (\(x, t) -> unwords [x, ":", prettyPrint 0 t]) params)
+          rps = map (\(x, t) -> unwords [x, ":", prettyPrint 0 t]) returns
+          header = unwords ["method", name, "(" ++ ps ++ ")", "returns", "(" ++ intercalate ", " rps ++ ")"]
+          pre = prop "requires" requires
+          post = prop "ensures" ensures
+          dec = prop "decreases" decreases
+          props = intercalate "\n" (pre ++ post ++ dec)
+          body = prettyPrint 2 methodBody
+          prop kw = map (\e -> indent 2 ++ unwords [kw, prettyPrint 2 e])
+       in intercalate "\n" [header, props, body]
+
+instance PrettyPrint Decl where
+  prettyPrint _ = \case
+    Datatype s ts cs ->
+      let ts' = intercalate ", " (map (prettyPrint 0) ts)
+          cs' = intercalate " | " (map (prettyPrint 0) cs)
+       in unwords ["datatype", s, "<" ++ ts' ++ ">", "=", cs']
+    TypeDecl x t -> unwords ["type", x, "=", prettyPrint 0 t]
+    FDecl f -> prettyPrint 0 f
+    MDecl m -> prettyPrint 0 m
+    LDecl l -> prettyPrint 0 l
+
+instance PrettyPrint Program where
+  prettyPrint _ (Program ds) = intercalate "\n\n" (map (prettyPrint 0) ds)
