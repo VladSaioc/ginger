@@ -1,41 +1,57 @@
 module Main where
 
-import System.IO
+import Backend.Optimizer (optimize)
+import Control.Monad (unless)
+import Data.Text (pack, replace, unpack)
+import IR.GetAst qualified as I
+import Pipeline.IRTranslation.Workflow
+import Promela.Ast (Spec (Spec))
+import Promela.GetAst
+import System.Directory (createDirectory, doesDirectoryExist)
 import System.Environment
-import System.Directory
+import Utilities.Err
+import Utilities.PrettyPrint (PrettyPrint (prettyPrint))
 
-import Control.Monad
-import Text.Pretty.Simple (pPrint)
-import Data.List.Split (splitOn)
+_DIST :: String
+_DIST = "output"
 
-import Promela.ParPromela
-import Promela.ErrM
-
-_DIST = "dist"
-
-includes _ [] = False
-includes v (x:xs) = (v == x) || includes v xs
-
-getAst s =
-  let
-    tokens = myLexer s
-    ast = pSpec tokens
-  in ast
+mkdir :: [Char] -> IO ()
+mkdir dir = do
+  putStrLn ("Checking directory " ++ dir ++ "...")
+  dirExists <- doesDirectoryExist _DIST
+  unless dirExists $ createDirectory _DIST
 
 main :: IO ()
 main = do
   args <- getArgs
-  let
-    workflow (file : opts) source =
-      let ast = getAst source
-      in do
-        case ast of
-          Ok _ -> putStr "Ok"
-          Bad err -> putStr err
+  let parseFileName = unpack . replace (pack "/") (pack "#") . pack
+  let workflow file source =
+        let ast = getAst source
+         in do
+              case ast of
+                Ok (Spec _) -> putStr "Ok"
+                Bad err -> putStr ("Error in parsing " ++ file ++ ": " ++ err)
 
   case args of
-    (fileName : opts) -> do
+    ("ir" : filePath : _) -> do
+      let fileName = parseFileName filePath ++ ".dfy"
+      source <- readFile filePath
+      let result = do
+            ir <- I.getAst source
+            prog <- irToBackend ir
+            return $ optimize prog
+      _ <-
+        ( case result of
+            Ok prog -> do
+              putStrLn "Succesfully generated and optimized back-end."
+              mkdir _DIST
+              writeFile (_DIST ++ "/" ++ fileName) (prettyPrint 0 prog)
+              return ()
+            Bad err -> putStrLn ("ERROR: " ++ err)
+          )
+      putStr "Done.\n"
+    (fileName : _) -> do
       source <- readFile fileName
-      workflow (fileName : opts) source
+      workflow fileName source
     _ -> do
       putStr "Give me a Promela file."

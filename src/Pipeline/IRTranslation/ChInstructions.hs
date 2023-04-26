@@ -2,7 +2,6 @@ module Pipeline.IRTranslation.ChInstructions (chanOps, noloopPsChanInsns) where
 
 import Data.List qualified as L
 import Data.Map qualified as M
-import Data.Maybe qualified as Mb
 import IR.Ast
 import IR.Utilities
 import Pipeline.IRTranslation.Utilities
@@ -20,7 +19,13 @@ chanOps =
           _ -> case (s ??) of
             (True, c) -> Just (c, R, n)
             _ -> Nothing
-   in map (Mb.fromJust . insn) . M.toList
+   in foldl
+        ( \ls (n, s) -> case insn (n, s) of
+            Just c -> c : ls
+            Nothing -> ls
+        )
+        []
+        . M.toList
 
 noloopPsChanInsns :: Prog -> PChInsns
 noloopPsChanInsns (Prog _ ps) = M.fromList (zip [0 ..] (L.map (fst . noloopPChanInsns 0) ps))
