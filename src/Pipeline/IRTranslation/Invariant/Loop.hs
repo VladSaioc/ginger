@@ -26,10 +26,10 @@ loopMonitor (Loop {var, pid, guardP, exitP, lower, upper}) =
       initGuard = Geq upper lower
       hasIter =
         let bounded = And (Leq lower x) (Leq x upper)
-            before = Implies (Lt pc exit) (Eq x lower)
+            before = Implies (Lt pc guard) (Eq x lower)
             during = Implies (And (Lt guard pc) (Lt pc exit)) (Lt x upper)
             after = Implies (Leq exit pc) (Geq x upper)
-         in arithmCompose And [bounded, before, during, after]
+         in ([bounded, before, during, after] ./\.)
       noIter =
         let bounded = Eq x lower
             body = And (Lt guard pc) (Lt pc exit)
