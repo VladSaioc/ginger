@@ -23,6 +23,12 @@ data Pattern
     Wildcard
   | -- Constant
     PCon Const
+  | -- Variable
+    PVar String
+  | -- cons(p, ...)
+    PAdt String [Pattern]
+  | -- (p, ...)
+    PTuple [Pattern]
   deriving (Eq, Ord, Read)
 
 -- Statement
@@ -58,6 +64,8 @@ data Const
 data Exp
   = -- -- *
     Any
+  | -- -- (e1, ... en)
+    ETuple [Exp]
   | -- -- x
     EVar String
   | -- -- const
@@ -171,7 +179,10 @@ instance PrettyPrint Pattern where
     let pp = prettyPrint 0
      in \case
           Wildcard -> "_"
-          PCon c -> pp c
+          PCon c -> prettyPrint 0 c
+          PVar x -> x
+          PAdt c ps -> c ++ "(" ++ intercalate ", " (map pp ps) ++ ")"
+          PTuple ps -> "(" ++ intercalate ", " (map pp ps) ++ ")"
 
 instance PrettyPrint Stmt where
   prettyPrint i s =
@@ -185,8 +196,8 @@ instance PrettyPrint Stmt where
               then ""
               else
                 "{\n"
-                  ++ ind
-                  ++ intercalate ("\n" ++ ind) (map (prettyPrint $ i + 2) ss)
+                  ++ indent (i + 2)
+                  ++ intercalate ("\n" ++ indent (i + 2)) (map (prettyPrint $ i + 2) ss)
                   ++ "\n"
                   ++ ind
                   ++ "}"
@@ -202,24 +213,22 @@ instance PrettyPrint Stmt where
              in unwords (g' ++ ["var", xs', ":=", es' ++ ";"])
           If e s1 ms2 ->
             let s2 = case ms2 of
-                  Just s2' -> ind ++ unwords ["else", pp s2']
+                  Just s2' -> "\n" ++ ind ++ unwords ["else", pp s2']
                   Nothing -> ""
              in unwords ["if", prettyPrint 0 e, prettyPrint i s1]
-                  ++ "\n"
                   ++ s2
-                  ++ "\n"
           Assert e -> unwords ["assert", prettyPrint 0 e] ++ ";"
           MatchStmt e cs ->
-            let def (p, s'') = ind ++ unwords ["case", prettyPrint 0 p, "=>\n" ++ indent (i + 2) ++ prettyPrint (i + 2) s'']
+            let def (p, s'') = "\n" ++ ind ++ unwords ["case", prettyPrint 0 p, "=>", prettyPrint (i + 2) s'']
                 cs' = map def cs
-             in unwords ["match", prettyPrint 0 e, "{\n"]
+             in unwords ["match", prettyPrint 0 e, "{"]
                   ++ concat cs'
                   ++ ("\n" ++ ind ++ "}")
           While e es1 es2 s'' ->
             let e' = prettyPrint 0 e
-                cons kw e'' = unwords [ind, kw, prettyPrint 0 e'']
-                es' = intercalate "\n" (map (cons "invariant") es1 ++ map (cons "decreases") es2) ++ "\n"
-             in unwords ["while", e'] ++ es' ++ prettyPrint (i + 2) s''
+                cons kw e'' = "\n" ++ indent (i + 2) ++ unwords [kw, prettyPrint 0 e'']
+                es' = concat (map (cons "invariant") es1 ++ map (cons "decreases") es2) ++ " "
+             in unwords ["while", e'] ++ es' ++ prettyPrint i s''
           Return es -> unwords ["return", intercalate ", " (map (prettyPrint 0) es)]
      in s'
 
@@ -245,6 +254,7 @@ instance PrettyPrint Exp where
         un op e = unwords [op, "(" ++ pp e ++ ")"]
      in \case
           Any -> "*"
+          ETuple ps -> "(" ++ intercalate ", " (map pp ps) ++ ")"
           EVar x -> x
           ECon c -> prettyPrint 0 c
           Exists xs e -> quantifier "exists" xs e
@@ -302,7 +312,7 @@ instance PrettyPrint Method where
           post = prop "ensures" ensures
           dec = prop "decreases" decreases
           props = intercalate "\n" (pre ++ post ++ dec)
-          body = prettyPrint 2 methodBody
+          body = prettyPrint 0 methodBody
           prop kw = map (\e -> indent 2 ++ unwords [kw, prettyPrint 2 e])
        in intercalate "\n" [header, props, body]
 
