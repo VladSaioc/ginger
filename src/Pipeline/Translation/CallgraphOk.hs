@@ -3,10 +3,11 @@ module Pipeline.Translation.CallgraphOk (noRecursion) where
 import Data.Map qualified as M
 import Data.Maybe (isJust)
 import Data.Set qualified as S
-import Pipeline.Callgraph
+import Pipeline.Callgraph (getCG)
 import Promela.Ast
 import Promela.Utilities
 import Utilities.Position
+import Utilities.Err
 
 data Ctxt a = Ctxt
   { ancestors :: S.Set String,
@@ -42,12 +43,12 @@ updateCtxVisited :: Ctxt a -> Ctxt b -> Ctxt a
 updateCtxVisited ctx ctx' =
   ctx {visited = S.union (visited ctx) (visited ctx')}
 
-noRecursion :: Spec -> Bool
-noRecursion (Spec ms) = case getInit (Spec ms) of
-  Just (Init ss) ->
-    let ctx = (makeCtx ss) {callgraph = getCG (Spec ms)}
-     in Data.Maybe.isJust (traverseStmts ctx)
-  _ -> True
+noRecursion :: Spec -> Err ()
+noRecursion (Spec ms) =
+  let ss = getInit (Spec ms)
+      ctx = (makeCtx ss) {callgraph = getCG (Spec ms)}
+   in if Data.Maybe.isJust (traverseStmts ctx) then return ()
+    else Bad "Found call-graph cycle"
 
 traverseStmts :: Ctxt [Pos Stmt] -> Maybe (Ctxt ())
 traverseStmts ctx = case syntax ctx of
