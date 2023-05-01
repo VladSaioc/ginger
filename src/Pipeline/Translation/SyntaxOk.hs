@@ -1,21 +1,24 @@
 module Pipeline.Translation.SyntaxOk (allowed) where
 
+import Data.List qualified as L
 import Data.Set qualified as S
 import Promela.Ast
 import Utilities.Err
+import Utilities.General
 import Utilities.Position
 
 data Ctxt a = Ctxt
   { chans :: S.Set String,
     loopVars :: S.Set String,
+    commParams :: S.Set String,
     mutableVars :: S.Set String,
     loopDepth :: Int,
     syntax :: a
   }
   deriving (Eq, Ord, Read, Show)
 
-allowed :: Spec -> Bool
-allowed (Spec ms) = all ((== Ok ()) . allowedModule) ms
+allowed :: Spec -> Err [()]
+allowed (Spec ms) = results (map allowedModule ms)
 
 allowedModule :: Module -> Err ()
 allowedModule =
@@ -23,6 +26,7 @@ allowedModule =
         Ctxt
           { chans = S.empty,
             loopVars = S.empty,
+            commParams = S.empty,
             mutableVars = S.empty,
             loopDepth = 0,
             syntax = s
@@ -52,8 +56,13 @@ allowedDeclarations ctxt = case syntax ctxt of
       let ctxt' = case t of
             TChan -> ctxt {chans = S.insert x (chans ctxt)}
             _ -> ctxt
-      _ <- maybe (Ok S.empty) expVars me
-      allowedDeclarations ctxt' {syntax = ss}
+      cxs' <- maybe (Ok S.empty) expVars me
+      let ctxt'' =
+            ctxt'
+              { syntax = ss,
+                commParams = cxs'
+              }
+      allowedDeclarations ctxt''
     _ -> allowedGoroutines ctxt
 
 allowedGoroutines :: Ctxt [Pos Stmt] -> Err ()
@@ -61,16 +70,7 @@ allowedGoroutines ctxt = case syntax ctxt of
   [] -> Ok ()
   Pos _ s : ss -> case s of
     ExpS (Run _ es) -> do
-      let expsOk =
-            Prelude.foldl
-              ( \ms e -> do
-                  _ <- ms
-                  _ <- expVars e
-                  return ()
-              )
-              (Ok ())
-              es
-      _ <- expsOk
+      _ <- results (L.map expVars es)
       allowedGoroutines (ctxt {syntax = ss})
     _ -> allowedStmts ctxt {syntax = ss}
 
@@ -82,14 +82,6 @@ allowedStmts ctxt =
         Pos p s : ss ->
           let err msg = Bad (":" ++ show p ++ ": " ++ msg)
               (!) prop msg = if prop then Ok () else err msg
-              roll process start combine =
-                Prelude.foldl
-                  ( \ms e -> do
-                      s1 <- ms
-                      s2 <- process e
-                      return (combine [s1, s2])
-                  )
-                  (Ok start)
            in case s of
                 Decl {} -> err "Unexpected declaration"
                 If {} -> err "Unexpected IF statement"
@@ -103,23 +95,26 @@ allowedStmts ctxt =
                             loopDepth = 1,
                             syntax = body
                           }
+                  S.disjoint xs (mutableVars ctxt') ! "Assignment to loop-relevant variable."
                   _ <- allowedStmts ctxt'
                   allowedStmts (ctxt {syntax = ss})
                 As x e -> do
                   x' <- lvalVars x
                   S.disjoint x' (loopVars ctxt) ! "Assignment to loop-relevant variable."
+                  S.disjoint x' (commParams ctxt) ! "Assignment to concurrency parameter."
                   _ <- expVars e
-                  allowedStmts (ctxt {syntax = ss})
+                  let ctxt' = ctxt {mutableVars = S.union x' $ mutableVars ctxt}
+                  allowedStmts (ctxt' {syntax = ss})
                 Goto lbl -> err ("Unexpected \"goto: " ++ lbl ++ "\"")
                 Break -> err "Unexpected break"
                 Skip -> allowedStmts (ctxt {syntax = ss})
                 Label lbl _ -> err ("Unexpected label: " ++ lbl)
                 Send _ es -> do
-                  es' <- roll expVars S.empty S.unions es
+                  es' <- foldMonad expVars S.empty S.union es
                   S.disjoint (loopVars ctxt) es' ! "Loop-relevant value sent to channel"
                   ok
                 Rcv _ es -> do
-                  es' <- roll expVars S.empty S.unions es
+                  es' <- foldMonad expVars S.empty S.union es
                   S.disjoint (loopVars ctxt) es' ! "Loop-relevant value received from channel"
                   ok
                 Assert _ -> allowedStmts ctxt
@@ -130,19 +125,15 @@ allowedStmts ctxt =
 rangeVars :: Range -> Err (S.Set Ident)
 rangeVars = \case
   Between x e1 e2 -> do
-    s1 <- expVars e1
-    s2 <- expVars e2
-    return (S.unions [S.singleton x, s1, s2])
+    s <- binaryCons expVars S.union e1 e2
+    return (S.insert x s)
   In {} -> Bad "Unexpected range over collection"
 
 expVars :: Exp -> Err (S.Set Ident)
 expVars =
-  let bin e1 e2 = do
-        s1 <- expVars e1
-        s2 <- expVars e2
-        return (S.union s1 s2)
+  let bin = binaryCons expVars S.union
    in \case
-        Chan _ -> Ok S.empty
+        Chan e -> expVars e
         Const _ -> Ok S.empty
         And e1 e2 -> bin e1 e2
         Or e1 e2 -> bin e1 e2
