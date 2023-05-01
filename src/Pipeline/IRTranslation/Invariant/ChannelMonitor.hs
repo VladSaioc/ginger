@@ -24,14 +24,14 @@ channelMonitors noloopOps ls =
 Depends on:
 -}
 loopMonitor :: Loop -> ChMap (M.Map OpDir Exp)
-loopMonitor (Loop {pid, var, exitP, chans}) =
+loopMonitor (Loop {pid, var, lower, exitP, chans}) =
   let x = (var @)
       pc = ((pid <|) @)
       singleOp op =
         let hasPassedOp = And (Lt (op #) pc) (Lt pc (exitP #))
          in IfElse hasPassedOp (1 #) (0 #)
       chanSubexp ops =
-        let iterations = Mult x (S.size ops #)
+        let iterations = Mult (Minus x lower) (S.size ops #)
             ops' = L.map singleOp (S.toList ops)
          in Plus iterations (ops' .+.)
    in M.map (M.map chanSubexp) chans
