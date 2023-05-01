@@ -32,12 +32,6 @@ preconditions kenv noloops loops =
          in And rcvsUnblock sndsUnblock
    in L.map prc cs
 
-combineResources :: M.Map OpDir Exp -> M.Map OpDir Exp -> (Exp, Exp)
-combineResources noloops loops =
-  let getRes d res = Mb.fromMaybe (0 #) (M.lookup d res)
-      constructReses d = (L.map (getRes d) [noloops, loops] .+.)
-   in (constructReses S, constructReses R)
-
 {- Constructs the resource contribution resulting from
 loop channel operations.
 Depends on: ℓ = (x, e, e', o!, o?)
