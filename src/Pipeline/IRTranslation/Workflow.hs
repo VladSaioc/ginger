@@ -6,7 +6,7 @@ import IR.Homogeneity (homogeneous)
 import IR.SanityCheck
 import IR.Stratification (stratified)
 import Pipeline.IRTranslation.Boilerplate (wholeEncoding)
-import Pipeline.IRTranslation.ChInstructions (chanOps, noloopPsChanInsns)
+import Pipeline.IRTranslation.ChInstructions (noloopPsChanInsns)
 import Pipeline.IRTranslation.Channels (getCaps)
 import Pipeline.IRTranslation.FreeVars (fvs)
 import Pipeline.IRTranslation.Loop (loops)
