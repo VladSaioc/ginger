@@ -129,9 +129,9 @@ pDeclBody t b = case (t, b) of
   -- User-defined typed variable declarations
   (TNamed _, Raw.DBodyEmpty) -> return (t, Nothing)
   -- Channel declarations
-  (TChan, Raw.DBodyChan _ n _ _) ->
-    let ch = return (Chan (n #))
-     in return (TChan, ch)
+  (TChan, Raw.DBodyChan _ k _ _) -> do
+    k' <- pCap k
+    return (TChan, return (Chan k'))
   _ -> Bad "Bad variable declaration"
 
 pStmt :: Raw.Stmt -> Err (Pos Stmt)
@@ -255,7 +255,6 @@ pExp =
   let bin = binaryCons pExp
       un = unaryCons pExp
       unVar = unaryCons pLVal
-      unConst = unaryCons pConst
    in \case
         -- e1 == e2
         Raw.ExpEq e1 _ e2 -> bin Eq e1 e2
@@ -286,7 +285,7 @@ pExp =
         -- v
         Raw.ExpLVal v -> unVar EVar v
         -- c
-        Raw.ExpConst c -> unConst Const c
+        Raw.ExpConst c -> unaryCons pConst Const c
         -- run f (es...)
         Raw.ExpRun (Raw.RUN tok) f' es' -> do
           _ <- pToken tok
@@ -311,3 +310,13 @@ pConst = \case
   Raw.CTrue (Raw.TRUE ((l, _), _)) -> l @ VBool True
   Raw.CFalse (Raw.FALSE ((l, _), _)) -> l @ VBool False
   Raw.CFree (Raw.FREEVAR ((l, _), _)) -> l @ Free
+
+pCap :: Raw.Exp -> Err Exp
+pCap = \case
+  Raw.ExpPlus e1 _ e2 -> binaryCons pCap Plus e1 e2
+  Raw.ExpMinus e1 _ e2 -> binaryCons pCap Minus e1 e2
+  Raw.ExpProd e1 _ e2 -> binaryCons pCap Mult e1 e2
+  Raw.ExpNeg _ e -> unaryCons pCap Neg e
+  Raw.ExpConst (Raw.CInt n) -> return $ Const $ VInt $ (n #)
+  Raw.ExpLVal (Raw.ValId x) -> return $ EVar $ Var $ (x &)
+  _ -> Bad "Invalid capacity expression."
