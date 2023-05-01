@@ -90,7 +90,7 @@ Decl. Decl ::= Type ID DeclBody ;
 
 DBodyEmpty. DeclBody ::= ;
 DBodyExp. DeclBody ::= AS Exp;
-DBodyChan. DeclBody ::= AS "[" NUMBER "]" OF "{" [Type] "}";
+DBodyChan. DeclBody ::= AS "[" Exp "]" OF "{" [Type] "}";
 
 -- Steps
 separator Step "->";
