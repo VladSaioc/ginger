@@ -6,6 +6,7 @@ position token PROCTYPE {"proctype"};
 position token TYPEDEF {"typedef"};
 position token INIT {"init"};
 position token DEFINE {"#define"};
+position token FREEVAR {"??"};
 
 -- Type tokens
 position token INT {"int"};
@@ -171,5 +172,6 @@ TypeNamed. Type ::= ID;
 CInt. Const ::= NUMBER;
 CTrue. Const ::= TRUE;
 CFalse. Const ::= FALSE;
+CFree. Const ::= FREEVAR;
 
 entrypoints Spec;

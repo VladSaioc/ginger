@@ -47,7 +47,7 @@ pProgram = \case
 -- into a more ergonomic representation.
 pModule :: Raw.Module -> Err Module
 pModule = \case
-  -- #define x e, where e ∈ ℤ
+  -- #define x e, where e ∈ ℤ ∪ { ?? }
   Raw.Define _ x' e' -> do
     x <- pIdent x'
     v <- pVal e'
@@ -78,6 +78,7 @@ pVal = \case
     return (VInt (negate (n #)))
   -- Extracts a value from e, where e = n and n is a natural number
   Raw.ExpConst (Raw.CInt i) -> return (VInt (i #))
+  Raw.ExpConst (Raw.CFree _) -> return Free
   _ -> Bad "Bad #define macro"
 
 -- Refine procedure parameter members of the AST. A parameter
@@ -309,3 +310,4 @@ pConst = \case
     l @ VInt (n #)
   Raw.CTrue (Raw.TRUE ((l, _), _)) -> l @ VBool True
   Raw.CFalse (Raw.FALSE ((l, _), _)) -> l @ VBool False
+  Raw.CFree (Raw.FREEVAR ((l, _), _)) -> l @ Free

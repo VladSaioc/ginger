@@ -66,7 +66,7 @@ data LVal
   | Arr LVal Exp
   deriving (Eq, Ord, Read, Show)
 
-data Val = VInt Int | VBool Bool deriving (Eq, Ord, Read, Show)
+data Val = Free | VInt Int | VBool Bool deriving (Eq, Ord, Read, Show)
 
 data Type
   = TInt
