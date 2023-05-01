@@ -34,7 +34,7 @@ data Stmt
   deriving (Eq, Ord, Read, Show)
 
 data Exp
-  = Chan Int
+  = Chan Exp
   | Const Val
   | And Exp Exp
   | Or Exp Exp
