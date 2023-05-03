@@ -6,8 +6,8 @@ import Pipeline.Callgraph (getCG)
 import Promela.Ast qualified as P
 import Promela.Utilities
 import Utilities.Err
-import Utilities.Position
 import Utilities.General
+import Utilities.Position
 
 data Ctxt a b = Ctxt
   { syntax :: a,
@@ -25,17 +25,11 @@ data Ctxt a b = Ctxt
 wrapCtx :: Ctxt a b -> Err (Ctxt () b)
 wrapCtx ctx = return ctx {syntax = ()}
 
-($>) :: Int -> String -> String
-($>) pid x = show pid ++ "'" ++ x
-
 (<:) :: Ctxt a c -> b -> Ctxt a b
 (<:) ctx b = ctx {curr = b}
 
 (>:) :: a -> Ctxt c b -> Ctxt a b
 (>:) a ctx = ctx {syntax = a}
-
-(=|) :: Ctxt a P'.Stmt -> Ctxt a P'.Stmt
-(=|) ctx = ctx {procs = M.insert (pid ctx) (curr ctx) (procs ctx)}
 
 getIR :: P.Spec -> Err P'.Prog
 getIR p@(P.Spec ms) =
@@ -62,7 +56,7 @@ getIR p@(P.Spec ms) =
 
 translateStatements :: Ctxt [Pos P.Stmt] P'.Stmt -> Err (Ctxt () P'.Stmt)
 translateStatements ctx = case syntax ctx of
-  [] -> wrapCtx (ctx =|)
+  [] -> wrapCtx (ctx {procs = M.insert (pid ctx) (curr ctx) (procs ctx)})
   Pos p s : ss -> do
     let addOp op = do
           ctx' <- translateOp (Pos p op >: ctx)
@@ -75,50 +69,49 @@ translateStatements ctx = case syntax ctx of
         case me of
           Just (P.Chan e) -> do
             e' <- translateExp (varenv ctx) e
-            let ctx1 = ctx {
-                chans = M.insert c e' (chans ctx),
-                chenv = M.insert c c (chenv ctx)
-              }
+            let ctx1 =
+                  ctx
+                    { chans = M.insert c e' (chans ctx),
+                      chenv = M.insert c c (chenv ctx)
+                    }
             translateStatements (ss >: ctx1)
           _ -> Bad ("Chanel " ++ c ++ " has no capacity.")
       P.ExpS (P.Run f es) ->
         case M.lookup f (cg ctx) of
           Just (P.Proc _ ps ss') -> do
-            let
-              pes = zip ps es
-              addVar ve ((p, t), e) =
-                case t of
-                  P.TInt -> case translateExp (varenv ctx) e of
-                    Ok e' -> M.insert p e' ve
+            let pes = zip ps es
+                addVar ve ((x, t), e) =
+                  case t of
+                    P.TInt -> case translateExp (varenv ctx) e of
+                      Ok e' -> M.insert x e' ve
+                      _ -> ve
                     _ -> ve
-                  _ -> ve
-            let 
-              addCh ce ((p, t), e) =
-                case (t, e) of
-                  (P.TChan, P.EVar (P.Var c)) -> M.insert p c ce
-                  _ -> ce
-            let ctx1 = Ctxt {
-                  syntax = ss',
-                  pid = nextpid ctx,
-                  nextpid = nextpid ctx + 1,
-                  cg = cg ctx,
-                  varenv = Prelude.foldl addVar (varenv ctx) pes,
-                  chenv = Prelude.foldl addCh M.empty pes,
-                  procs = procs ctx,
-                  chans = chans ctx,
-                  curr = P'.Skip
-                }
+            let addCh ce ((a, t), e) =
+                  case (t, e) of
+                    (P.TChan, P.EVar (P.Var c)) -> M.insert a c ce
+                    _ -> ce
+            let ctx1 =
+                  Ctxt
+                    { syntax = ss',
+                      pid = nextpid ctx,
+                      nextpid = nextpid ctx + 1,
+                      cg = cg ctx,
+                      varenv = Prelude.foldl addVar (varenv ctx) pes,
+                      chenv = Prelude.foldl addCh M.empty pes,
+                      procs = procs ctx,
+                      chans = chans ctx,
+                      curr = P'.Skip
+                    }
             ctx2 <- translateStatements ctx1
-            let ctx3 = ctx { nextpid = nextpid ctx2, procs = procs ctx2, chans = chans ctx2 }
+            let ctx3 = ctx {nextpid = nextpid ctx2, procs = procs ctx2, chans = chans ctx2}
             translateStatements (ss >: ctx3)
           _ -> Bad ("Function " ++ f ++ " not in call-graph.")
       P.For r ss' -> do
-          (x, e1', e2') <- translateRange (varenv ctx) r
-          ctx' <- translateFor (ss' >: ctx <: [])
-          let ctx'' = ctx <: P'.Seq (curr ctx) (P'.For x e1' e2' (curr ctx'))
-          translateStatements (ss >: ctx'')
-          
-      _ -> translateStatements (ctx { syntax = ss })
+        (x, e1', e2') <- translateRange (varenv ctx) r
+        ctx' <- translateFor (ss' >: ctx <: [])
+        let ctx'' = ctx <: P'.Seq (curr ctx) (P'.For x e1' e2' (curr ctx'))
+        translateStatements (ss >: ctx'')
+      _ -> translateStatements (ctx {syntax = ss})
 
 translateFor :: Ctxt [Pos P.Stmt] [P'.Op] -> Err (Ctxt () [P'.Op])
 translateFor ctx = case syntax ctx of
@@ -140,37 +133,29 @@ translateRange venv = \case
 
 translateExp :: M.Map String P'.Exp -> P.Exp -> Err P'.Exp
 translateExp venv =
-  let bin = binaryCons (translateExp venv) 
-  in \case
-    P.Const (P.VInt n) -> return (P'.Const n)
-    P.Plus e1 e2 -> bin P'.Plus e1 e2
-    P.Minus e1 e2 -> bin P'.Minus e1 e2
-    P.Mult e1 e2 -> bin P'.Mult e1 e2
-    P.Div e1 e2 -> bin P'.Div e1 e2
-    P.EVar (P.Var x) ->
-      case M.lookup x venv of
-        Just e' -> return e' 
-        Nothing -> Bad ("Unrecognized variable: " ++ x)
-    _ -> Bad "Unexpected expression translation"
+  let bin = binaryCons (translateExp venv)
+   in \case
+        P.Const (P.VInt n) -> return (P'.Const n)
+        P.Plus e1 e2 -> bin P'.Plus e1 e2
+        P.Minus e1 e2 -> bin P'.Minus e1 e2
+        P.Mult e1 e2 -> bin P'.Mult e1 e2
+        P.Div e1 e2 -> bin P'.Div e1 e2
+        P.EVar (P.Var x) ->
+          case M.lookup x venv of
+            Just e' -> return e'
+            Nothing -> Bad ("Unrecognized variable: " ++ x)
+        _ -> Bad "Unexpected expression translation"
 
 translateOp :: Ctxt (Pos P.Stmt) a -> Err (Ctxt () P'.Op)
 translateOp ctx =
-  let 
-    translate cons c =
-      case M.lookup c (chenv ctx) of
-        Just c' -> wrapCtx (ctx <: cons c')
-        Nothing -> Bad "Invalid channel: value not found."
+  let translate cons c =
+        case M.lookup c (chenv ctx) of
+          Just c' -> wrapCtx (ctx <: cons c')
+          Nothing -> Bad "Invalid channel: value not found."
    in case syntax ctx of
         Pos _ (P.Send (P.Var c) _) -> translate P'.Send c
         Pos _ (P.Recv (P.Var c) _) -> translate P'.Recv c
         Pos p _ -> Bad (":" ++ show p ++ ": Unexpected statement.")
-
-translateVar :: Ctxt P.LVal a -> Err P'.Exp
-translateVar ctx = case syntax ctx of
-  P.Var x -> case M.lookup x (varenv ctx) of
-    Just x' -> Ok x'
-    Nothing -> Bad ("Found in-use Promela variable without equivalent source binding: " ++ x)
-  _ -> Bad "Invalid variable translation: found non-variable ℓ-value"
 
 translateVal :: String -> P.Val -> P'.Exp
 translateVal x = \case
