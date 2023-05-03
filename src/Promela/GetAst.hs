@@ -183,19 +183,19 @@ pStmt =
         -- assert e
         Raw.StmtAssert _ e -> return (unaryCons pCond Assert e)
         -- c?e
-        Raw.StmtRcv v' _ es' ->
+        Raw.StmtRecv v' _ es' ->
           return
             ( do
                 v <- pLVal v'
                 es <- results (map pExp es')
-                return (Rcv v es)
+                return (Recv v es)
             )
         -- c!e
         Raw.StmtSend v' _ es ->
           return
             ( do
                 v <- pLVal v'
-                unaryCons results (Rcv v) (map pExp es)
+                unaryCons results (Send v) (map pExp es)
             )
         -- e
         Raw.StmtExpr c -> return (unaryCons pCond ExpS c)

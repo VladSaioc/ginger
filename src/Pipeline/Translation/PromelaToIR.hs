@@ -70,7 +70,7 @@ translateStatements ctx = case syntax ctx of
           translateStatements (ss >: ctx' <: stm)
     case s of
       P.Send {} -> addOp s
-      P.Rcv {} -> addOp s
+      P.Recv {} -> addOp s
       P.Decl c P.TChan me ->
         case me of
           Just (P.Chan e) -> do
@@ -128,12 +128,7 @@ translateFor ctx = case syntax ctx of
     let addOp op = do
           ctx' <- translateOp (Pos p op >: ctx)
           return (ctx' <: (curr ctx' : curr ctx))
-    ctx' <-
-      ( case s of
-          P.Rcv {} -> addOp s
-          P.Send {} -> addOp s
-          _ -> err "Unexpected statement"
-        )
+    ctx' <- if commStmt s then addOp s else err "Unexpected statement"
     translateFor (ctx' {syntax = ss})
 
 translateRange :: M.Map String P'.Exp -> P.Range -> Err (String, P'.Exp, P'.Exp)
@@ -155,7 +150,7 @@ translateExp venv =
     P.EVar (P.Var x) ->
       case M.lookup x venv of
         Just e' -> return e' 
-        Nothing -> Bad ("Unbounded variable: " ++ x)
+        Nothing -> Bad ("Unrecognized variable: " ++ x)
     _ -> Bad "Unexpected expression translation"
 
 translateOp :: Ctxt (Pos P.Stmt) a -> Err (Ctxt () P'.Op)
@@ -167,7 +162,7 @@ translateOp ctx =
         Nothing -> Bad "Invalid channel: value not found."
    in case syntax ctx of
         Pos _ (P.Send (P.Var c) _) -> translate P'.Send c
-        Pos _ (P.Rcv (P.Var c) _) -> translate P'.Recv c
+        Pos _ (P.Recv (P.Var c) _) -> translate P'.Recv c
         Pos p _ -> Bad (":" ++ show p ++ ": Unexpected statement.")
 
 translateVar :: Ctxt P.LVal a -> Err P'.Exp

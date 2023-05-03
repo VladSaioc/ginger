@@ -21,7 +21,7 @@ data Stmt
   | Goto String
   | As LVal Exp
   | Send LVal [Exp]
-  | Rcv LVal [Exp]
+  | Recv LVal [Exp]
   | Expr Exp
   | Assert Exp
   deriving (Eq, Ord, Show, Read)

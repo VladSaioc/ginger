@@ -84,7 +84,7 @@ traverseStmts ctx = case syntax ctx of
         visitBranches ctx'' [ss']
       As _ e -> traverseExp (ctx' {syntax = e})
       Assert e -> traverseExp (ctx' {syntax = e})
-      Rcv _ es -> visitExpressions es
+      Recv _ es -> visitExpressions es
       Send _ es -> visitExpressions es
       ExpS e -> traverseExp (ctx' {syntax = e})
       Label _ stm -> traverseStmts (ctx' {syntax = [stm]})

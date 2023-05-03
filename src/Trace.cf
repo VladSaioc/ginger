@@ -22,7 +22,7 @@ GotoIn. Stmt ::= ".(goto)";
 Goto. Stmt ::= "goto" ":" Ident;
 Assign. Stmt ::= LVal "=" Exp;
 Send. Stmt ::= LVal "!" [Exp];
-Rcv. Stmt ::= LVal "?" [Exp];
+Recv. Stmt ::= LVal "?" [Exp];
 Expr. Stmt ::= Exp;
 Do. Stmt ::= "DO";
 Else. Stmt ::= "else";

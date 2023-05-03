@@ -113,7 +113,7 @@ allowedStmts ctxt =
                   es' <- foldMonad expVars S.empty S.union es
                   S.disjoint (loopVars ctxt) es' ! "Loop-relevant value sent to channel"
                   ok
-                Rcv _ es -> do
+                Recv _ es -> do
                   es' <- foldMonad expVars S.empty S.union es
                   S.disjoint (loopVars ctxt) es' ! "Loop-relevant value received from channel"
                   ok

@@ -96,7 +96,7 @@ alphaStmt ctx@(Ctxt env aenv ss) (Pos p s) =
         Assert e ->
           let e' = alphaExp env e
            in Ctxt env aenv (p @ Assert e' : ss)
-        Rcv c es -> chOp Rcv c es
+        Recv c es -> chOp Recv c es
         Send c es -> chOp Send c es
         ExpS e ->
           let e' = alphaExp env e

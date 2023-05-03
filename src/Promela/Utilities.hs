@@ -1,4 +1,4 @@
-module Promela.Utilities (getInit) where
+module Promela.Utilities (getInit, commStmt) where
 
 import Data.List qualified as L
 import Promela.Ast
@@ -16,3 +16,9 @@ getInit (Spec ms) =
    in case i of
         Just (Init ss) -> ss
         _ -> []
+
+commStmt :: Stmt -> Bool
+commStmt = \case
+  Send {} -> True
+  Recv {} -> True
+  _ -> False

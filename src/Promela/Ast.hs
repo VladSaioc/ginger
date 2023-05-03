@@ -27,7 +27,7 @@ data Stmt
   | Break
   | Skip
   | Assert Exp
-  | Rcv LVal [Exp]
+  | Recv LVal [Exp]
   | Send LVal [Exp]
   | ExpS Exp
   | Label Ident (Pos Stmt)
