@@ -75,7 +75,7 @@ translateStatements ctx = case syntax ctx of
                       chenv = M.insert c c (chenv ctx)
                     }
             translateStatements (ss >: ctx1)
-          _ -> Bad ("Chanel " ++ c ++ " has no capacity.")
+          _ -> Bad ("Channel " ++ c ++ " has no capacity.")
       P.ExpS (P.Run f es) ->
         case M.lookup f (cg ctx) of
           Just (P.Proc _ ps ss') -> do
@@ -121,7 +121,7 @@ translateFor ctx = case syntax ctx of
     let addOp op = do
           ctx' <- translateOp (Pos p op >: ctx)
           return (ctx' <: (curr ctx' : curr ctx))
-    ctx' <- if commStmt s then addOp s else err "Unexpected statement"
+    ctx' <- if commStmt s then addOp s else err ("Unexpected statement in for: " ++ show s)
     translateFor (ctx' {syntax = ss})
 
 translateRange :: M.Map String P'.Exp -> P.Range -> Err (String, P'.Exp, P'.Exp)

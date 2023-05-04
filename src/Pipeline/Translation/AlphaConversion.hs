@@ -12,13 +12,14 @@ type Env = M.Map String String
 type AEnv = M.Map String Int
 
 -- Alpha conversion context:
--- 1. Map from strings to number of uses
--- 2. Produced syntax
+-- 1. The binding in the current scope
+-- 2. The next available name
 data Ctxt a = Ctxt Env AEnv a deriving (Eq, Ord, Read, Show)
 
 alphaConvert :: Spec -> Spec
 alphaConvert (Spec ms) =
-  let Ctxt _ _ ms' = Prelude.foldl alphaModules (Ctxt M.empty M.empty []) ms
+  let ctx' = Prelude.foldl alphaDefs (Ctxt M.empty M.empty []) ms
+      Ctxt _ _ ms' = Prelude.foldl alphaModules ctx' ms
    in Spec (reverse ms')
 
 alphaDeclareVar :: (Env, AEnv) -> Ident -> (Env, AEnv)
@@ -29,12 +30,17 @@ alphaDeclareVar (env, aenv) x =
       env' = M.insert x x' env
    in (env', aenv')
 
-alphaModules :: Ctxt [Module] -> Module -> Ctxt [Module]
-alphaModules (Ctxt env aenv ms) = \case
+alphaDefs :: Ctxt [Module] -> Module -> Ctxt [Module]
+alphaDefs ctx@(Ctxt env aenv ms) = \case
   TopDecl x t v ->
     let (env', aenv') = alphaDeclareVar (env, aenv) x
         x' = Data.Maybe.fromJust (M.lookup x env')
      in Ctxt env' aenv' (TopDecl x' t v : ms)
+  _ -> ctx
+
+alphaModules :: Ctxt [Module] -> Module -> Ctxt [Module]
+alphaModules ctx@(Ctxt env aenv ms) = \case
+  TopDecl {} -> ctx
   Init ss ->
     let Ctxt _ aenv' ss' = Prelude.foldl alphaStmt (Ctxt env aenv []) ss
      in Ctxt env aenv' (Init (reverse ss') : ms)
@@ -84,7 +90,7 @@ alphaStmt ctx@(Ctxt env aenv ss) (Pos p s) =
         Do os mels -> controlFlow Do os mels
         For r body ->
           let r' = alphaRange env r
-              Ctxt _ aenv' body' = alph ctx body
+              Ctxt _ aenv' body' = alph (Ctxt env aenv []) body
            in Ctxt env aenv' (p @ For r' body' : ss)
         As x e ->
           let x' = alphaLVal env x
@@ -110,7 +116,7 @@ alphaExp env =
   let alpha = alphaExp env
       bin c e1 e2 = c (alpha e1) (alpha e2)
    in \case
-        Chan i -> Chan i
+        Chan e -> Chan (alpha e)
         Const v -> Const v
         And e1 e2 -> bin And e1 e2
         Or e1 e2 -> bin Or e1 e2

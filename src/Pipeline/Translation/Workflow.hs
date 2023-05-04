@@ -13,5 +13,4 @@ promelaToIR p = do
   let p' = alphaConvert p
   _ <- noRecursion p'
   _ <- allowed p'
-  prog <- getIR p
-  return prog
+  getIR p'
