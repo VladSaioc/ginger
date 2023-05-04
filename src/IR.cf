@@ -1,3 +1,6 @@
+-- Comments
+comment "//";
+
 -- Structural keywords
 position token GO {"go"};
 position token FOR {"for"};
