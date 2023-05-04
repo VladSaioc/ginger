@@ -19,10 +19,10 @@ Produces:
       else cons e ((zero ⨁ cons) es)
 
 (./\.) :: [Exp] -> Exp
-(./\.) = ECon CTrue ⨁ And
+(./\.) = (True ?) ⨁ And
 
 (.\/.) :: [Exp] -> Exp
-(.\/.) = ECon CFalse ⨁ Or
+(.\/.) = (False ?) ⨁ Or
 
 arithmCompose :: (Exp -> Exp -> Exp) -> [Exp] -> Exp
 arithmCompose = (⨁) (0 #)
@@ -35,6 +35,10 @@ arithmCompose = (⨁) (0 #)
 
 (#) :: Int -> Exp
 (#) = ECon . CNum
+
+(?) :: Bool -> Exp
+(?) True = ECon CTrue
+(?) False = ECon CFalse
 
 (@) :: String -> Exp
 (@) = EVar
