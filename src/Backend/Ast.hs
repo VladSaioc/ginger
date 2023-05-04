@@ -62,31 +62,27 @@ data Const
 
 -- Expressions
 data Exp
-  = -- -- *
-    Any
-  | -- -- (e1, ... en)
-    ETuple [Exp]
-  | -- -- x
-    EVar String
-  | -- -- const
-    ECon Const
-  | -- Propositional quantifiers
+  = -- COMPOUND EXPRESSIONS
+    -- -- match e1 { {case p => e ...}* }
+    Match Exp [(Pattern, Exp)]
+  | -- -- if e1 then e2 else e3
+    IfElse Exp Exp Exp
+  | -- PROPOSITIONAL QUANTIFIERS
     -- exists {x [: T], ...}* :: e
     Exists [(String, Maybe Type)] Exp
   | -- forall {x [: T], ...}* :: e
     Forall [(String, Maybe Type)] Exp
-  | -- Propositional logic
-    -- -- e1 ==> e2
-    Implies Exp Exp
-  | -- -- e1 <==> e2
+  | -- BINARY OPERATORS
+    -- Propositional logic
+    -- -- e1 <==> e2
     Equiv Exp Exp
+  | -- -- e1 ==> e2
+    Implies Exp Exp
   | -- Boolean arithmetic
     -- -- e1 && e2
     And Exp Exp
   | -- -- e1 || e2
     Or Exp Exp
-  | -- -- !e
-    Not Exp
   | -- Comparison
     -- -- e1 == e2
     Eq Exp Exp
@@ -111,11 +107,18 @@ data Exp
     Div Exp Exp
   | -- -- e1 % e2
     Mod Exp Exp
-  | -- Compound statements
-    -- -- if e1 then e2 else e3
-    IfElse Exp Exp Exp
-  | -- -- match e1 { {case p => e ...}* }
-    Match Exp [(Pattern, Exp)]
+  | -- UNARY OPERATORS
+    -- -- !e
+    Not Exp
+  | -- -- (e1, ... en)
+    ETuple [Exp]
+  | -- TERMINAL EXPRESSIONS
+    -- -- *
+    Any
+  | -- -- x
+    EVar String
+  | -- -- const
+    ECon Const
   | -- -- f({e, ...}*)
     Call String [Exp]
   deriving (Eq, Ord, Read)
@@ -163,6 +166,60 @@ data Decl
 -- Back-end program
 newtype Program = Program [Decl] deriving (Eq, Ord, Read)
 
+(<.|.>) :: Exp -> Either Exp Exp -> String
+(<.|.>) e1 lre2 =
+  let needParens =
+        ( case (e1, lre2) of
+            (Equiv {}, Right (Equiv {})) -> False
+            (Equiv {}, Left (Equiv {})) -> False
+            (Implies {}, Left (Implies {})) -> True
+            (Implies {}, Right (Implies {})) -> False
+            (And {}, Right (And {})) -> False
+            (And {}, Left (And {})) -> False
+            (Or {}, Right (Or {})) -> False
+            (Or {}, Left (Or {})) -> False
+            (And {}, Right (Or {})) -> True
+            (And {}, Left (Or {})) -> True
+            (Or {}, Right (And {})) -> True
+            (Or {}, Left (And {})) -> True
+            (Eq {}, Right (Eq {})) -> True
+            (Eq {}, Left (Eq {})) -> True
+            (Eq {}, Right (Ne {})) -> True
+            (Eq {}, Left (Ne {})) -> True
+            (Plus {}, Right (Plus {})) -> False
+            (Plus {}, Left (Plus {})) -> False
+            (Plus {}, Right (Minus {})) -> False
+            (Plus {}, Left (Minus {})) -> False
+            (Minus {}, Right (Minus {})) -> True
+            (Minus {}, Left (Minus {})) -> False
+            (Minus {}, Left (Plus {})) -> False
+            (Minus {}, Right (Plus {})) -> True
+            (Mult {}, Right (Mult {})) -> False
+            (Mult {}, Left (Mult {})) -> False
+            (Mult {}, Right (Div {})) -> False
+            (Mult {}, Left (Div {})) -> False
+            (Div {}, Right (Div {})) -> True
+            (Div {}, Left (Div {})) -> False
+            (Div {}, Left (Mult {})) -> False
+            (Div {}, Right (Mult {})) -> True
+            (Mod {}, Left (Mod {})) -> True
+            (Mod {}, Right (Mod {})) -> True
+            _ -> e1 > either id id lre2
+        )
+      trans = (if needParens then ("(" ++) . (++ ")") else id) . prettyPrint 0
+   in either trans trans lre2
+
+(<.>) :: Exp -> Exp -> String
+(<.>) e1 e2 =
+  let needParens =
+        ( case (e1, e2) of
+            (Not {}, Not {}) -> False
+            _ -> e1 > e2
+        )
+      trans = (if needParens then ("(" ++) . (++ ")") else id) . prettyPrint 0
+   in trans e2
+
+-- Pretty printer
 instance PrettyPrint Type where
   prettyPrint _ =
     let pp = prettyPrint 0
@@ -171,7 +228,7 @@ instance PrettyPrint Type where
           TNat -> "nat"
           TBool -> "bool"
           TypeVar x -> x
-          Arrow t1 t2 -> concat [pp t1, " -> ", pp t2]
+          Arrow t1 t2 -> concat ["(" ++ pp t1 ++ ")", " -> ", "(" ++ pp t2 ++ ")"]
           Tuple ts -> "(" ++ intercalate ", " (map pp ts) ++ ")"
 
 instance PrettyPrint Pattern where
@@ -239,31 +296,31 @@ instance PrettyPrint Const where
     CNum n -> show n
 
 instance PrettyPrint Exp where
-  prettyPrint i =
+  prettyPrint i e =
     let pp = prettyPrint 0
-        quantifier q xs e =
+        quantifier q xs e' =
           let def (x, mt) =
                 let t' = case mt of
                       Just t -> " " ++ prettyPrint 0 t
                       Nothing -> ""
                  in x ++ t'
               xs' = intercalate ", " $ map def xs
-              e' = pp e
-           in unwords [q, xs', "::", e']
-        bin e1 op e2 = unwords ["(" ++ pp e1 ++ ")", op, "(" ++ pp e2 ++ ")"]
-        un op e = unwords [op, "(" ++ pp e ++ ")"]
-     in \case
+              e'' = pp e'
+           in unwords [q, xs', "::", e'']
+        bin e1 op e2 = unwords [e <.|.> Left e1, op, e <.|.> Right e2]
+        un op e' = unwords [op ++ e <.> e']
+     in case e of
           Any -> "*"
           ETuple ps -> "(" ++ intercalate ", " (map pp ps) ++ ")"
           EVar x -> x
           ECon c -> prettyPrint 0 c
-          Exists xs e -> quantifier "exists" xs e
-          Forall xs e -> quantifier "forall" xs e
+          Exists xs e' -> quantifier "exists" xs e'
+          Forall xs e' -> quantifier "forall" xs e'
           Implies e1 e2 -> bin e1 "==>" e2
           Equiv e1 e2 -> bin e1 "<==>" e2
           And e1 e2 -> bin e1 "&&" e2
           Or e1 e2 -> bin e1 "||" e2
-          Not e -> un "!" e
+          Not e' -> un "!" e'
           Eq e1 e2 -> bin e1 "==" e2
           Ne e1 e2 -> bin e1 "!=" e2
           Geq e1 e2 -> bin e1 ">=" e2
@@ -276,10 +333,10 @@ instance PrettyPrint Exp where
           Div e1 e2 -> bin e1 "/" e2
           Mod e1 e2 -> bin e1 "%" e2
           IfElse e1 e2 e3 -> unwords ["if", pp e1, "then", pp e2, "else", pp e3]
-          Match e cs ->
-            let def (p, e') = unwords ["case", prettyPrint 0 p, "=>", pp e']
+          Match e' cs ->
+            let def (p, e'') = unwords ["case", prettyPrint 0 p, "=>", pp e'']
                 cs' = map def cs
-             in unwords ["match", pp e, "{\n"]
+             in unwords ["match", pp e', "{\n"]
                   ++ intercalate ("\n" ++ indent i) cs'
                   ++ ("\n" ++ indent i ++ "}")
           Call f es -> f ++ "(" ++ intercalate ", " (map pp es) ++ ")"
@@ -292,8 +349,8 @@ instance PrettyPrint Cons where
 instance PrettyPrint Function where
   prettyPrint _ (Function {ghost, yields, funcHoare, funcBody}) = case funcHoare of
     HoareWrap {name, params, decreases, requires, ensures} ->
-      let ps = intercalate "," (map (\(x, t) -> unwords [x, ":", prettyPrint 0 t]) params)
-          header = unwords $ ["ghost" | ghost] ++ ["function", name, "(" ++ ps ++ ")", ":", prettyPrint 0 yields]
+      let ps = intercalate ", " (map (\(x, t) -> unwords [x, ":", prettyPrint 0 t]) params)
+          header = unwords $ ["ghost" | ghost] ++ ["function", name ++ "(" ++ ps ++ ")", ":", prettyPrint 0 yields]
           pre = prop "requires" requires
           post = prop "ensures" ensures
           dec = prop "decreases" decreases
@@ -305,9 +362,9 @@ instance PrettyPrint Function where
 instance PrettyPrint Method where
   prettyPrint _ (Method {returns, methodHoare, methodBody}) = case methodHoare of
     HoareWrap {name, params, decreases, requires, ensures} ->
-      let ps = intercalate "," (map (\(x, t) -> unwords [x, ":", prettyPrint 0 t]) params)
+      let ps = intercalate ", " (map (\(x, t) -> unwords [x, ":", prettyPrint 0 t]) params)
           rps = map (\(x, t) -> unwords [x, ":", prettyPrint 0 t]) returns
-          header = unwords ["method", name, "(" ++ ps ++ ")", "returns", "(" ++ intercalate ", " rps ++ ")"]
+          header = unwords ["method", name ++ "(" ++ ps ++ ")", "returns", "(" ++ intercalate ", " rps ++ ")"]
           pre = prop "requires" requires
           post = prop "ensures" ensures
           dec = prop "decreases" decreases

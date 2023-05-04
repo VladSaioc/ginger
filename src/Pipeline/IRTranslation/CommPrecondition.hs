@@ -10,7 +10,7 @@ import IR.Utilities
 import Pipeline.IRTranslation.Utilities
 
 iterations :: Exp -> Exp -> Exp
-iterations lo hi = Call "iterations" [lo, hi]
+iterations lo hi = Call "iter" [lo, hi]
 
 preconditions :: KEnv -> PChInsns -> [Loop] -> [Exp]
 preconditions kenv noloops loops =
