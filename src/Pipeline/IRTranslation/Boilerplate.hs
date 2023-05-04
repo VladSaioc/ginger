@@ -33,7 +33,7 @@ iterationsFunc =
           funcBody = IfElse (Leq lo hi) (Minus hi lo) (0 #),
           funcHoare =
             HoareWrap
-              { name = "iterations",
+              { name = "iter",
                 params = [("lo", TInt), ("hi", TInt)],
                 requires = [],
                 ensures = [],
@@ -138,9 +138,12 @@ Produces:
 var pc(π)₁, ..., pc(π)ₙ = 0, ..., 0
 -}
 counterDef :: Procs -> Stmt
-counterDef =
-  let def pid = ((pid <|), (0 #))
-   in Assign . L.map def . M.keys
+counterDef procs =
+  if M.size procs > 0
+    then
+      let def pid = ((pid <|), (0 #))
+       in Assign . L.map def . M.keys $ procs
+    else Assert (True ?)
 
 {- Constructs an initial assignment for all loop variables.
 Depends on: loop(P)
@@ -149,9 +152,11 @@ Produces:
 var x₁, ..., xₙ = lo₁, ..., loₙ
 -}
 loopVarDef :: [Loop] -> Stmt
-loopVarDef =
-  let def (Loop {var, lower}) = (var, Nothing, lower)
-   in VarDef False . L.map def
+loopVarDef = \case
+  [] -> Assert (True ?)
+  ls ->
+    let def (Loop {var, lower}) = (var, Nothing, lower)
+     in VarDef False . L.map def $ ls
 
 {- Constructs an initial assignment for all channel variables.
 Depends on: κ
@@ -160,9 +165,12 @@ Produces:
 var c₁, ..., cₙ = 0, ..., 0
 -}
 chanDef :: KEnv -> Stmt
-chanDef =
-  let def c = (c, Nothing, (0 #))
-   in VarDef False . L.map def . M.keys
+chanDef kenv =
+  if M.size kenv > 0
+    then
+      let def c = (c, Nothing, (0 #))
+       in VarDef False . L.map def . M.keys $ kenv
+    else Assert (True ?)
 
 {- Construcs the "isSchedule(S)" precondition.
 -}
