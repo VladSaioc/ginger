@@ -6,7 +6,6 @@ import Data.Text (pack, replace, unpack)
 import IR.GetAst qualified as I
 import Pipeline.IRTranslation.Workflow
 import Pipeline.Translation.Workflow
-import Promela.Ast (Spec (Spec))
 import Promela.GetAst qualified as P
 import System.Directory (createDirectory, doesDirectoryExist)
 import System.Environment
@@ -34,22 +33,22 @@ main = do
                   return $ optimize prog
               )
          in do
-            _ <- case ir of
-              Ok ir' -> do
-                putStrLn "\n"
-                putStrLn "Intermediate representation:"
-                putStrLn (show ir')
-                putStrLn "\n"
-              _ -> return ()
-            case result of
-              Ok prog ->
-                ( do
-                    putStrLn "Succesfully generated and optimized back-end."
-                    mkdir _DIST
-                    writeFile (_DIST ++ "/" ++ file) (prettyPrint 0 prog)
-                    return ()
-                )
-              Bad err -> putStrLn ("ERROR: " ++ err)
+              _ <- case ir of
+                Ok ir' -> do
+                  putStrLn "\n"
+                  putStrLn "Intermediate representation:"
+                  print ir'
+                  putStrLn "\n"
+                _ -> return ()
+              case result of
+                Ok prog ->
+                  ( do
+                      putStrLn "Succesfully generated and optimized back-end."
+                      mkdir _DIST
+                      writeFile (_DIST ++ "/" ++ file) (prettyPrint 0 prog)
+                      return ()
+                  )
+                Bad err -> putStrLn ("ERROR: " ++ err)
   case args of
     ("ir" : filePath : _) -> do
       let fileName = parseFileName filePath ++ ".dfy"
