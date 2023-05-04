@@ -14,10 +14,9 @@ decOptimize = \case
   d -> d
 
 fOptimize :: Function -> Function
-fOptimize (Function {ghost, yields, funcHoare, funcBody}) =
+fOptimize (Function {yields, funcHoare, funcBody}) =
   Function
-    { ghost = ghost,
-      yields = yields,
+    { yields = yields,
       funcHoare = hOptimize funcHoare,
       funcBody = eOptimize funcBody
     }
@@ -31,9 +30,10 @@ mOptimize (Method {returns, methodHoare, methodBody}) =
     }
 
 hOptimize :: HoareWrap -> HoareWrap
-hOptimize (HoareWrap {name, params, decreases, requires, ensures}) =
+hOptimize (HoareWrap {ghost, name, params, decreases, requires, ensures}) =
   HoareWrap
-    { name = name,
+    { ghost = ghost,
+      name = name,
       params = params,
       decreases = map eOptimize decreases,
       requires = map eOptimize requires,

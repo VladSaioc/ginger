@@ -127,7 +127,8 @@ data Exp
 data Cons = Cons String [(String, Type)] deriving (Eq, Ord, Read)
 
 data HoareWrap = HoareWrap
-  { name :: String,
+  { ghost :: Bool,
+    name :: String,
     params :: [(String, Type)],
     decreases :: [Exp],
     requires :: [Exp],
@@ -136,8 +137,7 @@ data HoareWrap = HoareWrap
   deriving (Eq, Ord, Read)
 
 data Function = Function
-  { ghost :: Bool,
-    yields :: Type,
+  { yields :: Type,
     funcHoare :: HoareWrap,
     funcBody :: Exp
   }
@@ -157,10 +157,11 @@ data Decl
     TypeDecl String Type
   | -- [ghost] function f({x : T, ...}*) : T {requires e}* {ensures e}* { e }
     FDecl Function
-  | -- method f({x : T, ...}*) returns ({x : T, ...}*)  {requires e ...}* {ensures e ...}* {decreases e ...}* S
+  | -- If not ghost:
+    -- method f({x : T, ...}*) returns ({x : T, ...}*)  {requires e ...}* {ensures e ...}* {decreases e ...}* S
+    -- If ghost:
+    -- lemma f({x : T, ...}*) returns ({x : T, ...}*)  {requires e ...}* {ensures e ...}* {decreases e ...}* S
     MDecl Method
-  | -- lemma f({x : T, ...}*) returns ({x : T, ...}*)  {requires e ...}* {ensures e ...}* {decreases e ...}* S
-    LDecl Method
   deriving (Eq, Ord, Read)
 
 -- Back-end program
@@ -253,8 +254,8 @@ instance PrettyPrint Stmt where
               then ""
               else
                 "{\n"
-                  ++ indent (i + 2)
-                  ++ intercalate ("\n" ++ indent (i + 2)) (map (prettyPrint $ i + 2) ss)
+                  ++ indent (i + 1)
+                  ++ intercalate ("\n" ++ indent (i + 1)) (map (prettyPrint $ i + 1) ss)
                   ++ "\n"
                   ++ ind
                   ++ "}"
@@ -276,14 +277,14 @@ instance PrettyPrint Stmt where
                   ++ s2
           Assert e -> unwords ["assert", prettyPrint 0 e] ++ ";"
           MatchStmt e cs ->
-            let def (p, s'') = "\n" ++ ind ++ unwords ["case", prettyPrint 0 p, "=>", prettyPrint (i + 2) s'']
+            let def (p, s'') = "\n" ++ ind ++ unwords ["case", prettyPrint 0 p, "=>", prettyPrint (i + 1) s'']
                 cs' = map def cs
              in unwords ["match", prettyPrint 0 e, "{"]
                   ++ concat cs'
                   ++ ("\n" ++ ind ++ "}")
           While e es1 es2 s'' ->
             let e' = prettyPrint 0 e
-                cons kw e'' = "\n" ++ indent (i + 2) ++ unwords [kw, prettyPrint 0 e'']
+                cons kw e'' = "\n" ++ indent (i + 1) ++ unwords [kw, prettyPrint 0 e'']
                 es' = concat (map (cons "invariant") es1 ++ map (cons "decreases") es2) ++ " "
              in unwords ["while", e'] ++ es' ++ prettyPrint i s''
           Return es -> unwords ["return", intercalate ", " (map (prettyPrint 0) es)]
@@ -347,30 +348,31 @@ instance PrettyPrint Cons where
      in n ++ "(" ++ intercalate ", " (map fdef fs) ++ ")"
 
 instance PrettyPrint Function where
-  prettyPrint _ (Function {ghost, yields, funcHoare, funcBody}) = case funcHoare of
-    HoareWrap {name, params, decreases, requires, ensures} ->
+  prettyPrint _ (Function {yields, funcHoare, funcBody}) = case funcHoare of
+    HoareWrap {ghost, name, params, decreases, requires, ensures} ->
       let ps = intercalate ", " (map (\(x, t) -> unwords [x, ":", prettyPrint 0 t]) params)
           header = unwords $ ["ghost" | ghost] ++ ["function", name ++ "(" ++ ps ++ ")", ":", prettyPrint 0 yields]
           pre = prop "requires" requires
           post = prop "ensures" ensures
           dec = prop "decreases" decreases
           props = intercalate "\n" (pre ++ post ++ dec)
-          body = prettyPrint 2 funcBody
-          prop kw = map (((indent 2 ++ kw) ++) . prettyPrint 2)
+          body = prettyPrint 1 funcBody
+          prop kw = map (((indent 1 ++ kw) ++) . prettyPrint 2)
        in intercalate "\n" [header, props ++ "{", body, "}"]
 
 instance PrettyPrint Method where
   prettyPrint _ (Method {returns, methodHoare, methodBody}) = case methodHoare of
-    HoareWrap {name, params, decreases, requires, ensures} ->
+    HoareWrap {ghost, name, params, decreases, requires, ensures} ->
       let ps = intercalate ", " (map (\(x, t) -> unwords [x, ":", prettyPrint 0 t]) params)
           rps = map (\(x, t) -> unwords [x, ":", prettyPrint 0 t]) returns
-          header = unwords ["method", name ++ "(" ++ ps ++ ")", "returns", "(" ++ intercalate ", " rps ++ ")"]
+          method = if ghost then "lemma" else "method"
+          header = unwords [method, name ++ "(" ++ ps ++ ")", "returns", "(" ++ intercalate ", " rps ++ ")"]
           pre = prop "requires" requires
           post = prop "ensures" ensures
           dec = prop "decreases" decreases
           props = intercalate "\n" (pre ++ post ++ dec)
           body = prettyPrint 0 methodBody
-          prop kw = map (\e -> indent 2 ++ unwords [kw, prettyPrint 2 e])
+          prop kw = map (\e -> indent 1 ++ unwords [kw, prettyPrint 2 e])
        in intercalate "\n" [header, props, body]
 
 instance PrettyPrint Decl where
@@ -382,7 +384,6 @@ instance PrettyPrint Decl where
     TypeDecl x t -> unwords ["type", x, "=", prettyPrint 0 t]
     FDecl f -> prettyPrint 0 f
     MDecl m -> prettyPrint 0 m
-    LDecl l -> prettyPrint 0 l
 
 instance PrettyPrint Program where
   prettyPrint _ (Program ds) = intercalate "\n\n" (map (prettyPrint 0) ds)

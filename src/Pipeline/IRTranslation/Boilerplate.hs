@@ -28,12 +28,12 @@ iterationsFunc =
   let lo = ("lo" @)
       hi = ("hi" @)
    in Function
-        { ghost = True,
-          yields = TInt,
+        { yields = TInt,
           funcBody = IfElse (Leq lo hi) (Minus hi lo) (0 #),
           funcHoare =
             HoareWrap
-              { name = "iter",
+              { ghost = True,
+                name = "iter",
                 params = [("lo", TInt), ("hi", TInt)],
                 requires = [],
                 ensures = [],
@@ -56,12 +56,12 @@ isScheduleFunc ps =
       domPi = ((M.size ps - 1) #)
       callS = Call "S" [(n @)]
    in Function
-        { ghost = True,
-          yields = TBool,
+        { yields = TBool,
           funcBody = Forall [(n, Nothing)] (Leq callS domPi),
           funcHoare =
             HoareWrap
-              { name = "isSchedule",
+              { ghost = True,
+                name = "isSchedule",
                 params = [("S", Arrow TNat TNat)],
                 requires = [],
                 ensures = [],
@@ -204,7 +204,8 @@ progEncoding fvs kenv ps atomicOps loops =
     { returns = (L.map ((,TInt) . (<|)) . M.keys) ps,
       methodHoare =
         HoareWrap
-          { name = "Program",
+          { ghost = True,
+            name = "Program",
             params = ("S", Arrow TNat TNat) : (L.map (,TInt) . S.toList) fvs,
             ensures = postconditions ps,
             decreases = [Any],
