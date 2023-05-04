@@ -119,12 +119,12 @@ centralLoop kenv ps atomicOps loops =
   let l = loopMonitors loops
       k = channelBounds kenv
       pc = counterInvariants ps
-      enabled = enabledExp kenv ps
+      enabled = And (Lt ("step" @) ("fuel" @)) (enabledExp kenv ps)
       m = channelMonitors atomicOps loops
    in While
         enabled
         (k ++ pc ++ l ++ m)
-        [Any]
+        []
         ( Block
             [ scheduleSwitch ps,
               Assign [("step", Plus ("step" @) (1 #))]
@@ -201,25 +201,22 @@ decreases * {
 progEncoding :: S.Set String -> KEnv -> Procs -> PChInsns -> [Loop] -> Method
 progEncoding fvs kenv ps atomicOps loops =
   Method
-    { returns = (L.map ((,TInt) . (<|)) . M.keys) ps,
+    { returns = ("step", TNat) : (L.map ((,TInt) . (<|)) . M.keys) ps,
       methodHoare =
         HoareWrap
           { ghost = True,
             name = "Program",
-            params = ("S", Arrow TNat TNat) : (L.map (,TInt) . S.toList) fvs,
-            ensures = postconditions ps,
-            decreases = [Any],
-            requires =
-              isSchedule
-                : asyncPreconditions kenv
-                ++ preconditions kenv atomicOps loops
+            params = ("fuel", TNat) : ("S", Arrow TNat TNat) : (L.map (,TInt) . S.toList) fvs,
+            ensures = [Implies (Lt ("step" @) ("fuel" @)) (Equiv (preconditions kenv atomicOps loops ./\.) (postconditions ps ./\.))],
+            decreases = [],
+            requires = isSchedule : asyncPreconditions kenv
           },
       methodBody =
         Block
           [ counterDef ps,
             chanDef kenv,
             loopVarDef loops,
-            VarDef False [("step", Nothing, (0 #))],
+            Assign [("step", (0 #))],
             centralLoop kenv ps atomicOps loops
           ]
     }

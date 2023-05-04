@@ -10,7 +10,6 @@ decOptimize :: Decl -> Decl
 decOptimize = \case
   FDecl f -> FDecl $ fOptimize f
   MDecl m -> MDecl $ mOptimize m
-  LDecl m -> LDecl $ mOptimize m
   d -> d
 
 fOptimize :: Function -> Function
