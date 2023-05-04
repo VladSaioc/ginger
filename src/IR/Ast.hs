@@ -56,8 +56,7 @@ instance Show Stmt where
     Atomic o -> "  " ++ show o
     For x e1 e2 os ->
       unlines
-        ( [unwords ["for", x, ":", show e1, "..", show e2, "{"]]
-            ++ map (\o -> ("    " ++ show o ++ ";")) os
+        ( unwords ["for", x, ":", show e1, "..", show e2, "{"] : map (("    " ++) . (++ ";") . show) os
         )
         ++ "  }"
 
