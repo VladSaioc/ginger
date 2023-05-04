@@ -49,79 +49,81 @@ eOptimize pe =
         Exists xs e -> un (Exists xs) e
         Forall xs e -> un (Forall xs) e
         -- false ==> e ==> true
-        Implies (ECon CFalse) _ -> ECon CTrue
+        Implies (ECon CFalse) _ -> (True ?)
         -- e ==> true ==> true
-        Implies _ (ECon CTrue) -> ECon CTrue
+        Implies _ (ECon CTrue) -> (True ?)
         Implies e1 e2 -> bin Implies e1 e2
         -- true <==> false ==> false
-        Equiv (ECon CTrue) (ECon CFalse) -> ECon CFalse
+        Equiv (ECon CTrue) (ECon CFalse) -> (False ?)
         -- false <==> true ==> false
-        Equiv (ECon CFalse) (ECon CTrue) -> ECon CFalse
+        Equiv (ECon CFalse) (ECon CTrue) -> (False ?)
         -- e <==> e ==> true
         Equiv e1 e2 ->
           if e1 == e2
-            then ECon CTrue
+            then (True ?)
             else bin Equiv e1 e2
         -- e && false ==> false
-        And _ (ECon CFalse) -> ECon CFalse
+        And _ (ECon CFalse) -> (False ?)
         -- false && e ==> false
-        And (ECon CFalse) _ -> ECon CFalse
+        And (ECon CFalse) _ -> (False ?)
         -- e && true ==> e
         And e (ECon CTrue) -> eOptimize e
         -- true && e ==> e
         And (ECon CTrue) e -> eOptimize e
         And e1 e2 -> bin And e1 e2
         -- e || true ==> true
-        Or _ (ECon CTrue) -> ECon CTrue
+        Or _ (ECon CTrue) -> (True ?)
         -- true || e ==> true
-        Or (ECon CTrue) _ -> ECon CTrue
+        Or (ECon CTrue) _ -> (True ?)
         -- e || false ==> e
         Or e (ECon CFalse) -> eOptimize e
         -- false || e ==> e
         Or (ECon CFalse) e -> eOptimize e
         Or e1 e2 -> bin Or e1 e2
         -- !true ==> false
-        Not (ECon CTrue) -> ECon CFalse
+        Not (ECon CTrue) -> (False ?)
         -- !false ==> true
-        Not (ECon CFalse) -> ECon CTrue
+        Not (ECon CFalse) -> (True ?)
+        -- !!e ==> e
+        Not (Not e) -> eOptimize e
         Not e -> un Not e
         -- e == e ==> true
         Eq e1 e2 ->
           if e1 == e2
-            then ECon CTrue
+            then (True ?)
             else bin Eq e1 e2
         -- e != e ==> false
         Ne e1 e2 ->
           if e1 == e2
-            then ECon CFalse
+            then (False ?)
             else bin Ne e1 e2
         -- n1 <= n2
-        Leq (ECon (CNum n1)) (ECon (CNum n2)) -> ECon $ if n1 <= n2 then CTrue else CFalse
+        Leq (ECon (CNum n1)) (ECon (CNum n2)) -> ((n1 <= n2) ?)
         -- e <= e ==> true
         Leq e1 e2 ->
           if e1 == e2
-            then ECon CTrue
+            then (True ?)
             else bin Leq e1 e2
         -- n1 < n2
-        Lt (ECon (CNum n1)) (ECon (CNum n2)) -> ECon $ if n1 < n2 then CTrue else CFalse
+        Lt (ECon (CNum n1)) (ECon (CNum n2)) -> ((n1 < n2) ?)
         -- e < e ==> false
         Lt e1 e2 ->
           if e1 == e2
-            then ECon CFalse
+            then (False ?)
             else bin Lt e1 e2
         -- n1 >= n2
-        Geq (ECon (CNum n1)) (ECon (CNum n2)) -> ECon $ if n1 >= n2 then CTrue else CFalse
+        Geq (ECon (CNum n1)) (ECon (CNum n2)) -> ((n1 >= n2) ?)
         -- e >= e ==> true
         Geq e1 e2 ->
           if e1 == e2
-            then ECon CTrue
+            then (True ?)
             else bin Geq e1 e2
         -- n1 > n2
-        Gt (ECon (CNum n1)) (ECon (CNum n2)) -> ECon $ if n1 > n2 then CTrue else CFalse
+        Gt (ECon (CNum n1)) (ECon (CNum n2)) -> ((n1 > n2) ?)
         -- e > e ==> false
         Gt e1 e2 ->
           if e1 == e2
-            then ECon CFalse
+            then (False ?)
             else bin Gt e1 e2
         -- n1 + n2 ==> n
         Plus (ECon (CNum n1)) (ECon (CNum n2)) -> ((n1 + n2) #)
@@ -151,7 +153,7 @@ eOptimize pe =
         Div e1 e2 -> bin Div e1 e2
         -- if true then e1 else e2 ==> e1
         IfElse (ECon CTrue) e _ -> eOptimize e
-        -- if true then e1 else e2 ==> e1
+        -- if false then e1 else e2 ==> e2
         IfElse (ECon CFalse) _ e -> eOptimize e
         IfElse e1 e2 e3 -> tri IfElse e1 e2 e3
         Match e cs ->
