@@ -135,7 +135,11 @@ eOptimize pe =
         Minus (ECon (CNum n1)) (ECon (CNum n2)) -> ((n1 - n2) #)
         -- e - 0 ==> e
         Minus e (ECon (CNum 0)) -> eOptimize e
-        Minus e1 e2 -> bin Minus e1 e2
+        -- e - e ==> 0
+        Minus e1 e2 ->
+          if e1 == e2
+            then (0 #)
+            else bin Minus e1 e2
         -- n1 * n2 ==> n
         Mult (ECon (CNum n1)) (ECon (CNum n2)) -> ((n1 * n2) #)
         -- 1 * e ==> e
