@@ -1,6 +1,7 @@
 module Pipeline.Translation.Workflow where
 
 import IR.Ast (Prog)
+import IR.Simplifier (simplify)
 import Pipeline.Translation.AlphaConversion (alphaConvert)
 import Pipeline.Translation.CallgraphOk (noRecursion)
 import Pipeline.Translation.PromelaToIR (getIR)
@@ -13,4 +14,5 @@ promelaToIR p = do
   let p' = alphaConvert p
   _ <- noRecursion p'
   _ <- allowed p'
-  getIR p'
+  ir <- getIR p'
+  return $ simplify ir
