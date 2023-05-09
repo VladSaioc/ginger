@@ -1,8 +1,9 @@
-module IR.SanityCheck (sanityCheck) where
+module IR.SanityCheck (sanityCheck, asyncCheck) where
 
 import Data.Set qualified as S
 import IR.Ast
 import Utilities.Err
+import Utilities.General
 
 data Ctx = Ctx
   { ienv :: S.Set String,
@@ -84,3 +85,11 @@ sanityCheckExp ctx =
                 (S.member x (chenv ctx), "Channel used as a free variable: " ++ x)
               ]
           return (ctx {fvs = S.insert x (fvs ctx)})
+
+asyncCheck :: Prog -> Err [()]
+asyncCheck (Prog cs _) = results $ map asyncCheckChan cs
+
+asyncCheckChan :: Chan -> Err ()
+asyncCheckChan (Chan c e) = case e of
+  Const 0 -> Bad ("Channel " ++ c ++ " is synchronous.")
+  _ -> return ()

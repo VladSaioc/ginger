@@ -3,7 +3,8 @@ module Pipeline.IRTranslation.Workflow (irToBackend) where
 import Backend.Ast (Program)
 import IR.Ast (Prog)
 import IR.Homogeneity (homogeneous)
-import IR.SanityCheck
+import IR.SanityCheck (asyncCheck, sanityCheck)
+import IR.Simplifier (simplify)
 import IR.Stratification (stratified)
 import Pipeline.IRTranslation.Boilerplate (wholeEncoding)
 import Pipeline.IRTranslation.ChInstructions (noloopPsChanInsns)
@@ -14,8 +15,10 @@ import Pipeline.IRTranslation.Processes (getProcs)
 import Utilities.Err
 
 irToBackend :: Prog -> Err Program
-irToBackend p = do
+irToBackend p' = do
+  let p = simplify p'
   _ <- sanityCheck p
+  _ <- asyncCheck p
   _ <- homogeneous p
   _ <-
     multiGuard
