@@ -47,16 +47,28 @@ eOptimize pe =
       e' = case pe of
         Exists xs e -> un (Exists xs) e
         Forall xs e -> un (Forall xs) e
-        -- false ==> e ==> true
+        -- false => e ==> true
         Implies (ECon CFalse) _ -> (True ?)
-        -- e ==> true ==> true
+        -- e => true ==> true
         Implies _ (ECon CTrue) -> (True ?)
+        -- true => e ==> e
+        Implies (ECon CTrue) e -> eOptimize e
+        -- e => false ==> !e
+        Implies e (ECon CFalse) -> eOptimize (Not e)
         Implies e1 e2 -> bin Implies e1 e2
-        -- true <==> false ==> false
+        -- true <=> false ==> false
         Equiv (ECon CTrue) (ECon CFalse) -> (False ?)
-        -- false <==> true ==> false
+        -- false <=> true ==> false
         Equiv (ECon CFalse) (ECon CTrue) -> (False ?)
-        -- e <==> e ==> true
+        -- true <=> e ==> e
+        Equiv (ECon CTrue) e -> eOptimize e
+        -- e <=> true ==> e
+        Equiv e (ECon CTrue) -> eOptimize e
+        -- false <=> e ==> !e
+        Equiv (ECon CFalse) e -> eOptimize e
+        -- e <=> false ==> !e
+        Equiv e (ECon CFalse) -> eOptimize (Not e)
+        -- e <=> e ==> true
         Equiv e1 e2 ->
           if e1 == e2
             then (True ?)
