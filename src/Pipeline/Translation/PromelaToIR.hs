@@ -121,7 +121,14 @@ translateFor ctx = case syntax ctx of
     let addOp op = do
           ctx' <- translateOp (Pos p op >: ctx)
           return (ctx' <: (curr ctx' : curr ctx))
-    ctx' <- if commStmt s then addOp s else err ("Unexpected statement in for: " ++ show s)
+    ctx' <-
+      if commStmt s
+        then addOp s
+        else case s of
+          P.Label _ s' -> translateFor (ctx {syntax = [s']})
+          P.Assert _ -> wrapCtx ctx
+          P.Skip -> wrapCtx ctx
+          _ -> err ("Unexpected statement in for: " ++ show s)
     translateFor (ctx' {syntax = ss})
 
 translateRange :: M.Map String P'.Exp -> P.Range -> Err (String, P'.Exp, P'.Exp)
