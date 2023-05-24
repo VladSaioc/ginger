@@ -1,13 +1,13 @@
 module Pipeline.Translation.CallgraphOk (noRecursion) where
 
+import Control.Monad
 import Data.Map qualified as M
-import Data.Maybe (isJust)
 import Data.Set qualified as S
 import Pipeline.Callgraph (getCG)
 import Promela.Ast
 import Promela.Utilities
-import Utilities.Position
 import Utilities.Err
+import Utilities.Position
 
 data Ctxt a = Ctxt
   { ancestors :: S.Set String,
@@ -47,23 +47,20 @@ noRecursion :: Spec -> Err ()
 noRecursion (Spec ms) =
   let ss = getInit (Spec ms)
       ctx = (makeCtx ss) {callgraph = getCG (Spec ms)}
-   in if Data.Maybe.isJust (traverseStmts ctx) then return ()
-    else Bad "Found call-graph cycle"
+   in do
+        _ <- traverseStmts ctx
+        return ()
 
-traverseStmts :: Ctxt [Pos Stmt] -> Maybe (Ctxt ())
+traverseStmts :: Ctxt [Pos Stmt] -> Err (Ctxt ())
 traverseStmts ctx = case syntax ctx of
-  [] -> Just (wrapCtx ctx)
+  [] -> return (wrapCtx ctx)
   Pos _ s : ss -> do
     -- Traverse successor statements
     ctx' <- traverseStmts (ctx {syntax = ss})
     -- Traverse lists of syntax sequences.
-    let visit traverseF startingCtx =
-          Prelude.foldl
-            ( \mc syn -> case mc of
-                Just c -> fmap (updateCtxVisited c) (traverseF (c {syntax = syn}))
-                Nothing -> mc
-            )
-            (Just startingCtx)
+    let visit traverseF =
+          Control.Monad.foldM
+            (\c syn -> fmap (updateCtxVisited c) (traverseF (c {syntax = syn})))
     -- Used in branching control flow constructs.
     let visitBranches = visit traverseStmts
     let visitExpressions = visit traverseExp ctx'
@@ -72,11 +69,11 @@ traverseStmts ctx = case syntax ctx of
           ctx'' <- visitBranches ctx' os
           case mels of
             Just els -> traverseStmts (ctx'' {syntax = els})
-            Nothing -> Just ctx'
+            Nothing -> return ctx'
     case s of
-      Decl _ _ me -> do
-        e <- me
-        traverseExp (ctx' {syntax = e})
+      Decl _ _ me -> case me of
+        Just e -> traverseExp (ctx' {syntax = e})
+        _ -> return (wrapCtx ctx)
       If os mels -> branchingFlow os mels
       Do os mels -> branchingFlow os mels
       For r ss' -> do
@@ -90,28 +87,22 @@ traverseStmts ctx = case syntax ctx of
       Label _ stm -> traverseStmts (ctx' {syntax = [stm]})
       _ -> return ctx'
 
-traverseRange :: Ctxt Range -> Maybe (Ctxt ())
+traverseRange :: Ctxt Range -> Err (Ctxt ())
 traverseRange ctx =
   let visit =
-        Prelude.foldl
-          ( \mc e -> case mc of
-              Just c -> fmap (updateCtxVisited c) (traverseExp (c {syntax = e}))
-              Nothing -> mc
-          )
-          (Just (wrapCtx ctx))
+        Control.Monad.foldM
+          (\c e -> fmap (updateCtxVisited c) (traverseExp (c {syntax = e})))
+          (wrapCtx ctx)
    in case syntax ctx of
         Between _ e1 e2 -> visit [e1, e2]
-        _ -> Just (wrapCtx ctx)
+        _ -> return (wrapCtx ctx)
 
-traverseExp :: Ctxt Exp -> Maybe (Ctxt ())
+traverseExp :: Ctxt Exp -> Err (Ctxt ())
 traverseExp ctx =
   let visit =
-        Prelude.foldl
-          ( \mc e -> case mc of
-              Just c -> fmap (updateCtxVisited c) (traverseExp (c {syntax = e}))
-              Nothing -> mc
-          )
-          (Just (wrapCtx ctx))
+        Control.Monad.foldM
+          (\c e -> fmap (updateCtxVisited c) (traverseExp (c {syntax = e})))
+          (wrapCtx ctx)
    in case syntax ctx of
         And e1 e2 -> visit [e1, e2]
         Or e1 e2 -> visit [e1, e2]
@@ -127,19 +118,19 @@ traverseExp ctx =
         Div e1 e2 -> visit [e1, e2]
         Neg e -> visit [e]
         Not e -> visit [e]
-        Run f es ->
-          if S.member f (ancestors ctx)
-            then Nothing
-            else
-              if S.member f (visited ctx)
-                then Just (wrapCtx ctx)
-                else do
-                  callee <- M.lookup f (callgraph ctx)
-                  case callee of
-                    Proc _ _ ss -> do
-                      ctx' <- visit es
-                      let ctx'' = ctx' {ancestors = S.insert f (ancestors ctx')}
-                      ctx''' <- traverseStmts (ctx'' {syntax = ss})
-                      return (ctx''' {visited = S.insert f (visited ctx''')})
-                    _ -> Nothing
-        _ -> Just (wrapCtx ctx)
+        Run f es -> do
+          _ <-
+            multiGuard
+              [ (S.member f (ancestors ctx), "Function " ++ f ++ " is called recursively.")
+              ]
+          if S.member f (visited ctx)
+            then return (wrapCtx ctx)
+            else case M.lookup f (callgraph ctx) of
+              Just (Proc _ _ ss) -> do
+                ctx' <- visit es
+                let ctx'' = ctx' {ancestors = S.insert f (ancestors ctx')}
+                ctx''' <- traverseStmts (ctx'' {syntax = ss})
+                return (ctx''' {visited = S.insert f (visited ctx''')})
+              Just _ -> Bad ("Name '" ++ f ++ "' is not bound to a function")
+              _ -> Bad ("Call to unknown function: " ++ f)
+        _ -> return (wrapCtx ctx)
