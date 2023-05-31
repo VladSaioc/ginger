@@ -17,6 +17,14 @@ import Utilities.Position
 (~) :: Raw.ID -> Int
 (~) (Raw.ID ((l, _), _)) = l
 
+listSteps :: Raw.Steps -> [Raw.Step]
+listSteps = \case
+  Raw.StepsSemi s ss -> s : listSteps ss
+  Raw.StepsArrow s ss -> s : listSteps ss
+  Raw.StepsLast s -> [s]
+  -- Raw.StepsArrow
+  Raw.StepsDone -> []
+
 notImplemented :: Show a1 => a1 -> Err a2
 notImplemented err = Bad ("Not implemented: " ++ show err)
 
@@ -54,13 +62,13 @@ pModule = \case
     return (TopDecl x TInt v)
   -- init { ss }
   Raw.Init _ ss' -> do
-    ss <- results (map pStep ss')
+    ss <- results (map pStep (listSteps ss'))
     return (Init ss)
   -- proctype f(ps) { ss }
   Raw.Proctype _ f' ps' ss' -> do
     f <- pIdent f'
     ps <- results (map pParam ps')
-    ss <- results (map pStep ss')
+    ss <- results (map pStep (listSteps ss'))
     return (Proc f ps ss)
   -- typedef t { fs }
   Raw.Typedef _ t' fs' -> do
@@ -154,7 +162,7 @@ pStmt =
         -- for (range) { ... }
         Raw.StmtFor (Raw.FOR l) r ss -> do
           Pos _ r' <- pRange r
-          ss' <- results (map pStep ss)
+          ss' <- results (map pStep (listSteps ss))
           return (l @@ For r' ss')
         -- goto label
         Raw.StmtGoto (Raw.GOTO l) label -> return (l @@ Goto (label &))
@@ -206,7 +214,7 @@ getElse =
         Raw.OptionSt _ -> id
         Raw.OptionEls _ ss -> \e' -> do
           e <- e'
-          els <- results (map pStep ss)
+          els <- results (map pStep (listSteps ss))
           case e of
             Just _ -> Bad "Branch list has more than one else."
             Nothing -> return (Just els)
@@ -215,7 +223,7 @@ getElse =
 pOptions :: [Raw.Option] -> Err [[Pos Stmt]]
 pOptions os =
   let f = \case
-        Raw.OptionSt ss -> \steps -> results (map pStep ss) : steps
+        Raw.OptionSt ss -> \steps -> results (map pStep (listSteps ss)) : steps
         _ -> id
    in results (foldr f [] os)
 

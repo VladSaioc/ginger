@@ -20,65 +20,65 @@ typedef Chandef {
 
 
 init { 
-	chan child_f16 = [1] of {int}->
-	run f16(def_var_k,def_var_l1,def_var_l2,child_f16)->
-	child_f16?0->
-stop_process:skip
+	chan child_f16 = [1] of {int};
+	run f16(def_var_k,def_var_l1,def_var_l2,child_f16);
+	child_f16?0;
+	stop_process:skip
 }
 
 proctype f16(int var_k;int var_l1;int var_l2;chan child) {
-	bool closed-> 
-	bool ok-> 
-	int i->
-	bool state = true->
-	int num_msgs->
-	chan child_receiver91 = [1] of {int}->
-	chan child_sender30 = [1] of {int}->
-	chan ch_ch = [var_k] of {int}->
+	bool closed; 
+	bool ok;
+	int i;
+	bool state = true;
+	int num_msgs;
+	chan child_receiver91 = [1] of {int};
+	chan child_sender30 = [1] of {int};
+	chan ch_ch = [def_var_k] of {int};
 
-	run sender3(ch_ch,var_l1,child_sender30)->
-	run receiver9(ch_ch,var_l2,child_receiver91)->
-	child_receiver91?0->
-	stop_process: skip->
+	run sender3(ch_ch,var_l1,child_sender30);
+	run receiver9(ch_ch,var_l2,child_receiver91);
+	child_receiver91?0;
+	stop_process: skip;
 	child!0
 }
 proctype sender3(chan ch_ch;int var_x;chan child) {
-	bool closed-> 
-	bool ok-> 
-	int i->
-	bool state = true->
-	int num_msgs->
+	bool closed; 
+	bool ok; 
+	int i;
+	bool state = true;
+	int num_msgs;
 	
 	for(i : 0.. var_x-1) {
-			for11: skip->
+			for11: skip;
 			
 
-			ch_ch!0->
+			ch_ch!0;
 			for11_end: skip
-		}->
-		for11_exit: skip->
-	stop_process: skip->
+		};
+		for11_exit: skip;
+	stop_process: skip;
 	child!0
 }
 
 proctype receiver9(chan ch_ch;int var_y;chan child) {
-	bool closed-> 
-	bool ok-> 
-	int i->
-	int q1->
-	int q2->
-	bool state = true->
-	int num_msgs->
+	bool closed; 
+	bool ok; 
+	int i;
+	int q1;
+	int q2;
+	bool state = true;
+	int num_msgs;
 	
 				for(i : 0.. var_y-1) {
-			for21: skip->
+			for21: skip;
 			
 
-			ch_ch?q1->
-			ch_ch?q2->
+			ch_ch?q1;
+			ch_ch?q2;
 			for21_end: skip
-		}->
-		for21_exit: skip->
-	stop_process: skip->
+		};
+		for21_exit: skip;
+	stop_process: skip;
 	child!0
 }

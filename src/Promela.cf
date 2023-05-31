@@ -72,9 +72,9 @@ Program. Spec ::= [Module];
 
 -- Modules
 Define. Module ::= DEFINE ID Exp;
-Init. Module ::= INIT "{" [Step] "}";
+Init. Module ::= INIT "{" Steps "}";
 ---- Proctype
-Proctype. Module ::= PROCTYPE ID "(" [Param] ")" "{" [Step] "}";
+Proctype. Module ::= PROCTYPE ID "(" [Param] ")" "{" Steps "}";
 separator Param ";";
 Param. Param ::= Decl;
 
@@ -93,19 +93,22 @@ DBodyExp. DeclBody ::= AS Exp;
 DBodyChan. DeclBody ::= AS "[" Exp "]" OF "{" [Type] "}";
 
 -- Steps
-separator Step "->";
+StepsArrow. Steps ::= Step "->" Steps;
+StepsSemi. Steps ::= Step ";" Steps;
+StepsLast. Steps ::= Step;
+StepsDone. Steps ::= ;
 
 StepDecl. Step ::= Decl;
 StepStmt. Step ::= Stmt;
 
 -- Statements
 separator nonempty Option "::";
-OptionSt. Option ::= [Step];
-OptionEls. Option ::= ELSE "->" [Step];
+OptionSt. Option ::= Steps;
+OptionEls. Option ::= ELSE "->" Steps;
 
 StmtIf. Stmt ::= IF "::" [Option] "fi";
 StmtDo. Stmt ::= DO "::" [Option] "od";
-StmtFor. Stmt ::= FOR "(" Range ")" "{" [Step] "}";
+StmtFor. Stmt ::= FOR "(" Range ")" "{" Steps "}";
 StmtGoto. Stmt ::= GOTO ID;
 StmtLabel. Stmt ::= ID COL Stmt;
 StmtAssign. Stmt ::= LVal AS Exp;
