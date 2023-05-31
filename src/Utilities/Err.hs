@@ -1,6 +1,6 @@
 module Utilities.Err where
 
-import Control.Applicative (Alternative (..), Applicative (..))
+import Control.Applicative (Alternative (..))
 import Control.Monad (MonadPlus (..), liftM)
 
 data Err a = Ok a | Bad String
@@ -14,14 +14,15 @@ instance Monad Err where
 instance Applicative Err where
   pure = Ok
   (Bad s) <*> _ = Bad s
-  (Ok f) <*> o = liftM f o
+  (Ok f) <*> o = fmap f o
 
 instance Functor Err where
   fmap = liftM
 
 instance MonadPlus Err where
   mzero = Bad "Error message"
-  mplus (Bad _) y = y
+  mplus (Bad s) _ = Bad s
+  mplus _ (Bad s) = Bad s
   mplus x _ = x
 
 instance Alternative Err where
