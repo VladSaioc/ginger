@@ -8,34 +8,28 @@ import Utilities.Position
 -- Environment from original source name to alpha-converted name
 type Env = M.Map String String
 
--- Environment from original source name to alpha-index
-type AEnv = M.Map String Int
-
 -- Alpha conversion context:
 -- 1. The binding in the current scope
 -- 2. The next available name
-data Ctxt a = Ctxt Env AEnv a deriving (Eq, Ord, Read, Show)
+data Ctxt a = Ctxt Env Int a deriving (Eq, Ord, Read, Show)
 
 alphaConvert :: Spec -> Spec
 alphaConvert (Spec ms) =
-  let ctx' = Prelude.foldl alphaDefs (Ctxt M.empty M.empty []) ms
+  let ctx' = Prelude.foldl alphaDefs (Ctxt M.empty 0 []) ms
       Ctxt _ _ ms' = Prelude.foldl alphaModules ctx' ms
    in Spec (reverse ms')
 
-alphaDeclareVar :: (Env, AEnv) -> Ident -> (Env, AEnv)
-alphaDeclareVar (env, aenv) x =
-  let i = Data.Maybe.fromMaybe 0 (M.lookup x aenv)
-      x' = x ++ show i
-      aenv' = M.insert x (i + 1) aenv
-      env' = M.insert x x' env
-   in (env', aenv')
+alphaDeclareVar :: (Env, Int) -> Ident -> (Env, Int)
+alphaDeclareVar (env, idx) x =
+  let x' = x ++ "'" ++ show idx
+   in (M.insert x x' env, idx + 1)
 
 alphaDefs :: Ctxt [Module] -> Module -> Ctxt [Module]
-alphaDefs ctx@(Ctxt env aenv ms) = \case
+alphaDefs ctx@(Ctxt env idx ms) = \case
   TopDecl x t v ->
-    let (env', aenv') = alphaDeclareVar (env, aenv) x
+    let (env', idx') = alphaDeclareVar (env, idx) x
         x' = Data.Maybe.fromJust (M.lookup x env')
-     in Ctxt env' aenv' (TopDecl x' t v : ms)
+     in Ctxt env' idx' (TopDecl x' t v : ms)
   _ -> ctx
 
 alphaModules :: Ctxt [Module] -> Module -> Ctxt [Module]
@@ -61,7 +55,7 @@ alphaParam (Ctxt env aenv ps) (x, t) =
 alphaStmt :: Ctxt [Pos Stmt] -> Pos Stmt -> Ctxt [Pos Stmt]
 alphaStmt ctx@(Ctxt env aenv ss) (Pos p s) =
   let alph = Prelude.foldl alphaStmt
-      controlFlow c os mels =
+      branchingPoint c os mels =
         let alpha ctx' ss'' =
               let Ctxt e a ss' = alphaStmt ctx' ss''
                in Ctxt e a (reverse ss')
@@ -86,8 +80,8 @@ alphaStmt ctx@(Ctxt env aenv ss) (Pos p s) =
               x' = Data.Maybe.fromJust (M.lookup x env')
               s' = Pos p (Decl x' t e')
            in Ctxt env' aenv' (s' : ss)
-        If os mels -> controlFlow If os mels
-        Do os mels -> controlFlow Do os mels
+        If os mels -> branchingPoint If os mels
+        Do os mels -> branchingPoint Do os mels
         For r body ->
           let r' = alphaRange env r
               Ctxt _ aenv' body' = alph (Ctxt env aenv []) body
@@ -107,9 +101,11 @@ alphaStmt ctx@(Ctxt env aenv ss) (Pos p s) =
         ExpS e ->
           let e' = alphaExp env e
            in Ctxt env aenv (p @ ExpS e' : ss)
-        Label lbl stm ->
-          let Ctxt env' aenv' [stm'] = alph ctx [stm]
-           in Ctxt env' aenv' (p @ Label lbl stm' : ss)
+        Label lbl stm -> case alph ctx [stm] of
+          Ctxt env' aenv' [stm'] -> Ctxt env' aenv' (p @ Label lbl stm' : ss)
+          -- FIXME: If the produced alpha-converted statement is not a singleton,
+          -- it should be addressed with more rigorous checks.
+          Ctxt env' aenv' _ -> Ctxt env' aenv' ss
 
 alphaExp :: Env -> Exp -> Exp
 alphaExp env =
