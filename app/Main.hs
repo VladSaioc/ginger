@@ -9,23 +9,21 @@ import Pipeline.Translation.Workflow
 import Promela.GetAst qualified as P
 import System.Directory (createDirectory, doesDirectoryExist)
 import System.Environment
+import Utilities.Args
 import Utilities.Err
 import Utilities.PrettyPrint (PrettyPrint (prettyPrint))
-
-_DIST :: String
-_DIST = "output"
 
 mkdir :: [Char] -> IO ()
 mkdir dir = do
   putStrLn ("Checking directory " ++ dir ++ "...")
-  dirExists <- doesDirectoryExist _DIST
-  unless dirExists $ createDirectory _DIST
+  dirExists <- doesDirectoryExist dir
+  unless dirExists $ createDirectory dir
 
 main :: IO ()
 main = do
   args <- getArgs
   let parseFileName = unpack . replace (pack "/") (pack "#") . pack
-  let workflow file ir =
+  let workflow out file ir =
         let result =
               ( do
                   ir' <- ir
@@ -44,26 +42,24 @@ main = do
                 Ok prog ->
                   ( do
                       putStrLn "Succesfully generated and optimized back-end."
-                      mkdir _DIST
-                      writeFile (_DIST ++ "/" ++ file) (prettyPrint 0 prog)
+                      mkdir out
+                      writeFile (out ++ "/" ++ file) (prettyPrint 0 prog)
                       return ()
                   )
                 Bad err -> putStrLn ("ERROR: " ++ err)
-  case args of
-    ("ir" : filePath : _) -> do
-      let fileName = parseFileName filePath ++ ".dfy"
-      source <- readFile filePath
-      let ir = I.getAst source
-      _ <- workflow fileName ir
-      putStr "Done.\n"
-    (filePath : _) -> do
-      let fileName = parseFileName filePath ++ ".dfy"
+  case getFilePath args of
+    Ok filePath -> do
+      let outputFileName = parseFileName filePath ++ ".dfy"
+      let outputDir = getResultDir args
       source <- readFile filePath
       let ir =
-            ( do
-                prom <- P.getAst source
-                promelaToIR prom
-            )
-      workflow fileName ir
-    _ -> do
-      putStr "Give me a Promela file."
+            if hasIRFlag args
+              then I.getAst source
+              else
+                ( do
+                    prom <- P.getAst source
+                    promelaToIR prom
+                )
+      _ <- workflow outputDir outputFileName ir
+      putStr "Done.\n"
+    Bad _ -> putStr "Give me a Promela file."
