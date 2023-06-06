@@ -130,7 +130,7 @@ traverseExp ctx =
                 ctx' <- visit es
                 let ctx'' = ctx' {ancestors = S.insert f (ancestors ctx')}
                 ctx''' <- traverseStmts (ctx'' {syntax = ss})
-                return (ctx''' {visited = S.insert f (visited ctx''')})
+                return (ctx' {visited = S.insert f (visited ctx''')})
               Just _ -> Bad ("Name '" ++ f ++ "' is not bound to a function")
               _ -> Bad ("Call to unknown function: " ++ f)
         _ -> return (wrapCtx ctx)
