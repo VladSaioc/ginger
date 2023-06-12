@@ -108,7 +108,7 @@ allowedStmts ctxt =
                 Goto lbl -> err ("Unexpected \"goto: " ++ lbl ++ "\"")
                 Break -> err "Unexpected break"
                 Skip -> allowedStmts (ctxt {syntax = ss})
-                Label lbl _ -> err ("Unexpected label: " ++ lbl)
+                Label _ -> allowedStmts (ctxt {syntax = ss})
                 Send _ es -> do
                   es' <- foldMonad expVars S.empty S.union es
                   S.disjoint (loopVars ctxt) es' ! "Loop-relevant value sent to channel"

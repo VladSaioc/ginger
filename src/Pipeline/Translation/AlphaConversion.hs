@@ -101,11 +101,7 @@ alphaStmt ctx@(Ctxt env aenv ss) (Pos p s) =
         ExpS e ->
           let e' = alphaExp env e
            in Ctxt env aenv (p @ ExpS e' : ss)
-        Label lbl stm -> case alph ctx [stm] of
-          Ctxt env' aenv' [stm'] -> Ctxt env' aenv' (p @ Label lbl stm' : ss)
-          -- FIXME: If the produced alpha-converted statement is not a singleton,
-          -- it should be addressed with more rigorous checks.
-          Ctxt env' aenv' _ -> Ctxt env' aenv' ss
+        Label lbl -> Ctxt env aenv (p @ Label lbl : ss)
 
 alphaExp :: Env -> Exp -> Exp
 alphaExp env =

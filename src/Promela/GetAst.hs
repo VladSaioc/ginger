@@ -166,12 +166,8 @@ pStmt =
           return (l @@ For r' ss')
         -- goto label
         Raw.StmtGoto (Raw.GOTO l) label -> return (l @@ Goto (label &))
-        -- label: s
-        Raw.StmtLabel lbl _ s -> do
-          let l = (lbl ~)
-          let lbl' = (lbl &)
-          s' <- pStmt s
-          return (l @ Label lbl' s')
+        -- label: skip
+        Raw.StmtLabel lbl _ _ -> return ((lbl ~) @ Label (lbl &))
         -- v = e
         Raw.StmtAssign v' _ e' ->
           return

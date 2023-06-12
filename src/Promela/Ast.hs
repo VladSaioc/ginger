@@ -30,7 +30,7 @@ data Stmt
   | Recv LVal [Exp]
   | Send LVal [Exp]
   | ExpS Exp
-  | Label Ident (Pos Stmt)
+  | Label Ident
   deriving (Eq, Ord, Read, Show)
 
 data Exp

@@ -84,7 +84,6 @@ traverseStmts ctx = case syntax ctx of
       Recv _ es -> visitExpressions es
       Send _ es -> visitExpressions es
       ExpS e -> traverseExp (ctx' {syntax = e})
-      Label _ stm -> traverseStmts (ctx' {syntax = [stm]})
       _ -> return ctx'
 
 traverseRange :: Ctxt Range -> Err (Ctxt ())

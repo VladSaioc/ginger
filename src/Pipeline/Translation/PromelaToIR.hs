@@ -125,7 +125,7 @@ translateFor ctx = case syntax ctx of
       if commStmt s
         then addOp s
         else case s of
-          P.Label _ s' -> translateFor (ctx {syntax = [s']})
+          P.Label _ -> wrapCtx ctx
           P.Assert _ -> wrapCtx ctx
           P.Skip -> wrapCtx ctx
           _ -> err ("Unexpected statement in for: " ++ show s)
