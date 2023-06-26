@@ -80,7 +80,7 @@ allowedStmts ctxt =
    in case syntax ctxt of
         [] -> ok
         Pos p s : ss ->
-          let err msg = Bad (":" ++ show p ++ ": " ++ msg)
+          let err = posErr p
               (!) prop msg = if prop then Ok () else err msg
            in case s of
                 Decl {} -> err "Unexpected declaration"

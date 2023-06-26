@@ -36,8 +36,8 @@ transferCtx a = \case
         syntax = a
       }
 
-wrapCtx :: Ctxt b -> Ctxt ()
-wrapCtx = transferCtx ()
+wrap :: Ctxt b -> Ctxt ()
+wrap = transferCtx ()
 
 updateCtxVisited :: Ctxt a -> Ctxt b -> Ctxt a
 updateCtxVisited ctx ctx' =
@@ -53,7 +53,7 @@ noRecursion (Spec ms) =
 
 traverseStmts :: Ctxt [Pos Stmt] -> Err (Ctxt ())
 traverseStmts ctx = case syntax ctx of
-  [] -> return (wrapCtx ctx)
+  [] -> return (wrap ctx)
   Pos _ s : ss -> do
     -- Traverse successor statements
     ctx' <- traverseStmts (ctx {syntax = ss})
@@ -73,7 +73,7 @@ traverseStmts ctx = case syntax ctx of
     case s of
       Decl _ _ me -> case me of
         Just e -> traverseExp (ctx' {syntax = e})
-        _ -> return (wrapCtx ctx)
+        _ -> return (wrap ctx)
       If os mels -> branchingFlow os mels
       Do os mels -> branchingFlow os mels
       For r ss' -> do
@@ -91,17 +91,17 @@ traverseRange ctx =
   let visit =
         Control.Monad.foldM
           (\c e -> fmap (updateCtxVisited c) (traverseExp (c {syntax = e})))
-          (wrapCtx ctx)
+          (wrap ctx)
    in case syntax ctx of
         Between _ e1 e2 -> visit [e1, e2]
-        _ -> return (wrapCtx ctx)
+        _ -> return (wrap ctx)
 
 traverseExp :: Ctxt Exp -> Err (Ctxt ())
 traverseExp ctx =
   let visit =
         Control.Monad.foldM
           (\c e -> fmap (updateCtxVisited c) (traverseExp (c {syntax = e})))
-          (wrapCtx ctx)
+          (wrap ctx)
    in case syntax ctx of
         And e1 e2 -> visit [e1, e2]
         Or e1 e2 -> visit [e1, e2]
@@ -123,7 +123,7 @@ traverseExp ctx =
               [ (S.member f (ancestors ctx), "Function " ++ f ++ " is called recursively.")
               ]
           if S.member f (visited ctx)
-            then return (wrapCtx ctx)
+            then return (wrap ctx)
             else case M.lookup f (callgraph ctx) of
               Just (Proc _ _ ss) -> do
                 ctx' <- visit es
@@ -132,4 +132,4 @@ traverseExp ctx =
                 return (ctx' {visited = S.insert f (visited ctx''')})
               Just _ -> Bad ("Name '" ++ f ++ "' is not bound to a function")
               _ -> Bad ("Call to unknown function: " ++ f)
-        _ -> return (wrapCtx ctx)
+        _ -> return (wrap ctx)

@@ -117,7 +117,7 @@ translateFor :: Ctxt [Pos P.Stmt] [P'.Op] -> Err (Ctxt () [P'.Op])
 translateFor ctx = case syntax ctx of
   [] -> wrapCtx (ctx {curr = reverse (curr ctx)})
   Pos p s : ss -> do
-    let err msg = Bad (":" ++ show p ++ ": " ++ msg)
+    let err = posErr p
     let addOp op = do
           ctx' <- translateOp (Pos p op >: ctx)
           return (ctx' <: (curr ctx' : curr ctx))

@@ -1,6 +1,7 @@
 module Utilities.Position where
 
 import Control.Monad (liftM)
+import Utilities.Err
 
 pattern NoPos :: (Eq a, Num a) => a
 pattern NoPos = -1
@@ -29,3 +30,6 @@ instance Show a => Show (Pos a) where
 
 (@>) :: Pos a -> (a -> b) -> Pos b
 (@>) (Pos l a) f = Pos l (f a)
+
+posErr :: Int -> String -> Err a
+posErr p msg = Bad (":" ++ show p ++ ": " ++ msg)
