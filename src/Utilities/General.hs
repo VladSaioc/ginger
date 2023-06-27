@@ -1,5 +1,8 @@
 module Utilities.General (results, foldMonad, binaryCons, unaryCons) where
 
+import Control.Monad
+import Data.Functor
+
 results :: Monad m => [m a] -> m [a]
 results [] = return []
 results (r : rs) = do
@@ -8,14 +11,7 @@ results (r : rs) = do
   return (rv : rs')
 
 foldMonad :: (Foldable t1, Monad m) => (t2 -> m t3) -> t4 -> (t4 -> t3 -> t4) -> t1 t2 -> m t4
-foldMonad process start combine =
-  Prelude.foldl
-    ( \ms e -> do
-        s1 <- ms
-        s2 <- process e
-        return $ combine s1 s2
-    )
-    (return start)
+foldMonad f start combine = Control.Monad.foldM (\b -> (Data.Functor.<&> combine b) . f) start
 
 binaryCons :: Monad m => (a -> m b) -> (b -> b -> c) -> a -> a -> m c
 binaryCons p cons e1 e2 = do

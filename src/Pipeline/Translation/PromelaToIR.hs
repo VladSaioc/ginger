@@ -62,6 +62,7 @@ translateStatements ctx = case syntax ctx of
           ctx' <- translateOp (Pos p op >: ctx)
           let stm = P'.Seq (curr ctx) (P'.Atomic (curr ctx'))
           translateStatements (ss >: ctx' <: stm)
+        err = posErr p
     case s of
       P.Send {} -> addOp s
       P.Recv {} -> addOp s
@@ -75,7 +76,7 @@ translateStatements ctx = case syntax ctx of
                       chenv = M.insert c c (chenv ctx)
                     }
             translateStatements (ss >: ctx1)
-          _ -> Bad ("Channel " ++ c ++ " has no capacity.")
+          _ -> err $ "Channel " ++ c ++ " has no capacity."
       P.ExpS (P.Run f es) ->
         case M.lookup f (cg ctx) of
           Just (P.Proc _ ps ss') -> do
@@ -103,9 +104,14 @@ translateStatements ctx = case syntax ctx of
                       curr = P'.Skip
                     }
             ctx2 <- translateStatements ctx1
-            let ctx3 = ctx {nextpid = nextpid ctx2, procs = procs ctx2, chans = chans ctx2}
+            let ctx3 =
+                  ctx
+                    { nextpid = nextpid ctx2,
+                      procs = procs ctx2,
+                      chans = chans ctx2
+                    }
             translateStatements (ss >: ctx3)
-          _ -> Bad ("Function " ++ f ++ " not in call-graph.")
+          _ -> err $ "Function " ++ f ++ " not in call-graph."
       P.For r ss' -> do
         (x, e1', e2') <- translateRange (varenv ctx) r
         ctx' <- translateFor (ss' >: ctx <: [])
@@ -162,7 +168,7 @@ translateOp ctx =
    in case syntax ctx of
         Pos _ (P.Send (P.Var c) _) -> translate P'.Send c
         Pos _ (P.Recv (P.Var c) _) -> translate P'.Recv c
-        Pos p _ -> Bad (":" ++ show p ++ ": Unexpected statement.")
+        Pos p s -> posErr p $ "Unexpected statement: " ++ show s
 
 translateVal :: String -> P.Val -> P'.Exp
 translateVal x = \case

@@ -19,6 +19,7 @@ src/Promela/*.txt
 !src/Promela/Ast.hs
 !src/Promela/GetAst.hs
 !src/Promela/Utilities.hs
+!src/Promela/CommType.hs
 
 # Generated Trace front-end
 src/Trace/*.hs

@@ -13,15 +13,10 @@ import Utilities.General
 (&) :: R'.ID -> String
 (&) (R'.ID (_, x)) = x
 
-foldM :: Monad m => (a -> m b) -> [a] -> m [b]
-foldM f rs =
-  let (|>) r1 r2 = do
-        o1 <- r1
-        o2 <- f r2
-        return (o2 : o1)
-   in do
-        os' <- foldl (|>) (return []) rs
-        return (reverse os')
+composeSyntax :: Monad m => (a -> m b) -> [a] -> m [b]
+composeSyntax f rs = do
+  os' <- foldMonad f [] (flip (:)) rs
+  return (reverse os')
 
 -- Parses the given string as a Promela program and
 -- performs additional refinement on the existing parse tree.
@@ -31,8 +26,8 @@ getAst = pProgram . pProg . myLexer
 pProgram :: R''.Err R'.Prog -> Err Prog
 pProgram = \case
   R''.Ok (R'.Prog chs ps) -> do
-    chs' <- foldM pChan chs
-    ps' <- foldM pProc ps
+    chs' <- composeSyntax pChan chs
+    ps' <- composeSyntax pProc ps
     return (Prog chs' ps')
   R''.Bad err -> Bad err
 
@@ -57,7 +52,7 @@ pStm = \case
   R'.For _ x e1 e2 os -> do
     e1' <- pExp e1
     e2' <- pExp e2
-    os' <- foldM pOp os
+    os' <- composeSyntax pOp os
     return (For (x &) e1' e2' os')
 
 pOp :: R'.Op -> Err Op
