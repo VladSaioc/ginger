@@ -1,4 +1,4 @@
-module Pipeline.Translation.SyntaxOk (allowed) where
+module Pipeline.Sanity.PromelaAllowed (allowed) where
 
 import Data.List qualified as L
 import Data.Set qualified as S
@@ -134,7 +134,7 @@ expVars =
   let bin = binaryCons expVars S.union
    in \case
         Chan e -> expVars e
-        Const _ -> Ok S.empty
+        Const _ -> return S.empty
         And e1 e2 -> bin e1 e2
         Or e1 e2 -> bin e1 e2
         Eq e1 e2 -> bin e1 e2
@@ -150,7 +150,7 @@ expVars =
         Neg e -> expVars e
         Not e -> expVars e
         EVar x -> lvalVars x
-        Run f _ -> Bad ("Unexpected RUN expression of " ++ f)
+        Run f _ -> Bad $ "Unexpected RUN expression of " ++ f
         Len _ -> Bad "Unexpected \"len\" expression."
 
 lvalVars :: LVal -> Err (S.Set Ident)

@@ -2,10 +2,10 @@ module Pipeline.Translation.Workflow where
 
 import IR.Ast (Prog)
 import IR.Simplifier (simplify)
+import Pipeline.Sanity.CallgraphOk (noRecursion)
+import Pipeline.Sanity.PromelaAllowed (allowed)
 import Pipeline.Translation.AlphaConversion (alphaConvert)
-import Pipeline.Translation.CallgraphOk (noRecursion)
 import Pipeline.Translation.PromelaToIR (getIR)
-import Pipeline.Translation.SyntaxOk (allowed)
 import Promela.Ast (Spec)
 import Utilities.Err
 

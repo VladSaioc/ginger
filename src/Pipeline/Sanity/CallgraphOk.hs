@@ -1,4 +1,4 @@
-module Pipeline.Translation.CallgraphOk (noRecursion) where
+module Pipeline.Sanity.CallgraphOk (noRecursion) where
 
 import Control.Monad
 import Data.Map qualified as M
