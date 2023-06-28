@@ -1,6 +1,5 @@
 module Go.Utilities where
 
-import Data.List
 import Go.Ast
 
 -- Turns:

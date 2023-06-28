@@ -68,7 +68,7 @@ instance PrettyPrint Stmt where
           Close c -> tab "close(" ++ c ++ ")"
           Block ss -> block 0 ss
           If e s1 s2 ->
-            let s2' = ([unwords [tab "}, else", unlines ["{", block 1 s2]] | s2 /= []])
+            let s2' = [unwords [tab "}, else", unlines ["{", block 1 s2]] | s2 /= []]
              in unlines $
                   [ tab $ unwords ["if", show e, "{"],
                     block 1 s1
