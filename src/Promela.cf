@@ -103,7 +103,8 @@ StepStmt. Step ::= Stmt;
 
 -- Statements
 separator nonempty Option "::";
-OptionSt. Option ::= Steps;
+OptionSt. Option ::= Step "->" Steps;
+OptionSt2. Option ::= Step ";" Steps;
 OptionEls. Option ::= ELSE "->" Steps;
 
 StmtIf. Stmt ::= IF "::" [Option] "fi";

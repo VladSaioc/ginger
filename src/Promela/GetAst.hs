@@ -207,7 +207,8 @@ pStmt =
 getElse :: [Raw.Option] -> Err (Maybe [Pos Stmt])
 getElse =
   let f = \case
-        Raw.OptionSt _ -> id
+        Raw.OptionSt {} -> id
+        Raw.OptionSt2 {} -> id
         Raw.OptionEls _ ss -> \e' -> do
           e <- e'
           els <- results (map pStep (listSteps ss))
@@ -216,12 +217,27 @@ getElse =
             Nothing -> return (Just els)
    in foldr f (return Nothing)
 
-pOptions :: [Raw.Option] -> Err [[Pos Stmt]]
+pOptions :: [Raw.Option] -> Err [(Pos Stmt, [Pos Stmt])]
 pOptions os =
-  let f = \case
-        Raw.OptionSt ss -> \steps -> results (map pStep (listSteps ss)) : steps
-        _ -> id
-   in results (foldr f [] os)
+  let f =
+        let processBranch s ss = do
+              s' <- pStep s
+              ss' <- results (map pStep (listSteps ss))
+              return (s', ss')
+         in \case
+              Raw.OptionSt s ss -> processBranch s ss
+              Raw.OptionSt2 s ss -> processBranch s ss
+              Raw.OptionEls {} -> return (return Skip, [])
+   in do
+        let os'' =
+              filter
+                ( \case
+                    Raw.OptionEls {} -> False
+                    _ -> True
+                )
+                os
+        os' <- Utilities.General.foldMonad f [] (flip (:)) os''
+        return $ reverse os'
 
 pRange :: Raw.Range -> Err (Pos Range)
 pRange = \case
