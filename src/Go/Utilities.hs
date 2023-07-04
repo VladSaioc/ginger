@@ -1,6 +1,7 @@
 module Go.Utilities where
 
 import Go.Ast
+import Utilities.Position
 
 -- Turns:
 -- if e1 s1
@@ -15,14 +16,14 @@ import Go.Ast
 -- else if e2 s2
 -- else if e1 s1
 -- else { ... }
-flipIfs :: Stmt -> Stmt
+flipIfs :: Pos Stmt -> Pos Stmt
 flipIfs s =
   let collectBranches = \case
-        If e s' [els] -> (e, s') : collectBranches els
+        Pos p (If e s' [els]) -> Pos p (e, s') : collectBranches els
         _ -> []
       getElse = \case
-        If _ _ [els] -> getElse els
-        If _ _ els -> Block els
-        s' -> s'
+        Pos _ (If _ _ [els]) -> getElse els
+        Pos p (If _ _ els) -> Pos p $ Block els
+        ps' -> ps'
       branches = collectBranches s
-   in foldl (\els (e, s') -> If e s' [els]) (getElse s) branches
+   in foldl (\(Pos p els) (Pos p' (e, s')) -> Pos p' $ If e s' [Pos p els]) (getElse s) branches
