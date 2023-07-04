@@ -2,11 +2,15 @@ module Utilities.Position where
 
 import Control.Monad (liftM)
 import Utilities.Err
+import Utilities.PrettyPrint
 
 pattern NoPos :: (Eq a, Num a) => a
 pattern NoPos = -1
 
 data Pos a = Pos Int a deriving (Read, Eq, Ord)
+
+instance PrettyPrint a => PrettyPrint (Pos a) where
+  prettyPrint n (Pos _ a) = prettyPrint n a
 
 instance Monad Pos where
   return = pure
