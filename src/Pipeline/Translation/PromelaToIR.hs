@@ -117,7 +117,7 @@ translateStatements ctx = case syntax ctx of
         ctx' <- translateFor (ss' >: ctx <: [])
         let ctx'' = ctx <: P'.Seq (curr ctx) (P'.For x e1' e2' (curr ctx'))
         translateStatements (ss >: ctx'')
-      _ -> translateStatements (ctx {syntax = ss})
+      _ -> translateStatements (ss >: ctx)
 
 translateFor :: Ctxt [Pos P.Stmt] [P'.Op] -> Err (Ctxt () [P'.Op])
 translateFor ctx = case syntax ctx of
