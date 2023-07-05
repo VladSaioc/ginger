@@ -90,16 +90,16 @@ instance Show Module where
     TopDecl x _ v -> unwords ["#define ", x, show v]
     Init ss -> unlines $ ["init {"] ++ map (prettyPrint 1) ss ++ ["}"]
     Proc f ps ss ->
-      let params = intercalate "; " $ map show ps
+      let params = intercalate "; " $ map showParam ps
           header = unwords ["proctype", f ++ "(" ++ params ++ ")", "{"]
        in unlines $ header : map (prettyPrint 1) ss
-    Typedef x fs -> unwords ["typedef", x ++ "{", unlines $ map (prettyPrintField 1) fs, "}"]
+    Typedef x fs -> unwords ["typedef", x ++ "{", unlines $ map ((++ ";") . prettyPrintField 1) fs, "}"]
 
 instance Show Stmt where
   show = prettyPrint 0
 
-instance PrettyPrint Param where
-  prettyPrint _ (x, t) = unwords [show t, x]
+showParam :: Show a => (String, a) -> String
+showParam (x, t) = unwords [show t, x]
 
 instance PrettyPrint Stmt where
   prettyPrint n =
@@ -173,7 +173,7 @@ instance Show Type where
 prettyPrintField :: (Show a1, Show a2) => Int -> (String, a1, Maybe a2) -> String
 prettyPrintField n (f, t, me) =
   let e = maybe "" show me
-   in unwords [indent n ++ show t, f, e ++ ";"]
+   in unwords [indent n ++ show t, f, "=", e]
 
 instance Show Exp where
   show =
