@@ -40,8 +40,8 @@ alphaModules ctx@(Ctxt env aenv ms) = \case
      in Ctxt env aenv' (Init (reverse ss') : ms)
   Proc f ps ss ->
     let Ctxt env' aenv' ps' = Prelude.foldl alphaParam (Ctxt env aenv []) ps
-        Ctxt _ aenv'' ss' = Prelude.foldl alphaStmt (Ctxt env' aenv' []) ss
-     in Ctxt env aenv'' (Proc f (reverse ps') (reverse ss') : ms)
+        Ctxt _ aenv2 ss' = Prelude.foldl alphaStmt (Ctxt env' aenv' []) ss
+     in Ctxt env aenv2 (Proc f (reverse ps') (reverse ss') : ms)
   Typedef t fs ->
     let fs' = Prelude.map (\(f, ft, me) -> (f, ft, fmap (alphaExp env) me)) fs
      in Ctxt env aenv (Typedef t fs' : ms)
@@ -53,22 +53,23 @@ alphaParam (Ctxt env aenv ps) (x, t) =
    in Ctxt env' aenv' ((x', t) : ps)
 
 alphaStmt :: Ctxt [Pos Stmt] -> Pos Stmt -> Ctxt [Pos Stmt]
-alphaStmt ctx@(Ctxt env aenv ss) (Pos p s) =
+alphaStmt (Ctxt env aenv ss) (Pos p s) =
   let alph = Prelude.foldl alphaStmt
       branchingPoint c os mels =
-        let alpha ctx' ss'' =
-              let Ctxt e a ss' = alphaStmt ctx' ss''
-               in Ctxt e a (reverse ss')
-            alphaBranch (Ctxt e a bs) b =
-              let Ctxt e' a' b' = alpha (Ctxt e a []) b
-               in Ctxt e' a' (b' : bs)
-            Ctxt env' aenv' os' = Prelude.foldl (Prelude.foldl alphaBranch) (Ctxt env aenv []) os
-            Ctxt env'' aenv'' mels' = case mels of
+        let alphaBranch (Ctxt e a bs) (c0, ss0) =
+              let Ctxt e' a' c2 = alphaStmt (Ctxt e a []) c0
+                  c' = case c2 of
+                    [c3] -> c3
+                    _ -> Pos NoPos Skip
+                  Ctxt e2 a2 ss' = alph (Ctxt e' a' []) ss0
+               in Ctxt e2 a2 ((c', ss') : bs)
+            Ctxt env' aenv' os' = Prelude.foldl alphaBranch (Ctxt env aenv []) os
+            Ctxt env2 aenv2 mels' = case mels of
               Just els ->
-                let Ctxt aenv''' env''' els' = alph (Ctxt env' aenv' []) els
-                 in Ctxt aenv''' env''' (Just els')
+                let Ctxt aenv3 env3 els' = alph (Ctxt env' aenv' []) els
+                 in Ctxt aenv3 env3 (Just els')
               Nothing -> Ctxt env' aenv' Nothing
-         in Ctxt env'' aenv'' (p @ c (reverse os') mels' : ss)
+         in Ctxt env2 aenv2 (p @ c (reverse os') mels' : ss)
       chOp c x es =
         let x' = alphaLVal env x
             es' = Prelude.map (alphaExp env) es

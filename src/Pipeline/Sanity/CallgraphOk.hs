@@ -66,7 +66,8 @@ traverseStmts ctx = case syntax ctx of
     let visitExpressions = visit traverseExp ctx'
     -- Helper function for branching control flow with option "else" branch
     let branchingFlow os mels = do
-          ctx'' <- visitBranches ctx' os
+          let os' = map (uncurry (:)) os
+          ctx'' <- visitBranches ctx' os'
           case mels of
             Just els -> traverseStmts (ctx'' {syntax = els})
             Nothing -> return ctx'
