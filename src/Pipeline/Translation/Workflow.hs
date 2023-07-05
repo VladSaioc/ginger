@@ -1,11 +1,14 @@
 module Pipeline.Translation.Workflow where
 
+import Debug.Trace (trace)
+import Go.GoForCommute (goForCommute)
 import IR.Ast (Prog)
 import IR.Simplifier (simplify)
 import Pipeline.Sanity.CallgraphOk (noRecursion)
-import Pipeline.Sanity.PromelaAllowed (allowed)
+import Pipeline.Sanity.GoAllowed (allowed)
 import Pipeline.Translation.AlphaConversion (alphaConvert)
-import Pipeline.Translation.PromelaToIR (getIR)
+import Pipeline.Translation.GoToIR (getIR)
+import Pipeline.Translation.PromelaToGo (getGo)
 import Promela.Ast (Spec)
 import Utilities.Err
 
@@ -13,6 +16,9 @@ promelaToIR :: Spec -> Err Prog
 promelaToIR p = do
   let p' = alphaConvert p
   _ <- noRecursion p'
-  _ <- allowed p'
-  ir <- getIR p'
+  g <- getGo p'
+  let g1 = goForCommute g
+  _ <- allowed g1
+  _ <- trace (unlines ["", "Go represention of program:", "", show g1]) (return ())
+  ir <- getIR g1
   return $ simplify ir

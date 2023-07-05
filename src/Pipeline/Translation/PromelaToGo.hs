@@ -199,7 +199,7 @@ translateStatements ctx = case syntax ctx of
                         translateStatements $ ss >: ctx'
                       _ -> err $ "Channel " ++ x ++ " has no capacity."
                   P.TInt -> primitiveDecl $ P'.CNum 0
-                  P.TBool -> primitiveDecl P'.False
+                  P.TBool -> primitiveDecl P'.CFalse
                   P.TNamed _ -> translateStatements $ ss >: ctx
           P.ExpS (P.Run f es) ->
             case M.lookup f (cg ctx) of
@@ -277,8 +277,8 @@ translateExpPos p venv =
       un = unaryCons (translateExp venv)
    in \case
         P.Const (P.VInt n) -> return $ P'.CNum n
-        P.Const (P.VBool False) -> return P'.False
-        P.Const (P.VBool True) -> return P'.True
+        P.Const (P.VBool False) -> return P'.CFalse
+        P.Const (P.VBool True) -> return P'.CTrue
         P.Not e -> un P'.Not e
         P.And e1 e2 -> bin P'.And e1 e2
         P.Or e1 e2 -> bin P'.Or e1 e2
@@ -313,6 +313,6 @@ translateOp ctx =
 translateVal :: P.Val -> Maybe P'.Exp
 translateVal v = case v of
   P.VInt n -> return $ P'.CNum n
-  P.VBool True -> return P'.True
-  P.VBool False -> return P'.False
+  P.VBool True -> return P'.CTrue
+  P.VBool False -> return P'.CFalse
   _ -> Nothing

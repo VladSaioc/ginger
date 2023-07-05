@@ -32,8 +32,8 @@ data CommOp
 
 data Exp
   = CNum Int
-  | True
-  | False
+  | CTrue
+  | CFalse
   | And Exp Exp
   | Or Exp Exp
   | Not Exp
@@ -112,8 +112,8 @@ instance Show Exp where
     let bin e1 op e2 = unwords ["(" ++ show e1 ++ ")", op, "(" ++ show e2 ++ ")"]
         un op e = op ++ "(" ++ show e ++ ")"
      in \case
-          Go.Ast.True -> "true"
-          Go.Ast.False -> "false"
+          CTrue -> "true"
+          CFalse -> "false"
           And e1 e2 -> bin e1 "&&" e2
           Or e1 e2 -> bin e1 "||" e2
           Le e1 e2 -> bin e1 "<=" e2
@@ -133,7 +133,7 @@ instance Show Exp where
 
 instance Show CommOp where
   show = \case
-    Send c -> c ++ "<-"
+    Send c -> c ++ " <-"
     Recv c -> "<-" ++ c
     Star -> "*"
 

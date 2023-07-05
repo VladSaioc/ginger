@@ -68,7 +68,7 @@ allowedStmts ctx =
               err = posErr p
               (!) prop msg = if prop then return () else err msg
            in case s of
-                Decl {} -> err "Unexpected declaration"
+                Decl x _ -> err $ "Unexpected declaration for: " ++ x
                 Chan {} -> err "Unexpected channel declaration"
                 Close {} -> err "Unexpected channel close"
                 While {} -> err "Unexpected 'while' loop"
@@ -106,8 +106,8 @@ expVars =
   let bin = binaryCons expVars S.union
    in \case
         CNum _ -> return S.empty
-        Go.Ast.True -> return S.empty
-        Go.Ast.False -> return S.empty
+        CTrue -> return S.empty
+        CFalse -> return S.empty
         And e1 e2 -> bin e1 e2
         Or e1 e2 -> bin e1 e2
         Eq e1 e2 -> bin e1 e2

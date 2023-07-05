@@ -1,7 +1,6 @@
 module Pipeline.Translation.GoToIR (getIR) where
 
 import Data.Map qualified as M
-import Debug.Trace
 import Go.Ast qualified as P
 import IR.Ast qualified as P'
 import Utilities.Err
@@ -19,7 +18,7 @@ data Ctxt a b = Ctxt
     chans :: M.Map String P'.Exp,
     curr :: b
   }
-  deriving (Eq, Ord, Read)
+  deriving (Eq, Ord, Read, Show)
 
 wrapCtx :: Ctxt a b -> Err (Ctxt () b)
 wrapCtx ctx = return ctx {syntax = ()}
@@ -67,26 +66,26 @@ translateStatements ctx = case syntax ctx of
               }
       translateStatements (ss >: ctx1)
     P.Go ss' -> do
-      let ctx1 =
-            Ctxt
-              { syntax = ss',
-                pid = nextpid ctx,
-                nextpid = nextpid ctx + 1,
-                varenv = varenv ctx,
-                chenv = chenv ctx,
-                procs = procs ctx,
-                chans = chans ctx,
-                curr = P'.Skip
-              }
-      ctx2 <- translateStatements ctx1
-      let ctx3 =
+      ctx1 <-
+        translateStatements
+          Ctxt
+            { syntax = ss',
+              procs = procs ctx,
+              pid = nextpid ctx,
+              nextpid = nextpid ctx + 1,
+              varenv = varenv ctx,
+              chenv = chenv ctx,
+              chans = chans ctx,
+              curr = P'.Skip
+            }
+      let ctx2 =
             ctx
-              { nextpid = nextpid ctx2,
-                procs = procs ctx2,
-                chans = chans ctx2,
-                chenv = chenv ctx
+              { nextpid = nextpid ctx1,
+                procs = procs ctx1,
+                chans = chans ctx1,
+                chenv = chenv ctx1
               }
-      translateStatements (ss >: ctx3)
+      translateStatements (ss >: ctx2)
     P.For x e1 e2 diff ss' -> do
       let venv = varenv ctx
       (e1', e2') <- binaryCons (translateExp venv) (,) e1 e2
@@ -96,6 +95,7 @@ translateStatements ctx = case syntax ctx of
             P.Dec -> P'.For x e2' e1' $ curr ctx'
       let ctx'' = ctx <: P'.Seq (curr ctx) for
       translateStatements $ ss >: ctx''
+    P.Block ss' -> translateStatements $ (ss ++ ss') >: ctx
     _ -> translateStatements $ ss >: ctx
 
 translateFor :: Ctxt [Pos P.Stmt] [P'.Op] -> Err (Ctxt () [P'.Op])
