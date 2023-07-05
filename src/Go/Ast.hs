@@ -1,8 +1,9 @@
 module Go.Ast where
 
+import Utilities.Position
 import Utilities.PrettyPrint (PrettyPrint, indent, prettyPrint)
 
-newtype Prog = Prog [Stmt] deriving (Eq, Ord, Read)
+newtype Prog = Prog [Pos Stmt] deriving (Eq, Ord, Read)
 
 data Stmt
   = Skip
@@ -10,14 +11,15 @@ data Stmt
   | Chan String Exp
   | Break
   | Atomic CommOp
+  | Decl String Exp
   | As String Exp
   | Close String
-  | Block [Stmt]
-  | If Exp [Stmt] [Stmt]
-  | Select [(CommOp, [Stmt])] (Maybe [Stmt])
-  | For String Exp Exp Diff [Stmt]
-  | While Exp [Stmt]
-  | Go [Stmt]
+  | Block [Pos Stmt]
+  | If Exp [Pos Stmt] [Pos Stmt]
+  | Select [(Pos CommOp, [Pos Stmt])] (Maybe [Pos Stmt])
+  | For String Exp Exp Diff [Pos Stmt]
+  | While Exp [Pos Stmt]
+  | Go [Pos Stmt]
   deriving (Eq, Ord, Read)
 
 data Diff = Inc | Dec deriving (Eq, Ord, Read)
@@ -50,9 +52,10 @@ data Exp
   deriving (Eq, Ord, Read)
 
 instance Show Prog where
-  show (Prog ss) =
-    let showp s = unlines $ map (prettyPrint 0) s
-     in showp ss
+  show (Prog ss) = unlines $ map (prettyPrint 0) ss
+
+instance Show Stmt where
+  show = prettyPrint 0
 
 instance PrettyPrint Stmt where
   prettyPrint n s =
@@ -62,6 +65,7 @@ instance PrettyPrint Stmt where
           Skip -> tab "skip"
           Break -> tab "break"
           Return -> tab "return"
+          Decl x e -> tab x ++ " := " ++ show e
           As x e -> tab x ++ " = " ++ show e
           Chan c e -> unwords [tab c, ":=", "make(chan,", show e ++ ")"]
           Atomic o -> tab $ show o
@@ -83,7 +87,7 @@ instance PrettyPrint Stmt where
                 tab "}"
               ]
           Select cs dfs ->
-            let showCase (c, ss) =
+            let showCase (Pos _ c, ss) =
                   unlines
                     [ unwords [indent (n + 1) ++ "case", show c ++ ":"],
                       block 2 ss
@@ -98,7 +102,7 @@ instance PrettyPrint Stmt where
                     ++ [tab "}"]
           For x e1 e2 diff ss ->
             unlines
-              [ unwords [tab "for", x, ":=", show e1 ++ ";", x, "<=", show e2 ++ ";", x ++ show diff, "{"],
+              [ unwords [tab "for", x, "=", show e1 ++ ";", x, "<=", show e2 ++ ";", x ++ show diff, "{"],
                 block 1 ss,
                 tab "}"
               ]
