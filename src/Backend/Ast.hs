@@ -171,7 +171,7 @@ newtype Program = Program [Decl] deriving (Eq, Ord, Read)
 (<.|.>) e1 lre2 =
   let needParens =
         ( case (e1, lre2) of
-            (Equiv {}, Right Equiv{}) -> False
+            (Equiv {}, Right Equiv {}) -> False
             (Equiv {}, Left (Equiv {})) -> False
             (Implies {}, Left (Implies {})) -> True
             (Implies {}, Right (Implies {})) -> False
@@ -348,7 +348,7 @@ instance PrettyPrint Cons where
      in n ++ "(" ++ intercalate ", " (map fdef fs) ++ ")"
 
 instance PrettyPrint Function where
-  prettyPrint _ Function{yields, funcHoare, funcBody} = case funcHoare of
+  prettyPrint _ Function {yields, funcHoare, funcBody} = case funcHoare of
     HoareWrap {ghost, name, params, decreases, requires, ensures} ->
       let ps = intercalate ", " (map (\(x, t) -> unwords [x, ":", prettyPrint 0 t]) params)
           header = unwords $ ["ghost" | ghost] ++ ["function", name ++ "(" ++ ps ++ ")", ":", prettyPrint 0 yields]
@@ -361,7 +361,7 @@ instance PrettyPrint Function where
        in intercalate "\n" [header, props ++ "{", body, "}"]
 
 instance PrettyPrint Method where
-  prettyPrint _ Method{returns, methodHoare, methodBody} = case methodHoare of
+  prettyPrint _ Method {returns, methodHoare, methodBody} = case methodHoare of
     HoareWrap {ghost, name, params, decreases, requires, ensures} ->
       let ps = intercalate ", " (map (\(x, t) -> unwords [x, ":", prettyPrint 0 t]) params)
           rps = map (\(x, t) -> unwords [x, ":", prettyPrint 0 t]) returns

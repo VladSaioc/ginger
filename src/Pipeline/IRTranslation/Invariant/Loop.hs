@@ -29,7 +29,7 @@ loopMonitor (Loop {var, pid, guardP, exitP, lower, upper}) =
             before = Implies (Lt pc guard) (Eq x lower)
             during = Implies (And (Lt guard pc) (Lt pc exit)) (Lt x upper)
             after = Implies (Leq exit pc) (Geq x upper)
-         in ([bounded, before, during, after] ./\.)
+         in ([bounded, before, during, after] ...⋀)
       noIter =
         let bounded = Eq x lower
             body = And (Lt guard pc) (Lt pc exit)

@@ -17,7 +17,7 @@ Produces:
 ⋁ (π, ϕ) ∈ Π. enabled(κ, π, ϕ)
 -}
 enabledExp :: KEnv -> Procs -> Exp
-enabledExp kenv = (.\/.) . M.elems . M.mapWithKey (enabled kenv)
+enabledExp kenv = (...⋁) . M.elems . M.mapWithKey (enabled kenv)
 
 {- Computes an enabled predicate for a given process.
 Depends on: κ, π, ϕ
@@ -39,4 +39,4 @@ enabled kenv pid pp =
               S -> Lt (c @) (Mb.fromJust (M.lookup c kenv))
               R -> Gt (c @) (0 #)
          in Implies executing unblocked
-   in And notTerminated (L.map subExp chsops ./\.)
+   in And notTerminated (L.map subExp chsops ...⋀)

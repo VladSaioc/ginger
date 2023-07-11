@@ -18,20 +18,20 @@ Produces:
       then (zero ⨁ cons) es
       else cons e ((zero ⨁ cons) es)
 
-(./\.) :: [Exp] -> Exp
-(./\.) = (True ?) ⨁ And
+(...⋀) :: [Exp] -> Exp
+(...⋀) = (True ?) ⨁ And
 
-(.\/.) :: [Exp] -> Exp
-(.\/.) = (False ?) ⨁ Or
+(...⋁) :: [Exp] -> Exp
+(...⋁) = (False ?) ⨁ Or
 
 arithmCompose :: (Exp -> Exp -> Exp) -> [Exp] -> Exp
 arithmCompose = (⨁) (0 #)
 
-(.+.) :: [Exp] -> Exp
-(.+.) = arithmCompose Plus
+(...+) :: [Exp] -> Exp
+(...+) = arithmCompose Plus
 
-(.-.) :: [Exp] -> Exp
-(.-.) = arithmCompose Minus
+(...-) :: [Exp] -> Exp
+(...-) = arithmCompose Minus
 
 (#) :: Int -> Exp
 (#) = ECon . CNum

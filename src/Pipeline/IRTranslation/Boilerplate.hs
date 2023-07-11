@@ -207,7 +207,11 @@ progEncoding fvs kenv ps atomicOps loops =
           { ghost = True,
             name = "Program",
             params = ("fuel", TNat) : ("S", Arrow TNat TNat) : (L.map (,TInt) . S.toList) fvs,
-            ensures = [Implies (Lt ("step" @) ("fuel" @)) (Equiv (preconditions kenv atomicOps loops ./\.) (postconditions ps ./\.))],
+            ensures =
+              [ Implies
+                  (Lt ("step" @) ("fuel" @))
+                  (Equiv (preconditions kenv atomicOps loops ...⋀) (postconditions ps ...⋀))
+              ],
             decreases = [],
             requires = isSchedule : asyncPreconditions kenv
           },
