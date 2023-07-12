@@ -13,3 +13,8 @@ chDir :: Op -> OpDir
 chDir = \case
   Send _ -> S
   Recv _ -> R
+
+instance Show OpDir where
+  show = \case
+    S -> "!"
+    R -> "?"
