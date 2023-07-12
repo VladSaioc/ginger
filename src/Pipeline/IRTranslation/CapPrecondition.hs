@@ -1,4 +1,4 @@
-module Pipeline.IRTranslation.AsyncPrecondition (asyncPreconditions) where
+module Pipeline.IRTranslation.CapPrecondition (capPreconditions) where
 
 import Backend.Ast
 import Backend.Utilities
@@ -11,14 +11,15 @@ import Pipeline.IRTranslation.Utilities
 -- loopPreconditions pp
 
 -- Aggregate all asynchrony preconditions.
-asyncPreconditions :: KEnv -> [Exp]
-asyncPreconditions = L.map asyncPrecondition . M.elems
+capPreconditions :: KEnv -> [Exp]
+capPreconditions = L.map asyncPrecondition . M.elems
 
-{- Constructs a precondition certifying channel asynchrony.
+{- Constructs a precondition certifying that the channel capacity
+is a valid expression i.e., a positive integer.
 Depends on: κ, c
 
 Produces:
-κ(c) > 0
+κ(c) ≥ 0
 -}
 asyncPrecondition :: Exp -> Exp
-asyncPrecondition = Lt (0 #)
+asyncPrecondition = Leq (0 #)
