@@ -1,10 +1,10 @@
-module Backend.Optimizer where
+module Backend.Simplifier (simplify) where
 
 import Backend.Ast
 import Backend.Utilities
 
-optimize :: Program -> Program
-optimize (Program ds) = Program $ map decOptimize ds
+simplify :: Program -> Program
+simplify (Program ds) = Program $ map decOptimize ds
 
 decOptimize :: Decl -> Decl
 decOptimize = \case
@@ -98,11 +98,17 @@ eOptimize pe =
         -- !!e ==> e
         Not (Not e) -> eOptimize e
         Not e -> un Not e
+        -- c == c ==> true, c1 != c2 ==> false
+        Eq (ECon c1) (ECon c2) ->
+          if c1 == c2 then (True ?) else (False ?)
         -- e == e ==> true
         Eq e1 e2 ->
           if e1 == e2
             then (True ?)
             else bin Eq e1 e2
+        -- c != c ==> false, c1 != c2 ==> true
+        Ne (ECon c1) (ECon c2) ->
+          if c1 == c2 then (False ?) else (True ?)
         -- e != e ==> false
         Ne e1 e2 ->
           if e1 == e2
@@ -197,7 +203,7 @@ sOptimize = \case
     let e' = eOptimize e
         s1' = sOptimize s1
         ms' = fmap sOptimize ms
-     in case e of
+     in case e' of
           ECon CTrue -> s1'
           ECon CFalse ->
             ( case ms' of
@@ -209,5 +215,9 @@ sOptimize = \case
     let ps = map fst cs
         ss = map (sOptimize . snd) cs
      in MatchStmt (eOptimize e) $ zip ps ss
-  While e es1 es2 s -> While (eOptimize e) (map eOptimize es1) (map eOptimize es2) (sOptimize s)
+  While e es1 es2 s ->
+    let e' = eOptimize e
+     in case e' of
+          ECon CFalse -> Block []
+          _ -> While (eOptimize e) (map eOptimize es1) (map eOptimize es2) (sOptimize s)
   Return es -> Return $ map eOptimize es

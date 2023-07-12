@@ -1,6 +1,6 @@
 module Main where
 
-import Backend.Optimizer (optimize)
+import Backend.Simplifier (simplify)
 import Control.Monad (unless)
 import Data.Text (pack, replace, unpack)
 import IR.GetAst qualified as I
@@ -28,7 +28,7 @@ main = do
               ( do
                   ir' <- ir
                   prog <- irToBackend ir'
-                  return $ optimize prog
+                  return $ simplify prog
               )
          in do
               _ <- case ir of
@@ -41,7 +41,7 @@ main = do
               case result of
                 Ok prog ->
                   ( do
-                      putStrLn "Succesfully generated and optimized back-end."
+                      putStrLn "Succesfully generated and simplified back-end."
                       mkdir out
                       writeFile (out ++ "/" ++ file) (prettyPrint 0 prog)
                       return ()
