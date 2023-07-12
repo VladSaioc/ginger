@@ -16,7 +16,7 @@ data Type
     Arrow Type Type
   | -- (Type, ...)
     Tuple [Type]
-  deriving (Eq, Ord, Read)
+  deriving (Eq, Ord, Show, Read)
 
 data Pattern
   = -- _
@@ -29,7 +29,7 @@ data Pattern
     PAdt String [Pattern]
   | -- (p, ...)
     PTuple [Pattern]
-  deriving (Eq, Ord, Read)
+  deriving (Eq, Ord, Show, Read)
 
 -- Statement
 data Stmt
@@ -49,7 +49,7 @@ data Stmt
     While Exp [Exp] [Exp] Stmt
   | -- return {e, ...}*
     Return [Exp]
-  deriving (Eq, Ord, Read)
+  deriving (Eq, Ord, Show, Read)
 
 data Const
   = -- -- true
@@ -58,7 +58,7 @@ data Const
     CFalse
   | -- -- n, n ∈ ℤ
     CNum Int
-  deriving (Eq, Ord, Read)
+  deriving (Eq, Ord, Show, Read)
 
 -- Expressions
 data Exp
@@ -72,6 +72,10 @@ data Exp
     Exists [(String, Maybe Type)] Exp
   | -- forall {x [: T], ...}* :: e
     Forall [(String, Maybe Type)] Exp
+  | -- e1 in e2
+    In Exp Exp
+  | -- {{e, ...} *}
+    ESet [Exp]
   | -- BINARY OPERATORS
     -- Propositional logic
     -- -- e1 <==> e2
@@ -121,7 +125,7 @@ data Exp
     ECon Const
   | -- -- f({e, ...}*)
     Call String [Exp]
-  deriving (Eq, Ord, Read)
+  deriving (Eq, Ord, Show, Read)
 
 -- Cons({field : type, ...})
 data Cons = Cons String [(String, Type)] deriving (Eq, Ord, Read)
@@ -315,6 +319,8 @@ instance PrettyPrint Exp where
           ETuple ps -> "(" ++ intercalate ", " (map pp ps) ++ ")"
           EVar x -> x
           ECon c -> prettyPrint 0 c
+          In e1 e2 -> bin e1 "in" e2
+          ESet es -> unwords ["{", intercalate ", " $ map (prettyPrint i) es, "}"]
           Exists xs e' -> quantifier "exists" xs e'
           Forall xs e' -> quantifier "forall" xs e'
           Implies e1 e2 -> bin e1 "==>" e2
