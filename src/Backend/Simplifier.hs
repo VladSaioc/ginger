@@ -66,14 +66,6 @@ eSimplify pe =
         -- Quantifiers bodies are simplified
         Exists xs e -> un (Exists xs) e
         Forall xs e -> un (Forall xs) e
-        -- Reduce trivial set inclusion to true
-        -- e in { ..., e, ... } ==> true
-        In e (ESet es) ->
-          let e'' = eSimplify e
-              es' = map eSimplify es
-           in if e'' `elem` es'
-                then (True ?)
-                else bin In e' (ESet es')
         In e1 e2 -> bin In e1 e2
         -- Set members are point-wise simplified
         ESet es -> ESet $ map eSimplify es
