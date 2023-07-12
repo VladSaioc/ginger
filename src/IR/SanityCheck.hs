@@ -1,62 +1,73 @@
 module IR.SanityCheck (sanityCheck, asyncCheck) where
 
+import Control.Monad
 import Data.Set qualified as S
 import IR.Ast
 import Utilities.Err
 import Utilities.General
 
+-- The sanity check context bookkeeps variable names
 data Ctx = Ctx
-  { ienv :: S.Set String,
+  { -- Iteration variables
+    ienv :: S.Set String,
+    -- Free variables
     fvs :: S.Set String,
+    -- Channel variables
     chenv :: S.Set String
   }
   deriving (Eq, Ord, Read)
 
-sanityCheckList :: Monad m => (Ctx -> a -> m Ctx) -> Ctx -> [a] -> m Ctx
-sanityCheckList f ctx =
-  Prelude.foldl
-    ( \mctx a -> do
-        ctx' <- mctx
-        f ctx' a
-    )
-    (return ctx)
-
+-- Perform a sanity check on the given IR program
 sanityCheck :: Prog -> Err Ctx
 sanityCheck (Prog chs prc) = do
+  -- Create a fresh context
   let ctx =
         Ctx
           { ienv = S.empty,
             fvs = S.empty,
             chenv = S.empty
           }
-  ctx' <- sanityCheckList sanityCheckChan ctx chs
-  sanityCheckList sanityCheckStm ctx' prc
+  -- Perform sanity checks on channel declarations
+  ctx' <- foldM sanityCheckChan ctx chs
+  foldM sanityCheckStm ctx' prc
 
+-- Perform sanity checks on channel declarations.
+-- Remember any encountered free variables and the names of declared channels.
 sanityCheckChan :: Ctx -> Chan -> Err Ctx
 sanityCheckChan ctx (Chan c e) = do
+  -- Make sure there are no duplicate channel declarations.
   _ <- multiGuard [(S.member c (chenv ctx), "Duplicate channel declaration: " ++ c)]
+  -- Remember the name of the newly declared channel
   let ctx' = ctx {chenv = S.insert c (chenv ctx)}
+  -- Sanity check the capacity expression
   sanityCheckExp ctx' e
 
+-- Perform sanity checks on IR statements.
 sanityCheckStm :: Ctx -> Stmt -> Err Ctx
 sanityCheckStm ctx = \case
+  Skip -> return ctx
   Seq s1 s2 -> do
     ctx' <- sanityCheckStm ctx s1
     sanityCheckStm ctx' s2
-  Skip -> return ctx
   For x e1 e2 os -> do
     ctx' <- sanityCheckExp ctx e1
     ctx'' <- sanityCheckExp ctx' e2
     _ <-
       multiGuard
+        -- Ensure there are no duplicate loop variables
         [ (S.member x (ienv ctx), "Duplicate loop variable: " ++ x),
+          -- Ensure that a name used by a channel is not reused for a loop index
           (S.member x (chenv ctx), "Channel used as loop index: " ++ x),
+          -- Ensure that a free variable is not used as a loop index
           (S.member x (chenv ctx), "Free variable used as loop index: " ++ x)
         ]
+    -- Bookkeep loop index variable name
     let ctx''' = ctx'' {ienv = S.insert x (ienv ctx)}
-    sanityCheckList sanityCheckOp ctx''' os
+    foldM sanityCheckOp ctx''' os
   Atomic op -> sanityCheckOp ctx op
 
+-- Sanity check a channel operation. Ensures that
+-- the channel named by the operation was previously declared.
 sanityCheckOp :: Ctx -> Op -> Err Ctx
 sanityCheckOp ctx =
   let checkChan c =
@@ -67,6 +78,8 @@ sanityCheckOp ctx =
         Send c -> checkChan c
         Recv c -> checkChan c
 
+-- Sanity check IR expressions. Ensures that loop variables or channel
+-- names are not used in expressions.
 sanityCheckExp :: Ctx -> Exp -> Err Ctx
 sanityCheckExp ctx =
   let bin e1 e2 = do
