@@ -260,6 +260,9 @@ backendChannelOp =
         _ -> Nothing
 
 -- Point-wise binary union between maps of channel operations.
+-- Given M1 and M2, it produces:
+--
+-- [ c ↦ [d ↦ M1(c)(d) ∪ M1(c)(d) | d ∈ {!, ?}] | c ∈ dom(M1) ∪ dom(M2) ]
 (|+|) :: ChMap ChOps -> ChMap ChOps -> ChMap ChOps
 (|+|) = M.unionWith $ M.unionWith S.union
 
