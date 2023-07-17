@@ -271,6 +271,8 @@ sSimplify = \case
     let xs = map fst ds
         es = map (eSimplify . snd) ds
      in Assign $ zip xs es
+  -- Trivially nested blocks may be simplified by removing the outer block.
+  Block [Block ss] -> sSimplify (Block ss)
   -- Blocks have statement sequence simplification applied to their body
   Block ss -> Block $ ssSimplify ss
   -- Assertions have expression simplification applied to their content
