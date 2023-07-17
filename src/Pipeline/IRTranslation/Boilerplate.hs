@@ -5,11 +5,12 @@ import Backend.Utilities
 import Data.List qualified as L
 import Data.Map qualified as M
 import Data.Set qualified as S
-import Pipeline.IRTranslation.AsyncPrecondition (asyncPreconditions)
+import Pipeline.IRTranslation.CapPrecondition (capPreconditions)
 import Pipeline.IRTranslation.CommPrecondition (preconditions)
 import Pipeline.IRTranslation.Enabled (enabledExp)
 import Pipeline.IRTranslation.Invariant.ChannelBound (channelBounds)
 import Pipeline.IRTranslation.Invariant.ChannelMonitor (channelMonitors)
+import Pipeline.IRTranslation.Invariant.ChannelRendezvous (asyncNoRendezvous)
 import Pipeline.IRTranslation.Invariant.CounterBound (counterInvariants)
 import Pipeline.IRTranslation.Invariant.Loop (loopMonitors)
 import Pipeline.IRTranslation.Postcondition (postconditions)
@@ -79,7 +80,7 @@ switch pc(π) {
 -}
 processSwitch :: Pid -> ProgPoints -> Stmt
 processSwitch pid =
-  let pc = ((pid <|) @)
+  let pc = π pid
       iguard c = PCon (CNum c)
       cases = M.toList . M.mapKeys iguard
    in MatchStmt pc . cases
@@ -116,17 +117,29 @@ while enabledExp(κ, Π)
 -}
 centralLoop :: KEnv -> Procs -> PChInsns -> [Loop] -> Stmt
 centralLoop kenv ps atomicOps loops =
-  let l = loopMonitors loops
+  let -- Process loop invariants
+      l = loopMonitors loops
+      -- Channel bound invariants
       k = channelBounds kenv
+      -- Absence of rendezvous for buffered channels invariants
+      rv = asyncNoRendezvous kenv atomicOps loops
+      -- Process counter invariants
       pc = counterInvariants ps
-      enabled = And (Lt ("step" @) ("fuel" @)) (enabledExp kenv ps)
-      m = channelMonitors atomicOps loops
+      -- Channel buffer size invariants
+      m = channelMonitors kenv atomicOps loops
+      -- Condition under which progress is enabled
+      -- 1. Fuel constraint
+      hasFuel = Lt ("step" @) ("fuel" @)
+      -- 2. Fuel + process operation disjunctions
+      enabled = And hasFuel (enabledExp kenv ps)
    in While
         enabled
-        (k ++ pc ++ l ++ m)
+        (concat [k, pc, rv, l, m])
         []
         ( Block
-            [ scheduleSwitch ps,
+            [ -- Central loop case analysis
+              scheduleSwitch ps,
+              -- Increment steps
               Assign [("step", Plus ("step" @) (1 #))]
             ]
         )
@@ -184,7 +197,7 @@ Produces:
 method Program(S : nat -> nat, ∀ x ∈ fv(P). x : int)
 returns (∀ (π, ϕ) ∈ Π. pc(π) : int)
 
-requires asyncPreconditions(κ)
+requires capPreconditions(κ)
 requires preconditions(κ, nonloop(P), loop(P))
 
 ensures postconditions(Π)
@@ -213,7 +226,7 @@ progEncoding fvs kenv ps atomicOps loops =
                   (Equiv (preconditions kenv atomicOps loops ...⋀) (postconditions ps ...⋀))
               ],
             decreases = [],
-            requires = isSchedule : asyncPreconditions kenv
+            requires = isSchedule : capPreconditions kenv
           },
       methodBody =
         Block
