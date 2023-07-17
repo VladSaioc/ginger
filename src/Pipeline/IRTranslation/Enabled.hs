@@ -30,13 +30,25 @@ pc(π) < (max ∘ dom)(ϕ) ∧ E! ∧ E?
 -}
 enabled :: KEnv -> Pid -> ProgPoints -> Exp
 enabled kenv pid pp =
-  let pc = ((pid <|) @)
+  let pc = π pid
       chsops = chanOps pp
       notTerminated = Ne pc ((pp -|) #)
-      subExp (c, d, opc) =
-        let executing = Eq pc (opc #)
-            unblocked = case d of
-              S -> Lt (c @) (Mb.fromJust (M.lookup c kenv))
-              R -> Gt (c @) (0 #)
-         in Implies executing unblocked
+      subExp (cn, d, n) =
+        let k = Mb.fromJust (M.lookup cn kenv)
+            c = (cn @)
+            executing = Implies . Eq pc . (#)
+            async = Implies (Lt (0 #) k) . executing n
+            sync = Implies (Eq (0 #) k)
+
+            aEnabled = case d of
+              S -> Lt c k
+              R -> Gt c (0 #)
+
+            sEnabled = case d of
+              S ->
+                let syncing = executing n $ Eq c (0 #)
+                    rendezvous = executing (n + 1) $ Eq c ((-1) #)
+                 in And syncing rendezvous
+              R -> executing n $ Eq c (1 #)
+         in And (async aEnabled) (sync sEnabled)
    in And notTerminated (L.map subExp chsops ...⋀)
