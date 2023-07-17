@@ -12,6 +12,7 @@ data Ctxt a b = Ctxt
   { syntax :: a,
     pid :: Int,
     nextpid :: Int,
+    loopcounter :: Int,
     varenv :: M.Map String P'.Exp,
     chenv :: M.Map String String,
     procs :: M.Map Int P'.Stmt,
@@ -36,6 +37,7 @@ getIR (P.Prog ss) =
           { syntax = ss,
             pid = 0,
             nextpid = 1,
+            loopcounter = 0,
             varenv = M.empty,
             procs = M.empty,
             chans = M.empty,
@@ -73,6 +75,7 @@ translateStatements ctx = case syntax ctx of
               procs = procs ctx,
               pid = nextpid ctx,
               nextpid = nextpid ctx + 1,
+              loopcounter = loopcounter ctx,
               varenv = varenv ctx,
               chenv = chenv ctx,
               chans = chans ctx,
@@ -81,6 +84,7 @@ translateStatements ctx = case syntax ctx of
       let ctx2 =
             ctx
               { nextpid = nextpid ctx1,
+                loopcounter = loopcounter ctx1,
                 procs = procs ctx1,
                 chans = chans ctx1,
                 chenv = chenv ctx1
@@ -91,9 +95,9 @@ translateStatements ctx = case syntax ctx of
       (e1', e2') <- binaryCons (translateExp venv) (,) e1 e2
       ctx' <- translateFor (ss' >: ctx <: [])
       let for = case diff of
-            P.Inc -> P'.For x e1' e2' $ curr ctx'
-            P.Dec -> P'.For x e2' e1' $ curr ctx'
-      let ctx'' = ctx <: P'.Seq (curr ctx) for
+            P.Inc -> P'.For (x ++ "'" ++ show (loopcounter ctx')) e1' e2' $ curr ctx'
+            P.Dec -> P'.For (x ++ "'" ++ show (loopcounter ctx')) e2' e1' $ curr ctx'
+      let ctx'' = (ctx <: P'.Seq (curr ctx) for) {loopcounter = loopcounter ctx' + 1}
       translateStatements $ ss >: ctx''
     P.Block ss' -> translateStatements $ (ss ++ ss') >: ctx
     _ -> translateStatements $ ss >: ctx
