@@ -15,4 +15,4 @@ Produces:
 pc(π) = (max ∘ dom)(ϕ)
 -}
 postcondition :: Pid -> ProgPoints -> Exp
-postcondition pid pp = Eq ((pid <|) @) ((pp -|) #)
+postcondition pid pp = Eq (π pid) ((pp -|) #)
