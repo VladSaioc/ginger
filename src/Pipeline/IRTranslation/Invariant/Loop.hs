@@ -25,7 +25,7 @@ loopMonitor (Loop {var, pid, guardP, exitP, lower, upper}) =
       -- Loop variable as a back-end variable
       x = (var @)
       -- Program counter as a back-end variable
-      pc = (pid <@)
+      pc = π pid
       -- Loop guard point as a fixed program point
       guard = (guardP #)
       -- Loop exit point as a fixed program point
