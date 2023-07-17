@@ -87,6 +87,8 @@ pVal = \case
   -- Extracts a value from e, where e = n and n is a natural number
   Raw.ExpConst (Raw.CInt i) -> return (VInt (i #))
   Raw.ExpConst (Raw.CFree _) -> return Free
+  Raw.ExpConst (Raw.CTrue _) -> return (VBool True)
+  Raw.ExpConst (Raw.CFalse _) -> return (VBool False)
   _ -> Bad "Bad #define macro"
 
 -- Refine procedure parameter members of the AST. A parameter
