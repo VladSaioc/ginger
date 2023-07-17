@@ -48,5 +48,5 @@ chanOps n =
             -- Get sub-set of counter for
             dpcs = fromMaybe S.empty (M.lookup d pcs)
             pcs' = M.insert d (S.insert n' dpcs) pcs
-         in (M.insert c pcs' chops, n' + 1)
+         in (M.insert c pcs' chops, n' + if d == S then 2 else 1)
    in Prelude.foldl addOp (M.empty, n)
