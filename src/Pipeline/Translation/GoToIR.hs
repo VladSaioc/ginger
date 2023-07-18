@@ -133,7 +133,7 @@ translateOp ctx =
   let translate cons c =
         case M.lookup c (chenv ctx) of
           Just c' -> wrapCtx (ctx <: cons c')
-          Nothing -> Bad "Invalid channel: value not found."
+          Nothing -> Bad $ "Invalid channel: value not found: " ++ show c
    in case syntax ctx of
         P.Send c -> translate P'.Send c
         P.Recv c -> translate P'.Recv c
