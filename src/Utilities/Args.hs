@@ -1,6 +1,7 @@
 module Utilities.Args where
 
-import Data.List (isPrefixOf)
+import Data.List (intercalate, isPrefixOf)
+import Data.List.Split (splitOn)
 import Utilities.Err
 
 _DIST :: String
@@ -22,8 +23,21 @@ getFilePath = \case
   _ : as -> getFilePath as
 
 getResultDir :: [String] -> String
-getResultDir = \case
-  [] -> _DIST
-  [_] -> _DIST
-  "-output-dir" : a : _ -> a
-  _ : as -> getResultDir as
+getResultDir args =
+  let dir = case getFilePath args of
+        Ok filePath ->
+          let isAbs = "/" `isPrefixOf` filePath
+              parts = splitOn "/" filePath
+              dirPath = intercalate "/" (take (length parts - 1) parts)
+           in if isAbs
+                then dirPath
+                else "./" ++ dirPath
+        Bad _ -> _DIST
+   in case args of
+        [] -> dir
+        [_] -> dir
+        "-output-dir" : a : _ ->
+          if "/" `isPrefixOf` a
+            then a
+            else "./" ++ a
+        _ : as -> getResultDir as
