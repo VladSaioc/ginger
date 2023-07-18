@@ -61,5 +61,5 @@ main = do
                     promelaToIR prom
                 )
       _ <- workflow outputDir outputFileName ir
-      putStrLn $ "Output found at: ./" ++ outputDir ++ "/" ++ outputFileName
+      putStrLn $ "Output found at: " ++ outputDir ++ "/" ++ outputFileName
     Bad _ -> putStrLn "Give me a Promela file."
