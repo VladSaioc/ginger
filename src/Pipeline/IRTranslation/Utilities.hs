@@ -263,8 +263,8 @@ backendChannelOp =
 -- Given M1 and M2, it produces:
 --
 -- [ c ↦ [d ↦ M1(c)(d) ∪ M1(c)(d) | d ∈ {!, ?}] | c ∈ dom(M1) ∪ dom(M2) ]
-(|+|) :: ChMap ChOps -> ChMap ChOps -> ChMap ChOps
-(|+|) = M.unionWith $ M.unionWith S.union
+(⊎) :: Ord a => Ord b => Ord c => M.Map a (M.Map b (S.Set c)) -> M.Map a (M.Map b (S.Set c)) -> M.Map a (M.Map b (S.Set c))
+(⊎) = M.unionWith $ M.unionWith S.union
 
 -- Inserts a channel operation into a channel operation map.
 -- Given, a triple (c, d, n) where c is a channel name, d
