@@ -12,18 +12,19 @@ loops :: Prog -> [Loop]
 loops (Prog _ procs) =
   let zeros = 0 : zeros
       procs' = zip [0 ..] (zip zeros procs)
-   in concatMap (fst . uncurry procBounds) procs'
+   in concatMap (fst . uncurry processLoops) procs'
 
-procBounds :: Pid -> (PCounter, Stmt) -> ([Loop], PCounter)
-procBounds pid (n, s) = case s of
+-- Collect all loops found in a process.
+processLoops :: Pid -> (PCounter, Stmt) -> ([Loop], PCounter)
+processLoops pid (n, s) = case s of
   Seq s1 s2 ->
-    let (ls1, n') = procBounds pid (n, s1)
-        (ls2, n'') = procBounds pid (n', s2)
-     in (ls1 ++ ls2, n'')
+    let (l1, n') = processLoops pid (n, s1)
+        (l2, n'') = processLoops pid (n', s2)
+     in (l1 ++ l2, n'')
   For x e1 e2 os ->
     let x' = pid % x
         (chops, n') = chanOps (n + 1) os
-        loop =
+        l =
           [ Loop
               { pid = pid,
                 var = x',
@@ -34,10 +35,13 @@ procBounds pid (n, s) = case s of
                 chans = chops
               }
           ]
-     in (loop, n' + 1)
-  Atomic _ -> ([], n + 1)
+     in (l, n' + 1)
+  Atomic _ -> ([], n + ppOffset s)
   Skip -> ([], n)
 
+-- Collect all channel operations in a loop.
+-- Relevant information includes: channel name, program point
+-- and direction.
 chanOps :: PCounter -> [Op] -> (ChMap ChOps, PCounter)
 chanOps n =
   let addOp (chops, n') op =
@@ -48,5 +52,5 @@ chanOps n =
             -- Get sub-set of counter for
             dpcs = fromMaybe S.empty (M.lookup d pcs)
             pcs' = M.insert d (S.insert n' dpcs) pcs
-         in (M.insert c pcs' chops, n' + if d == S then 2 else 1)
+         in (M.insert c pcs' chops, n' + ppOffset op)
    in Prelude.foldl addOp (M.empty, n)

@@ -34,7 +34,7 @@ noloopPsChanInsns (Prog _ ps) = M.fromList (zip [0 ..] (L.map (fst . noloopPChan
 -- Depends on: n, S
 --
 -- Produces:
--- [SEND]: ⟨n, c!⟩ -> ⟨n + 1, [c ↦ [! ↦ {n}]]⟩
+-- [SEND]: ⟨n, c!⟩ -> ⟨n + 2, [c ↦ [! ↦ {n}]]⟩
 -- [RECV]: ⟨n, c?⟩ -> ⟨n + 1, [c ↦ [? ↦ {n}]]⟩
 -- [FOR]: ⟨n, for (i : e .. e) { s }⟩ -> ⟨n + |s| + 2, []⟩
 -- [SEQ]: ⟨n, S₁; S₂⟩ -> ⟨n'', M⟩
@@ -43,16 +43,18 @@ noloopPsChanInsns (Prog _ ps) = M.fromList (zip [0 ..] (L.map (fst . noloopPChan
 --         |- M = [c ↦ os | c ∈ dom(M₁) ∪ dom(M₂),
 --                          os = [d ↦ { n | n ∈ M₁(c)(d) ∪ M₂(c)(d)} | d ∈ dom(M₁(c)) ∪ dom(M₂(c)) ]]
 noloopPChanInsns :: PCounter -> Stmt -> (ChMap ChOps, PCounter)
-noloopPChanInsns n = \case
-  -- Sequence maps are aggregated via point-wise union
-  Seq s1 s2 ->
-    let (o1, n') = noloopPChanInsns n s1
-        (o2, n'') = noloopPChanInsns n' s2
-     in (o1 ⊎ o2, n'')
-  Skip -> (M.empty, n)
-  -- Loops are handled separately
-  For _ _ _ os -> (M.empty, n + L.length os + 2)
-  -- Atomic operations are added to the list of triples.
-  Atomic o ->
-    let (c, d) = (chName o, chDir o)
-     in ((c, d, n) +> M.empty, n + 1)
+noloopPChanInsns n s =
+  let n' = n + ppOffset s
+   in case s of
+        -- Sequence maps are aggregated via point-wise union
+        Seq s1 s2 ->
+          let (o1, n1) = noloopPChanInsns n s1
+              (o2, n2) = noloopPChanInsns n1 s2
+           in (o1 ⊎ o2, n2)
+        Skip -> (M.empty, n')
+        -- Loops are handled separately
+        For {} -> (M.empty, n')
+        -- Atomic operations are added to the list of triples.
+        Atomic o ->
+          let (c, d) = (chName o, chDir o)
+           in ((c, d, n) +> M.empty, n')

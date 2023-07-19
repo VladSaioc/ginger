@@ -78,7 +78,7 @@ instance Show Loop where
 
 -- Annotate process-local variable. Given process id pid and name x,
 -- the naming schema is:
---  P'pid'x
+--  Ppid'x
 (%) :: Pid -> String -> String
 (%) pid x = "P" ++ show pid ++ "'" ++ x
 
