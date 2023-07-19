@@ -94,6 +94,7 @@ DBodyChan. DeclBody ::= AS "[" Exp "]" OF "{" [Type] "}";
 
 -- Steps
 StepsArrow. Steps ::= Step "->" Steps;
+StepsMissing. Steps ::= ";" Steps;
 StepsSemi. Steps ::= Step ";" Steps;
 StepsLast. Steps ::= Step;
 StepsDone. Steps ::= ;

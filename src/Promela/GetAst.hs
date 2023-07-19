@@ -21,8 +21,8 @@ listSteps :: Raw.Steps -> [Raw.Step]
 listSteps = \case
   Raw.StepsSemi s ss -> s : listSteps ss
   Raw.StepsArrow s ss -> s : listSteps ss
+  Raw.StepsMissing ss -> listSteps ss
   Raw.StepsLast s -> [s]
-  -- Raw.StepsArrow
   Raw.StepsDone -> []
 
 notImplemented :: Show a1 => a1 -> Err a2
