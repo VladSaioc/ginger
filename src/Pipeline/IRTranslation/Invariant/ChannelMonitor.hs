@@ -9,7 +9,8 @@ import Pipeline.IRTranslation.Invariant.ChannelSyncMonitor (syncChannelMonitors)
 import Pipeline.IRTranslation.Utilities
 
 {- Produces channel monitors by composing both buffered and
-unbuffered channel behaviour under conjoined implications.
+unbuffered channel behaviour under an expression conditional
+over the capacity expression.
 
 Depends on:
 1. All program loops: [ℓ]
@@ -19,8 +20,7 @@ Depends on:
 
 ∀ c, e1 = syncChannelMonitor(O, [ℓ])(c),
      e2 = asyncChannelMonitor(O, [ℓ])(c).
-    (κ(c) = 0 ⇒ c = e1)
-  ∧ (κ(c) > 0 ⇒ c = e2)
+    c = if κ(c) > 0 then e2 else e1
 -}
 channelMonitors :: KEnv -> PChInsns -> [Loop] -> [Exp]
 channelMonitors kenv noloopOps ls =
@@ -28,8 +28,6 @@ channelMonitors kenv noloopOps ls =
       asyncMs = asyncChannelMonitors noloopOps ls
       combineMonitors c s a =
         let cap = Mb.fromMaybe (0 #) (M.lookup c kenv)
-            isSync = Eq (0 #) cap
             isAsync = Lt (0 #) cap
-            eqc = Eq (c @)
-         in And (Implies isSync $ eqc s) (Implies isAsync $ eqc a)
+         in Eq (c @) (IfElse isAsync a s)
    in M.elems $ M.unionWithKey combineMonitors syncMs asyncMs
