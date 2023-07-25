@@ -1,7 +1,6 @@
 module Backend.Utilities where
 
 import Backend.Ast
-import Pipeline.IRTranslation.Utilities
 
 {- Composes lists of expressions under arbitrary binary
 constructors, ⊕, with a user-provided zero element 𝟎.
@@ -43,7 +42,3 @@ arithmCompose = (⨁) (0 #)
 
 (@) :: String -> Exp
 (@) = EVar
-
--- Program counter to variable expression
-π :: Int -> Exp
-π pc = ((pc <|) @)

@@ -1,6 +1,7 @@
 module Pipeline.IRTranslation.Utilities where
 
 import Backend.Ast
+import Backend.Utilities
 import Control.Monad (unless)
 import Data.List (intercalate)
 import Data.Map qualified as M
@@ -108,10 +109,10 @@ instance Show ChannelMeta where
 (<|) pid = "P" ++ show pid
 
 -- Given a set of program points, produces the next available program point.
-(-|) :: ProgPoints -> Int
+(-|) :: ProgPoints -> Exp
 (-|) pp = case M.toDescList pp of
-  [] -> 0
-  (n, _) : _ -> n
+  [] -> (0 #)
+  (n, _) : _ -> (n #)
 
 -- Checks that a sequence of values are all equal, by performing pair-wise structural equality.
 equals :: Eq a => [a] -> Maybe a
@@ -300,3 +301,7 @@ backendChannelOp =
       dops' = S.insert n dops
       ops' = M.insert d dops' ops
    in M.insert c ops' chops
+
+-- Program counter to variable expression
+π :: Int -> Exp
+π pc = ((pc <|) @)
