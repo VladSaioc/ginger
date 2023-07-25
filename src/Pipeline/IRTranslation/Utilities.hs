@@ -57,13 +57,15 @@ data Loop = Loop
     -- Upper bound
     upper :: Exp,
     -- Channel operations in the loop (indexed by channel name)
-    chans :: ChMap ChOps
+    chans :: ChMap ChOps,
+    -- Path conditions guarding the loop
+    pathexp :: Exp
   }
 
 instance Show Loop where
-  show Loop {pid, var, guardP, exitP, lower, upper, chans} =
+  show Loop {pid, var, guardP = n1, exitP = n2, lower, upper, chans} =
     unlines
-      -- PID: for x (lo .. hi)
+      -- PID: for x (lo .. hi) <n₁ --> n₂>
       [ unwords
           [ show pid ++ ":",
             "for",
@@ -71,10 +73,27 @@ instance Show Loop where
             "(" ++ prettyPrint 0 lower,
             "..",
             prettyPrint 0 upper ++ ")",
-            "<" ++ show guardP ++ "-->" ++ show exitP ++ ">"
+            "<" ++ show n1 ++ "-->" ++ show n2 ++ ">"
           ],
         intercalate ", " (M.elems (M.map show chans))
       ]
+
+-- (Meta)data about channel operations found outside loops.
+data ChannelMeta = ChannelMeta
+  { -- Process
+    cmPid :: Pid,
+    -- Channel name
+    cmVar :: Ch,
+    -- Channel operation
+    cmOp :: OpDir,
+    -- Program point
+    cmPoint :: PCounter
+  }
+
+instance Show ChannelMeta where
+  show ChannelMeta {cmPid = pid, cmVar, cmOp, cmPoint = n} =
+    -- PID: c{!,?} <n>
+    unwords [show pid ++ ":", cmVar ++ show cmOp, "<" ++ show n ++ ">"]
 
 -- Annotate process-local variable. Given process id pid and name x,
 -- the naming schema is:
@@ -100,9 +119,7 @@ equals = \case
   [] -> Nothing
   [a] -> Just a
   a' : a'' : as ->
-    if a' == a''
-      then equals (a'' : as)
-      else Nothing
+    if a' == a'' then equals (a'' : as) else Nothing
 
 -- Checks whether a back-end statement encodes a channel send or receive
 -- operation, and returns the name of the channel if that is the case.
