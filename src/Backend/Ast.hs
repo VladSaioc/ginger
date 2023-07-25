@@ -11,7 +11,7 @@ data Type
   | -- bool
     TBool
   | -- T
-    TypeVar String
+    TVar String
   | -- Type -> Type
     Arrow Type Type
   | -- (Type, ...)
@@ -232,7 +232,7 @@ instance PrettyPrint Type where
           TInt -> "int"
           TNat -> "nat"
           TBool -> "bool"
-          TypeVar x -> x
+          TVar x -> x
           Arrow t1 t2 -> concat ["(" ++ pp t1 ++ ")", " -> ", "(" ++ pp t2 ++ ")"]
           Tuple ts -> "(" ++ intercalate ", " (map pp ts) ++ ")"
 
