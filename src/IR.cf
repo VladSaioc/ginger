@@ -4,16 +4,31 @@ comment "//";
 -- Structural keywords
 position token GO {"go"};
 position token FOR {"for"};
+position token IF {"if"};
+position token THEN {"then"};
+position token ELSE {"else"};
+position token SKIP {"skip"};
 
 -- Channel operations
 position token SND {"!"};
 position token RCV {"?"};
 
 -- Expression tokens
+position token AND {"&"};
+position token OR {"|"};
+position token NOT {"!"};
+position token EQL {"=="};
+position token NEQ {"/="};
+position token GE {">="};
+position token GTE {">"};
+position token LE {"<="};
+position token LTE {"<"};
 position token PLUS {"+"};
 position token MINUS {"-"};
 position token MULT {"*"};
 position token DIV {"/"};
+position token TRUE {"true"};
+position token FALSE {"false"};
 
 -- Constants
 position token NUMBER (digit)+;
@@ -34,7 +49,9 @@ Proc. Proc ::= GO "{" [Stm] ;
 
 -- Statement
 separator Stm ";";
+Skip. Stm ::= SKIP;
 SOp. Stm ::= Op;
+SIf. Stm ::= IF Exp THEN [Stm] ELSE [Stm];
 For. Stm ::= FOR ID ":" Exp ".." Exp "{" [Op] "}";
 
 -- Atomic channel operations
@@ -43,12 +60,23 @@ Snd. Op ::= ID SND;
 Rcv. Op ::= ID RCV;
 
 -- Expressions
-coercions Exp 2;
-Plus. Exp ::= Exp PLUS Exp1;
-Minus. Exp ::= Exp MINUS Exp1;
-Mult. Exp1 ::= Exp1 MULT Exp2;
-Div. Exp1 ::= Exp1 DIV Exp2;
-Var. Exp2 ::= ID;
-Const. Exp2 ::= NUMBER;
+coercions Exp 5;
+Or. Exp ::= Exp OR Exp1;
+And. Exp1 ::= Exp1 AND Exp2;
+Eq. Exp2 ::= Exp3 EQL Exp3;
+Ne. Exp2 ::= Exp3 NEQ Exp3;
+Le. Exp2 ::= Exp3 LE Exp3;
+Ge. Exp2 ::= Exp3 GE Exp3;
+Lt. Exp2 ::= Exp3 LTE Exp3;
+Gt. Exp2 ::= Exp3 GTE Exp3;
+Plus. Exp3 ::= Exp3 PLUS Exp4;
+Minus. Exp3 ::= Exp3 MINUS Exp4;
+Mult. Exp4 ::= Exp4 MULT Exp5;
+Div. Exp4 ::= Exp4 DIV Exp5;
+Var. Exp5 ::= ID;
+Const. Exp5 ::= NUMBER;
+Not. Exp5 ::= NOT Exp5;
+Tru. Exp5 ::= TRUE;
+Fal. Exp5 ::= FALSE;
 
 entrypoints Prog;
