@@ -1,5 +1,5 @@
 name:                goinvgen
-version:             0.1.0.0
+version:             1.0.0.0
 github:              "VladSaioc/goinvgen"
 license:             BSD3
 author:              "Georgian-Vlad Saioc"
@@ -27,6 +27,7 @@ dependencies:
 - text
 - directory
 - split
+- union-find
 
 ghc-options:
 - -Wall
