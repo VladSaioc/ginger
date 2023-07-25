@@ -1,7 +1,6 @@
 module Pipeline.IRTranslation.Postcondition (postconditions) where
 
 import Backend.Ast
-import Backend.Utilities
 import Data.Map qualified as M
 import Pipeline.IRTranslation.Utilities
 
@@ -15,4 +14,4 @@ Produces:
 pc(π) = (max ∘ dom)(ϕ)
 -}
 postcondition :: Pid -> ProgPoints -> Exp
-postcondition pid pp = Eq (π pid) ((pp -|) #)
+postcondition pid pp = Eq (π pid) (pp -|)
