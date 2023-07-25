@@ -6,8 +6,29 @@ import Data.List qualified as L
 import Data.Map qualified as M
 import Data.Maybe qualified as Mb
 import IR.Utilities
-import Pipeline.IRTranslation.ChInstructions (chanOps)
 import Pipeline.IRTranslation.Utilities
+
+{- Aggregate all channel operation points from a given map of program points.
+Produces a list of channel operation metadata, including the channel name,
+process id, operation direction, program point.
+Depends on: ϕ
+
+Produces:
+{ (c, d, n) | (n, cd) ∈ ϕ \ loop(ϕ). d ∈ {!, ?} }
+-}
+chanOps :: Pid -> ProgPoints -> [ChannelMeta]
+chanOps pid =
+  let insn n s = do
+        op <- backendChannelOp s
+        let (c, d) = either (,S) (,R) op
+        return
+          ChannelMeta
+            { cmPid = pid,
+              cmVar = c,
+              cmOp = d,
+              cmPoint = n
+            }
+   in Mb.catMaybes . M.elems . M.mapWithKey insn
 
 {- Composes the enabled predicates for all processes
 under disjunction.
@@ -31,9 +52,9 @@ pc(π) < (max ∘ dom)(ϕ) ∧ E! ∧ E?
 enabled :: KEnv -> Pid -> ProgPoints -> Exp
 enabled kenv pid pp =
   let pc = π pid
-      chsops = chanOps pp
-      notTerminated = Ne pc ((pp -|) #)
-      subExp (cn, d, n) =
+      chsops = chanOps pid pp
+      notTerminated = Ne pc (pp -|)
+      subExp ChannelMeta {cmVar = cn, cmPoint = n, cmOp = d} =
         let k = Mb.fromJust (M.lookup cn kenv)
             c = (cn @)
             executing = Implies . Eq pc . (#)
