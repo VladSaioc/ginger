@@ -37,10 +37,11 @@ mSimplify (Method {returns, methodHoare, methodBody}) =
 -- Simplify clauses in Hoare triples. The process eliminates redundant clauses
 -- i.e., requires/ensures true
 hSimplify :: HoareWrap -> HoareWrap
-hSimplify (HoareWrap {ghost, name, params, decreases, requires, ensures}) =
+hSimplify (HoareWrap {ghost, name, types, params, decreases, requires, ensures}) =
   HoareWrap
     { ghost = ghost,
       name = name,
+      types = types,
       params = params,
       decreases = clausesSimplify decreases,
       requires = clausesSimplify requires,
