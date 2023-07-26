@@ -6,7 +6,6 @@ import Control.Monad (unless)
 import Data.List (intercalate)
 import Data.Map qualified as M
 import Data.Maybe
-import Data.Set qualified as S
 import IR.Utilities
 import Utilities.PrettyPrint (PrettyPrint (prettyPrint))
 
@@ -16,7 +15,7 @@ type Ch = String
 
 -- Mappings from channel operation directionality to a set of
 -- program points marking channel operations with that direction.
-type ChOps = M.Map OpDir (S.Set PCounter)
+type ChOps = M.Map OpDir [ChannelMeta]
 
 -- Polymorphic mappings from channel names.
 type ChMap a = M.Map Ch a
@@ -88,25 +87,32 @@ data ChannelMeta = ChannelMeta
     -- Channel operation
     cmOp :: OpDir,
     -- Program point
-    cmPoint :: PCounter
+    cmPoint :: PCounter,
+    -- Path conditions guarding the operation
+    cmPathexp :: Exp
   }
+  deriving (Eq, Read)
 
 instance Show ChannelMeta where
   show ChannelMeta {cmPid = pid, cmVar, cmOp, cmPoint = n} =
     -- PID: c{!,?} <n>
     unwords [show pid ++ ":", cmVar ++ show cmOp, "<" ++ show n ++ ">"]
 
--- Annotate process-local variable. Given process id pid and name x,
--- the naming schema is:
---  Ppid'x
-(%) :: Pid -> String -> String
-(%) pid x = "P" ++ show pid ++ "'" ++ x
-
 -- Program counter variable name. Produces the variable storing program
 -- counters for each process. Given process id pid, the naming schema is:
 --  Ppid
 (<|) :: Pid -> String
 (<|) pid = "P" ++ show pid
+
+-- Annotate process-local variable. Given process id pid and name x,
+-- the naming schema is:
+--  Ppid'x
+(%) :: Pid -> String -> String
+(%) pid x = (pid <|) ++ "'" ++ x
+
+-- Program counter to variable expression
+π :: Int -> Exp
+π pc = ((pc <|) @)
 
 -- Given a set of program points, produces the next available program point.
 (-|) :: ProgPoints -> Exp
@@ -281,8 +287,8 @@ backendChannelOp =
 -- Given M1 and M2, it produces:
 --
 -- [ c ↦ [d ↦ M1(c)(d) ∪ M1(c)(d) | d ∈ {!, ?}] | c ∈ dom(M1) ∪ dom(M2) ]
-(⊎) :: Ord a => Ord b => Ord c => M.Map a (M.Map b (S.Set c)) -> M.Map a (M.Map b (S.Set c)) -> M.Map a (M.Map b (S.Set c))
-(⊎) = M.unionWith $ M.unionWith S.union
+(⊎) :: Ord a => Ord b => M.Map a (M.Map b [c]) -> M.Map a (M.Map b [c]) -> M.Map a (M.Map b [c])
+(⊎) = M.unionWith $ M.unionWith (++)
 
 -- Inserts a channel operation into a channel operation map.
 -- Given, a triple (c, d, n) where c is a channel name, d
@@ -294,14 +300,10 @@ backendChannelOp =
 --
 -- If M(c) is undefined (and similarly M(c)(d)), they get initialized
 -- to the corresponding zero value for the appropriate type.
-(+>) :: (Ch, OpDir, PCounter) -> ChMap ChOps -> ChMap ChOps
-(c, d, n) +> chops =
+(+>) :: ChannelMeta -> ChMap ChOps -> ChMap ChOps
+ch@(ChannelMeta {cmVar = c, cmOp = d}) +> chops =
   let ops = fromMaybe M.empty (M.lookup c chops)
-      dops = fromMaybe S.empty (M.lookup d ops)
-      dops' = S.insert n dops
+      dops = fromMaybe [] (M.lookup d ops)
+      dops' = ch : dops
       ops' = M.insert d dops' ops
    in M.insert c ops' chops
-
--- Program counter to variable expression
-π :: Int -> Exp
-π pc = ((pc <|) @)
