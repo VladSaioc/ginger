@@ -131,20 +131,22 @@ equals = \case
 -- Checks whether a back-end statement encodes a channel send or receive
 -- operation, and returns the name of the channel if that is the case.
 -- The result is wrapped in "Left" for channel sends, and "Right" for channel
--- receives. Channel send operations have the following pattern:
+-- receives. Channel operations have the following pattern (members between
+-- angle brackets correspond to code generated for send on the left side,
+-- and receive on the right side):
 --
 -- if 0 < κ(c) {
---    if c {< κ(c), > 0} {
---       c := c {+,-} 1;
+--    if c ⟨< κ(c) | > 0⟩ {
+--       c := c ⟨+ | -⟩ 1;
 --       pc := n;
 --    }
 -- } else {
---    if c == {0, 1} {
---       c := {1, -1};
+--    if c == ⟨0 | 1⟩ {
+--       c := ⟨1 | -1⟩;
 --       pc := n';
 --    }
 -- }
--- where n' = {n + 1, n}
+-- where n' = ⟨n + 1 | n⟩
 backendChannelOp :: Stmt -> Maybe (Either Ch Ch)
 backendChannelOp =
   let -- Return a result inside a pair
