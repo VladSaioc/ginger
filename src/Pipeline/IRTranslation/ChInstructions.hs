@@ -1,33 +1,20 @@
-module Pipeline.IRTranslation.ChInstructions (chanOps, noloopPsChanInsns) where
+module Pipeline.IRTranslation.ChInstructions (noloopPsChanInsns) where
 
-import Data.List qualified as L
+import Backend.Ast qualified as P'
+import Backend.Utilities
 import Data.Map qualified as M
-import Data.Maybe qualified as Mb
 import IR.Ast
 import IR.Utilities
+import Pipeline.IRTranslation.Exps (parseExp)
 import Pipeline.IRTranslation.Utilities
-
-{- Aggregate all channel operation points from a given map of program points.
-Produces a set of triples consisting of channel name, direction and
-program point.
-Depends on: ϕ
-
-Produces:
-{ (c, d, n) | (n, cd) ∈ ϕ \ loop(ϕ). d ∈ {!, ?} }
--}
-chanOps :: ProgPoints -> [(Ch, OpDir, PCounter)]
-chanOps =
-  let insn n s = do
-        op <- backendChannelOp s
-        let (c, d) = either (,S) (,R) op
-        return (c, d, n)
-   in Mb.catMaybes . M.elems . M.mapWithKey insn
 
 -- Aggregates all non-loop channel operations across
 -- all processes of the program, including operation
 -- direction, program point, and channel name.
 noloopPsChanInsns :: Prog -> PChInsns
-noloopPsChanInsns (Prog _ ps) = M.fromList (zip [0 ..] (L.map (fst . noloopPChanInsns 0) ps))
+noloopPsChanInsns (Prog _ ps) =
+  let ps' = zip [0 ..] ps
+   in M.mapWithKey (\i p -> fst $ noloopPChanInsns i (True ?) 0 p) $ M.fromList ps'
 
 -- Aggregates all non-loop channel operations, including operation
 -- direction, program point, and channel name.
@@ -42,14 +29,14 @@ noloopPsChanInsns (Prog _ ps) = M.fromList (zip [0 ..] (L.map (fst . noloopPChan
 --         |- ⟨n', S₂⟩ -> ⟨n'', M₂⟩
 --         |- M = [c ↦ os | c ∈ dom(M₁) ∪ dom(M₂),
 --                          os = [d ↦ { n | n ∈ M₁(c)(d) ∪ M₂(c)(d)} | d ∈ dom(M₁(c)) ∪ dom(M₂(c)) ]]
-noloopPChanInsns :: PCounter -> Stmt -> (ChMap ChOps, PCounter)
-noloopPChanInsns n s =
+noloopPChanInsns :: Pid -> P'.Exp -> PCounter -> Stmt -> (ChMap ChOps, PCounter)
+noloopPChanInsns pid e n s =
   let n' = n + ppOffset s
    in case s of
         -- Sequence maps are aggregated via point-wise union
         Seq s1 s2 ->
-          let (o1, n1) = noloopPChanInsns n s1
-              (o2, n2) = noloopPChanInsns n1 s2
+          let (o1, n1) = noloopPChanInsns pid e n s1
+              (o2, n2) = noloopPChanInsns pid e n1 s2
            in (o1 ⊎ o2, n2)
         Skip -> (M.empty, n')
         -- Loops are handled separately
@@ -57,4 +44,17 @@ noloopPChanInsns n s =
         -- Atomic operations are added to the list of triples.
         Atomic o ->
           let (c, d) = (chName o, chDir o)
-           in ((c, d, n) +> M.empty, n')
+              ch =
+                ChannelMeta
+                  { cmPid = pid,
+                    cmVar = c,
+                    cmOp = d,
+                    cmPoint = n,
+                    cmPathexp = e
+                  }
+           in (ch +> M.empty, n')
+        If e' s1 s2 ->
+          let e'' = parseExp e'
+              (o1, n1) = noloopPChanInsns pid (P'.And e'' e) (n + 1) s1
+              (o2, n2) = noloopPChanInsns pid (P'.And (P'.Not e'') e) n1 s2
+           in (o1 ⊎ o2, n2)
