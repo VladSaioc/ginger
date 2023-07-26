@@ -21,6 +21,15 @@ sOptimize = \case
   -- for (x : e1 .. e2) {} ==> skip
   For _ _ _ [] -> Skip
   For x e1 e2 os -> For x (eOptimize e1) (eOptimize e2) os
+  -- if true then S1 else S2 ==> S1
+  If BTrue s1 _ -> s1
+  -- if false then S1 else S2 ==> S2
+  If BFalse _ s2 -> s2
+  If e s1 s2 ->
+    let e' = eOptimize e
+     in if e' /= e
+          then sOptimize (If e' s1 s2)
+          else If e' (sOptimize s1) (sOptimize s2)
   s -> s
 
 eOptimize :: Exp -> Exp
