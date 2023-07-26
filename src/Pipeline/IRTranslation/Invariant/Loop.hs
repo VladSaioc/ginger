@@ -4,22 +4,24 @@ import Backend.Ast
 import Backend.Utilities
 import Pipeline.IRTranslation.Utilities
 
+{- Get all loop monitor expressions.
+-}
 loopMonitors :: [Loop] -> [Exp]
 loopMonitors = map loopMonitor
 
 {- Constructs a loop monitor invariant.
-Depends on: ℓ = (π, x, n, n', lo, hi)
+Depends on: ℓ = (π, x, n, n', lo, hi, b)
 
 Produces:
-if lo ≤ hi then
-  lo ≤ x ≤ hi
-  pc(π) < n => x = lo ∧
-  n < pc(π) < n' => x < hi ∧
-  n' ≤ pc(π) => x = hi
-else x = e ∧ ¬(n < pc(π) < n')
+b => if lo ≤ hi then
+      lo ≤ x ≤ hi
+      pc(π) < n => x = lo ∧
+      n < pc(π) < n' => x < hi ∧
+      n' ≤ pc(π) => x = hi
+    else x = e ∧ ¬(n < pc(π) < n')
 -}
 loopMonitor :: Loop -> Exp
-loopMonitor (Loop {var, pid, guardP, exitP, lower, upper}) =
+loopMonitor (Loop {var, pid, guardP, exitP, lower, upper, pathexp}) =
   let lo = lower -- Short-hand for lower bound
       hi = upper -- Short-hand for upper bound
       -- Loop variable as a back-end variable
@@ -46,7 +48,7 @@ loopMonitor (Loop {var, pid, guardP, exitP, lower, upper}) =
             during = Implies counterInLoop (Lt x hi)
             -- Counter value after loop has executed: n' ≤ pc(π) => x = hi
             after = Implies (Leq exit pc) (Geq x hi)
-         in ([bounded, before, during, after] ...⋀)
+         in Implies pathexp ([bounded, before, during, after] ...⋀)
       -- The clause modeling loop behaviour if the loop never enters.
       noIter =
         let -- The incrementing variable will remain frozen to the lower bound.
