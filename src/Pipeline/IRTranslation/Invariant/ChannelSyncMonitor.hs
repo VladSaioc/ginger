@@ -5,7 +5,6 @@ import Backend.Utilities
 import Data.List qualified as L
 import Data.Map qualified as M
 import Data.Maybe qualified as Mb
-import Data.Set qualified as S
 import IR.Utilities
 import Pipeline.IRTranslation.Utilities
 
@@ -28,7 +27,7 @@ Produces:
 -}
 syncChannelMonitors :: PChInsns -> [Loop] -> ChMap Exp
 syncChannelMonitors noloopOps ls =
-  let noloopSubexps = L.map snd (M.toList (M.mapWithKey noloopMonitors noloopOps))
+  let noloopSubexps = L.map snd (M.toList (M.map noloopMonitors noloopOps))
       loopSubexps = L.map loopMonitor ls
       subexps = M.unionsWith (M.unionWith Plus) (noloopSubexps ++ loopSubexps)
       chanMonitor dir =
@@ -46,40 +45,43 @@ Depends on: ℓ, with the following properties:
 3. lo(ℓ) is the lower bound expression
 4. x(ℓ) is the loop index variable
 5. exit(ℓ) is the exit point
+6. b(ℓ) is the loop reachability condition
 
 Produces:
 [ c ↦ [
-  ! ↦ 2(x(ℓ) - lo(ℓ)) * |{ c! | (n, c!) ∈ op(ℓ) }|
-    + (Σ ∀(n, c!) ∈ op(ℓ).
-      if n < π(ℓ) < exit(ℓ) then 1 else 0
-    + if n + 1 < π(ℓ) < exit(ℓ) then 1 else 0),
-  ? ↦ 2(x(ℓ) - lo(ℓ)) * |{ c? | (n, c?) ∈ op(ℓ) }|
-    - (Σ ∀(n, c?) ∈ op(ℓ).
-      if n < π(ℓ) < exit(ℓ) then 2 else 0) ]
+  ! ↦ if b(ℓ) then
+          2(x(ℓ) - lo(ℓ)) * |{ c! | (n, c!) ∈ op(ℓ) }|
+        + (Σ ∀(n, c!) ∈ op(ℓ).
+            if n < π(ℓ) < exit(ℓ) then 1 else 0
+          + if n + 1 < π(ℓ) < exit(ℓ) then 1 else 0)
+      else 0,
+  ? ↦ if b(ℓ) then
+          2(x(ℓ) - lo(ℓ)) * |{ c? | (n, c?) ∈ op(ℓ) }|
+        + (Σ ∀(n, c?) ∈ op(ℓ).
+            if n < π(ℓ) < exit(ℓ) then 2 else 0)
+      else 0 ]
   | ∀ c, (n, cd) ∈ op(ℓ) ]
 -}
 loopMonitor :: Loop -> ChMap (M.Map OpDir Exp)
-loopMonitor (Loop {pid, var, lower, exitP, chans}) =
+loopMonitor (Loop {pid, var, lower, exitP, chans, pathexp = b}) =
   let x = (var @)
       pc = π pid
-      sendOp n =
-        let synced = And (Lt (n #) pc) (Lt pc (exitP #))
-            rendezvous = And (Lt ((n + 1) #) pc) (Lt pc (exitP #))
-         in Plus
-              (IfElse synced (1 #) (0 #))
-              (IfElse rendezvous (1 #) (0 #))
-      receiveOp n =
-        let synced = And (Lt (n #) pc) (Lt pc (exitP #))
-         in IfElse synced (2 #) (0 #)
-      chanSubexp d ops =
-        let singleOp = case d of
-              S -> sendOp
-              R -> receiveOp
-            iterations = Mult (Minus x lower) (S.size ops #)
+      ext = (exitP #)
+      singleOp ChannelMeta {cmOp = d, cmPoint = n} =
+        let synced = And (Lt (n #) pc) (Lt pc ext)
+         in case d of
+              S ->
+                let rendezvous = And (Lt ((n + 1) #) pc) (Lt pc ext)
+                 in Plus
+                      (IfElse synced (1 #) (0 #))
+                      (IfElse rendezvous (1 #) (0 #))
+              R -> IfElse synced (2 #) (0 #)
+      chanSubexp ops =
+        let iterations = Mult (Minus x lower) (length ops #)
             x2 = Mult (2 #) iterations
-            ops' = L.map singleOp (S.toList ops)
-         in Plus x2 (ops' ...+)
-   in M.map (M.mapWithKey chanSubexp) chans
+            ops' = L.map singleOp ops
+         in IfElse b (Plus x2 (ops' ...+)) (0 #)
+   in M.map (M.map chanSubexp) chans
 
 {- Organize and compose under addition all non-loop monitor
 sub-expressions for every synchronous channel for a given process.
@@ -87,42 +89,44 @@ Depends on: π, ϕ
 
 Produces:
 [c ↦ [
-  ! ↦ {(if n < pc(π) then 1 else 0) + (if n + 1 < pc(π) then 1 else 0) | ∀(n, c!) ∈ ϕ },
+  ! ↦ {if b(n) then
+          if n < pc(π) then 1 else 0) + (if n + 1 < pc(π) then 1 else 0)
+        else 0 | ∀(n, c!) ∈ ϕ },
   ? ↦ {if n < pc(π) then 2 else 0 | ∀(n, c?) ∈ ϕ }]
   | ∀ c, (n, cd) ∈ ϕ ]
 -}
-noloopMonitors :: Pid -> ChMap ChOps -> ChMap (M.Map OpDir Exp)
-noloopMonitors pid =
-  let pc = π pid
-      noloopMonitor d = L.map $ case d of
-        S -> sendNoloopMonitor pc
-        R -> receiveNoloopMonitor pc
-      subexps = M.map (...+) . M.mapWithKey noloopMonitor . M.map S.toList
-   in M.map subexps
+noloopMonitors :: ChMap ChOps -> ChMap (M.Map OpDir Exp)
+noloopMonitors = M.map (M.map ((...+) . map noloopMonitor))
 
-{- Monitor sub-expression for a non-loop single synchronous channel send.
+{- Monitor sub-expression for a non-loop single synchronous channel operation.
+
+For send operations:
 After synchronization, its resource contribution is 1. After the rendezvous,
 its resource contribution is 1 more.
+For receive operations:
+After synchronization, its resource contribution is 2.
+
 Depends on: π, n, where n ∈ dom(Π(π))
 
-  if n < pc(π) then 1 else 0
-+ if n + 1 < pc(π) then 1 else 0
+Depnding on the operation direction, it produces:
+  ! ↦ if b then
+          if n < pc(π) then 1 else 0
+        + if n + 1 < pc(π) then 1 else 0
+      else 0
+
+  ? ↦ if b then
+          if n < pc(π) then 2 else 0 else
+      else 0
 -}
-sendNoloopMonitor :: Exp -> PCounter -> Exp
-sendNoloopMonitor pc n =
-  let synced = Lt (n #) pc
+noloopMonitor :: ChannelMeta -> Exp
+noloopMonitor ChannelMeta {cmPid = pid, cmOp = d, cmPoint = n, cmPathexp = b} =
+  let pc = π pid
+      synced = Lt (n #) pc
       rendezvous = Lt ((n + 1) #) pc
-   in Plus
-        (IfElse synced (1 #) (0 #))
-        (IfElse rendezvous (1 #) (0 #))
-
-{- Monitor sub-expression for a non-loop single synchronous channel receive.
-After synchronization, its resource contribution is 2.
-Depends on: π ∈ dom(Π), n ∈ dom(Π(π))
-
-if n < pc(π) then 2 else 0
--}
-receiveNoloopMonitor :: Exp -> PCounter -> Exp
-receiveNoloopMonitor pc n =
-  let synced = Lt (n #) pc
-   in IfElse synced (2 #) (0 #)
+      monitor = case d of
+        S ->
+          Plus
+            (IfElse synced (1 #) (0 #))
+            (IfElse rendezvous (1 #) (0 #))
+        R -> IfElse synced (2 #) (0 #)
+   in IfElse b monitor (0 #)

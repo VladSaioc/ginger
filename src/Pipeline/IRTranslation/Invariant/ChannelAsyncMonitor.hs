@@ -5,7 +5,6 @@ import Backend.Utilities
 import Data.List qualified as L
 import Data.Map qualified as M
 import Data.Maybe qualified as Mb
-import Data.Set qualified as S
 import IR.Utilities
 import Pipeline.IRTranslation.Utilities
 
@@ -28,7 +27,7 @@ Produces:
 -}
 asyncChannelMonitors :: PChInsns -> [Loop] -> ChMap Exp
 asyncChannelMonitors noloopOps ls =
-  let noloopSubexps = L.map snd (M.toList (M.mapWithKey noloopMonitors noloopOps))
+  let noloopSubexps = L.map snd (M.toList (M.map noloopMonitors noloopOps))
       loopSubexps = L.map loopMonitor ls
       subexps = M.unionsWith (M.unionWith Plus) (noloopSubexps ++ loopSubexps)
       chanMonitor dir =
@@ -46,27 +45,33 @@ Depends on: ℓ, with the following properties:
 3. lo(ℓ) is the lower bound expression
 4. x(ℓ) is the loop index variable
 5. exit(ℓ) is the exit point
+6. b(ℓ) is the reachability condition for the loop.
 
 Produces:
 [ c ↦ [
-  ! ↦ (x(ℓ) - lo(ℓ)) * |{ c! | (n, c!) ∈ op(ℓ) }|
-    + (Σ ∀(n, c!) ∈ op(ℓ).
-      if n < π(ℓ) < exit(ℓ) then 1 else 0),
-  ? ↦ (x(ℓ) - lo(ℓ)) * |{ c? | (n, c?) ∈ op(ℓ) }|
-    - (Σ ∀(n, c?) ∈ op(ℓ).
-      if n < π(ℓ) < exit(ℓ) then 1 else 0) ]
+  ! ↦ if b then
+          (x(ℓ) - lo(ℓ)) * |{ c! | (n, c!) ∈ op(ℓ) }|
+        + (Σ ∀(n, c!) ∈ op(ℓ).
+            if n < π(ℓ) < exit(ℓ) then 1 else 0)
+      else 0,
+  ? ↦ if b then
+          (x(ℓ) - lo(ℓ)) * |{ c? | (n, c?) ∈ op(ℓ) }|
+        + (Σ ∀(n, c?) ∈ op(ℓ).
+            if n < π(ℓ) < exit(ℓ) then 1 else 0)
+      else 0 ]
   | ∀ c, (n, cd) ∈ op(ℓ) ]
 -}
 loopMonitor :: Loop -> ChMap (M.Map OpDir Exp)
-loopMonitor (Loop {pid, var, lower, exitP, chans}) =
+loopMonitor (Loop {var, lower, exitP, chans}) =
   let x = (var @)
-      pc = π pid
-      singleOp op =
-        let hasPassedOp = And (Lt (op #) pc) (Lt pc (exitP #))
+      singleOp ch =
+        let ChannelMeta {cmPoint = op, cmPid = pid} = ch
+            pc = π pid
+            hasPassedOp = And (Lt (op #) pc) (Lt pc (exitP #))
          in IfElse hasPassedOp (1 #) (0 #)
       chanSubexp ops =
-        let iterations = Mult (Minus x lower) (S.size ops #)
-            ops' = L.map singleOp (S.toList ops)
+        let iterations = Mult (Minus x lower) (length ops #)
+            ops' = L.map singleOp ops
          in Plus iterations (ops' ...+)
    in M.map (M.map chanSubexp) chans
 
@@ -81,20 +86,21 @@ Produces:
     ? ↦ {if n < pc(π) then 1 else 0) | ∀(n, c!) ∈ ϕ(π) }
   ]]
 -}
-noloopMonitors :: Pid -> ChMap ChOps -> ChMap (M.Map OpDir Exp)
-noloopMonitors pid =
-  let pc = π pid
-      subexps = L.map (noloopMonitor pc) . S.toList
+noloopMonitors :: ChMap ChOps -> ChMap (M.Map OpDir Exp)
+noloopMonitors =
+  let subexps = L.map noloopMonitor
       setTransform = (...+) . subexps
    in M.map (M.map setTransform)
 
 {- Monitor sub-expression for a non-loop single asynchronous channel operation.
 If the operation has occurred, its resource contribution is 1.
-Depends on: π, n, where n ∈ dom(Π(π))
+Depends on: π, n, where n ∈ dom(Π(π)), b (reachability condition)
 
-if n < pc(π) then 1 else 0
+if b then if n < pc(π) then 1 else 0 else 0
 -}
-noloopMonitor :: Exp -> PCounter -> Exp
-noloopMonitor pc n =
-  let passed = Lt (n #) pc
-   in IfElse passed (1 #) (0 #)
+noloopMonitor :: ChannelMeta -> Exp
+noloopMonitor ch =
+  let ChannelMeta {cmPid = pid, cmPoint = n, cmPathexp = b} = ch
+      pc = π pid
+      passed = Lt (n #) pc
+   in IfElse b (IfElse passed (1 #) (0 #)) (0 #)
