@@ -43,6 +43,37 @@ isErr = \case
   Ok _ -> True
   Bad _ -> False
 
+newtype ErrT m a = ErrT {runErrT :: m (Err a)}
+
+instance Monad m => Functor (ErrT m) where
+  fmap f (ErrT o) = ErrT $ do
+    x <- o
+    case x of
+      Bad msg -> return $ Bad msg
+      Ok v -> return $ return $ f v
+
+instance Monad m => Applicative (ErrT m) where
+  pure = ErrT . return . return
+  ErrT ff <*> ErrT fa = ErrT $ do
+    f <- ff
+    case f of
+      Bad msg -> do
+        return $ Bad msg
+      Ok f' -> do
+        a <- fa
+        case a of
+          Bad msg -> return $ Bad msg
+          Ok v -> return $ return $ f' v
+
+instance Monad m => Monad (ErrT m) where
+  return = pure
+  x >>= f = ErrT $ do
+    x' <- runErrT x
+    case x' of
+      Bad msg -> do
+        return $ Bad msg
+      Ok v -> runErrT $ f v
+
 newtype ErrIO a = ErrIO {runErrIO :: IO (Err a)}
 
 instance MonadIO ErrIO where
@@ -61,7 +92,6 @@ instance Applicative ErrIO where
     f <- ff
     case f of
       Bad msg -> do
-        putStrLn msg
         return $ Bad msg
       Ok f' -> do
         a <- fa
