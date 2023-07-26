@@ -19,7 +19,7 @@ data Ctxt a b = Ctxt
     chans :: M.Map String P'.Exp,
     curr :: b
   }
-  deriving (Eq, Ord, Read, Show)
+  deriving (Eq, Ord, Read)
 
 wrapCtx :: Ctxt a b -> Err (Ctxt () b)
 wrapCtx ctx = return ctx {syntax = ()}
@@ -54,6 +54,16 @@ translateStatements :: Ctxt [Pos P.Stmt] P'.Stmt -> Err (Ctxt () P'.Stmt)
 translateStatements ctx = case syntax ctx of
   [] -> wrapCtx (ctx {procs = M.insert (pid ctx) (curr ctx) (procs ctx)})
   Pos _ s : ss -> case s of
+    P.Skip -> translateStatements (ss >: ctx)
+    P.Return -> translateStatements ([] >: ctx)
+    P.Break -> translateStatements ([] >: ctx)
+    P.If e ss1 ss2 -> do
+      let venv = varenv ctx
+      e' <- translateExp venv e
+      ctx1 <- translateStatements (ss1 >: ctx <: P'.Skip)
+      ctx2 <- translateStatements (ss2 >: ctx1 <: P'.Skip)
+      let ctx3 = ss >: ctx2 <: P'.If e' (curr ctx1) (curr ctx2)
+      translateStatements ctx3
     P.Atomic op -> do
       ctx' <- translateOp $ op >: ctx
       let op' = P'.Atomic $ curr ctx'
