@@ -4,7 +4,8 @@ import Data.List (intercalate)
 import Utilities.PrettyPrint
 
 data Type
-  = -- int
+  = TBad
+  | -- int
     TInt
   | -- nat
     TNat
@@ -133,6 +134,7 @@ data Cons = Cons String [(String, Type)] deriving (Eq, Ord, Read)
 data HoareWrap = HoareWrap
   { ghost :: Bool,
     name :: String,
+    types :: [Type],
     params :: [(String, Type)],
     decreases :: [Exp],
     requires :: [Exp],
@@ -229,6 +231,7 @@ instance PrettyPrint Type where
   prettyPrint _ =
     let pp = prettyPrint 0
      in \case
+          TBad -> "err"
           TInt -> "int"
           TNat -> "nat"
           TBool -> "bool"
@@ -355,9 +358,20 @@ instance PrettyPrint Cons where
 
 instance PrettyPrint Function where
   prettyPrint _ Function {yields, funcHoare, funcBody} = case funcHoare of
-    HoareWrap {ghost, name, params, decreases, requires, ensures} ->
+    HoareWrap {ghost, name, types, params, decreases, requires, ensures} ->
       let ps = intercalate ", " (map (\(x, t) -> unwords [x, ":", prettyPrint 0 t]) params)
-          header = unwords $ ["ghost" | ghost] ++ ["function", name ++ "(" ++ ps ++ ")", ":", prettyPrint 0 yields]
+          ts =
+            if null types
+              then ""
+              else "<" ++ intercalate ", " (map (prettyPrint 0) types) ++ ">"
+          header =
+            unwords $
+              ["ghost" | ghost]
+                ++ [ "function",
+                     name ++ ts ++ "(" ++ ps ++ ")",
+                     ":",
+                     prettyPrint 0 yields
+                   ]
           pre = prop "requires" requires
           post = prop "ensures" ensures
           dec = prop "decreases" decreases
@@ -368,11 +382,15 @@ instance PrettyPrint Function where
 
 instance PrettyPrint Method where
   prettyPrint _ Method {returns, methodHoare, methodBody} = case methodHoare of
-    HoareWrap {ghost, name, params, decreases, requires, ensures} ->
+    HoareWrap {ghost, name, types, params, decreases, requires, ensures} ->
       let ps = intercalate ", " (map (\(x, t) -> unwords [x, ":", prettyPrint 0 t]) params)
+          ts =
+            if null types
+              then ""
+              else "<" ++ intercalate ", " (map (prettyPrint 0) types) ++ ">"
           rps = map (\(x, t) -> unwords [x, ":", prettyPrint 0 t]) returns
           method = if ghost then "lemma" else "method"
-          header = unwords [method, name ++ "(" ++ ps ++ ")", "returns", "(" ++ intercalate ", " rps ++ ")"]
+          header = unwords [method, name ++ ts ++ "(" ++ ps ++ ")", "returns", "(" ++ intercalate ", " rps ++ ")"]
           pre = prop "requires" requires
           post = prop "ensures" ensures
           dec = prop "decreases" decreases
