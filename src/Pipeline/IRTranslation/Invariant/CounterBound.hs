@@ -1,6 +1,7 @@
 module Pipeline.IRTranslation.Invariant.CounterBound (counterInvariants) where
 
 import Backend.Ast
+import Backend.Utilities
 import Data.Map qualified as M
 import Pipeline.IRTranslation.Utilities
 
@@ -17,8 +18,8 @@ Produces:
 counterInvariant :: (Pid, ProgPoints) -> Exp
 counterInvariant (pid, pp) =
   let terminated = (pp -|)
-      pc = EVar (pid <|)
-      zero = ECon (CNum 0)
+      pc = π pid
+      zero = (0 #)
       lower = Leq zero pc
       upper = Leq pc terminated
    in And lower upper
