@@ -37,15 +37,19 @@ pChan (R'.Chan c e) = do
   return (Chan (c &) e')
 
 pProc :: R'.Proc -> Err Stmt
-pProc (R'.Proc _ ss) =
+pProc (R'.Proc _ ss) = pStms ss
+
+pStms :: [R'.Stm] -> Err Stmt
+pStms ss =
   let (|>) rs1 rs2 = do
         s1 <- rs1
         s2 <- pStm rs2
         return (Seq s1 s2)
-   in foldl (|>) (Ok Skip) ss
+   in foldl (|>) (return Skip) ss
 
 pStm :: R'.Stm -> Err Stmt
 pStm = \case
+  R'.Skip {} -> return Skip
   R'.SOp o -> do
     o' <- pOp o
     return (Atomic o')
@@ -54,6 +58,11 @@ pStm = \case
     e2' <- pExp e2
     os' <- composeSyntax pOp os
     return (For (x &) e1' e2' os')
+  R'.SIf _ e _ s1 _ s2 -> do
+    e' <- pExp e
+    s1' <- pStms s1
+    s2' <- pStms s2
+    return (If e' s1' s2')
 
 pOp :: R'.Op -> Err Op
 pOp = \case
@@ -62,11 +71,23 @@ pOp = \case
 
 pExp :: R'.Exp -> Err Exp
 pExp =
-  let bin = binaryCons pExp
+  let un = unaryCons pExp
+      bin = binaryCons pExp
    in \case
+        R'.Or e1 _ e2 -> bin Or e1 e2
+        R'.And e1 _ e2 -> bin And e1 e2
+        R'.Not _ e -> un Not e
+        R'.Eq e1 _ e2 -> bin Eq e1 e2
+        R'.Ne e1 _ e2 -> bin Ne e1 e2
+        R'.Le e1 _ e2 -> bin Leq e1 e2
+        R'.Lt e1 _ e2 -> bin Lt e1 e2
+        R'.Ge e1 _ e2 -> bin Geq e1 e2
+        R'.Gt e1 _ e2 -> bin Gt e1 e2
         R'.Plus e1 _ e2 -> bin Plus e1 e2
         R'.Minus e1 _ e2 -> bin Minus e1 e2
         R'.Mult e1 _ e2 -> bin Mult e1 e2
         R'.Div {} -> Bad "Unsupported division"
         R'.Const n -> return (Const (n #))
         R'.Var x -> return (Var (x &))
+        R'.Tru {} -> return BTrue
+        R'.Fal {} -> return BFalse
