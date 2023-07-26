@@ -2,6 +2,7 @@ module Utilities.Err where
 
 import Control.Applicative (Alternative (..))
 import Control.Monad (MonadPlus (..), liftM)
+import Control.Monad.IO.Class
 
 data Err a = Ok a | Bad String
   deriving (Read, Show, Eq, Ord)
@@ -41,3 +42,41 @@ isErr :: Err a -> Bool
 isErr = \case
   Ok _ -> True
   Bad _ -> False
+
+newtype ErrIO a = ErrIO {runErrIO :: IO (Err a)}
+
+instance MonadIO ErrIO where
+  liftIO a = ErrIO (return <$> a)
+
+instance Functor ErrIO where
+  fmap f (ErrIO o) = ErrIO $ do
+    x <- o
+    case x of
+      Bad msg -> return $ Bad msg
+      Ok v -> return $ return $ f v
+
+instance Applicative ErrIO where
+  pure = ErrIO . return . return
+  ErrIO ff <*> ErrIO fa = ErrIO $ do
+    f <- ff
+    case f of
+      Bad msg -> do
+        putStrLn msg
+        return $ Bad msg
+      Ok f' -> do
+        a <- fa
+        case a of
+          Bad msg -> do
+            putStrLn msg
+            return $ Bad msg
+          Ok v -> return $ return $ f' v
+
+instance Monad ErrIO where
+  return = pure
+  x >>= f = ErrIO $ do
+    x' <- runErrIO x
+    case x' of
+      Bad msg -> do
+        putStrLn msg
+        return $ Bad msg
+      Ok v -> runErrIO $ f v
