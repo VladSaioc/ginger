@@ -35,6 +35,7 @@ iterationsFunc =
             HoareWrap
               { ghost = True,
                 name = "iter",
+                types = [],
                 params = [("lo", TInt), ("hi", TInt)],
                 requires = [],
                 ensures = [],
@@ -63,6 +64,7 @@ isScheduleFunc ps =
             HoareWrap
               { ghost = True,
                 name = "isSchedule",
+                types = [],
                 params = [("S", Arrow TNat TNat)],
                 requires = [],
                 ensures = [],
@@ -219,6 +221,7 @@ progEncoding fvs kenv ps atomicOps loops =
         HoareWrap
           { ghost = True,
             name = "Program",
+            types = [],
             params = ("fuel", TNat) : ("S", Arrow TNat TNat) : (L.map (,TInt) . S.toList) fvs,
             ensures =
               [ Implies
