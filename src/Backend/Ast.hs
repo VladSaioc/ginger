@@ -17,7 +17,7 @@ data Type
     Arrow Type Type
   | -- (Type, ...)
     Tuple [Type]
-  deriving (Eq, Ord, Show, Read)
+  deriving (Eq, Ord, Read)
 
 data Pattern
   = -- _
@@ -225,6 +225,9 @@ newtype Program = Program [Decl] deriving (Eq, Ord, Read)
         )
       trans = (if needParens then ("(" ++) . (++ ")") else id) . prettyPrint 0
    in trans e2
+
+instance Show Type where
+  show = prettyPrint 0
 
 -- Pretty printer
 instance PrettyPrint Type where
