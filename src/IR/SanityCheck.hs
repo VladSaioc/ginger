@@ -18,8 +18,8 @@ data Ctx = Ctx
   deriving (Eq, Ord, Read)
 
 -- Perform a sanity check on the given IR program
-sanityCheck :: Prog -> Err Ctx
-sanityCheck (Prog chs prc) = do
+sanityCheck :: 𝑃 -> Err Ctx
+sanityCheck (𝑃 chs prc) = do
   -- Create a fresh context
   let ctx =
         Ctx
@@ -43,7 +43,7 @@ sanityCheckChan ctx (Chan c e) = do
   sanityCheckExp ctx' e
 
 -- Perform sanity checks on IR statements.
-sanityCheckStm :: Ctx -> Stmt -> Err Ctx
+sanityCheckStm :: Ctx -> 𝑆 -> Err Ctx
 sanityCheckStm ctx = \case
   If e s1 s2 -> do
     ctx' <- sanityCheckExp ctx e
@@ -84,25 +84,25 @@ sanityCheckOp ctx =
 
 -- Sanity check IR expressions. Ensures that loop variables or channel
 -- names are not used in expressions.
-sanityCheckExp :: Ctx -> Exp -> Err Ctx
+sanityCheckExp :: Ctx -> 𝐸 -> Err Ctx
 sanityCheckExp ctx =
   let bin e1 e2 = do
         ctx' <- sanityCheckExp ctx e1
         sanityCheckExp ctx' e2
    in \case
-        And e1 e2 -> bin e1 e2
-        Or e1 e2 -> bin e1 e2
+        e1 :& e2 -> bin e1 e2
+        e1 :| e2 -> bin e1 e2
         Not e1 -> bin BTrue e1
-        Eq e1 e2 -> bin e1 e2
-        Ne e1 e2 -> bin e1 e2
-        Lt e1 e2 -> bin e1 e2
-        Leq e1 e2 -> bin e1 e2
-        Gt e1 e2 -> bin e1 e2
-        Geq e1 e2 -> bin e1 e2
-        Plus e1 e2 -> bin e1 e2
-        Minus e1 e2 -> bin e1 e2
-        Mult e1 e2 -> bin e1 e2
-        Div e1 e2 -> bin e1 e2
+        e1 :== e2 -> bin e1 e2
+        e1 :!= e2 -> bin e1 e2
+        e1 :< e2 -> bin e1 e2
+        e1 :<= e2 -> bin e1 e2
+        e1 :> e2 -> bin e1 e2
+        e1 :>= e2 -> bin e1 e2
+        e1 :+ e2 -> bin e1 e2
+        e1 :- e2 -> bin e1 e2
+        e1 :* e2 -> bin e1 e2
+        e1 :/ e2 -> bin e1 e2
         Const _ -> return ctx
         BTrue -> return ctx
         BFalse -> return ctx
@@ -114,8 +114,8 @@ sanityCheckExp ctx =
               ]
           return (ctx {fvs = S.insert x (fvs ctx)})
 
-asyncCheck :: Prog -> Err [()]
-asyncCheck (Prog cs _) = results $ map asyncCheckChan cs
+asyncCheck :: 𝑃 -> Err [()]
+asyncCheck (𝑃 cs _) = results $ map asyncCheckChan cs
 
 asyncCheckChan :: Chan -> Err ()
 asyncCheckChan (Chan c e) = case e of

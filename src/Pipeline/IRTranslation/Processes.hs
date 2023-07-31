@@ -15,8 +15,8 @@ Depends on: κ, P = S₁, ..., Sₙ
 
 Produces: Π = [ πᵢ ↦ ϕᵢ | ϕᵢ = stmtsToPoints(κ, πᵢ, ⟨0, []⟩, Sᵢ) ]
 -}
-getProcs :: K -> Prog -> 𝛱
-getProcs κ (Prog _ prcs) =
+getProcs :: K -> 𝑃 -> 𝛱
+getProcs κ (𝑃 _ prcs) =
   let pidsAndSyntax = zip (take (length prcs) [0 ..]) prcs
       makeProc (p, stmt) =
         let (n, 𝜙) = stmtToPoints κ p (0, M.empty) stmt
@@ -47,7 +47,7 @@ Produces, based on S:
             }
           ]
 -}
-stmtToPoints :: K -> P -> (P𝑛, 𝛷) -> Stmt -> (P𝑛, 𝛷)
+stmtToPoints :: K -> P -> (P𝑛, 𝛷) -> 𝑆 -> (P𝑛, 𝛷)
 stmtToPoints κ p (𝑛, 𝜙) =
   let moveTo 𝑛' is =
         T.Block

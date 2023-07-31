@@ -108,8 +108,8 @@ unboundTypes Ctx {supply, tenv, venv} =
               _ -> Nothing
    in mapMaybe getUnboundType (M.elems venv)
 
-fvs :: Prog -> Err (𝛴, [T.Type])
-fvs (Prog chs procs) = do
+fvs :: 𝑃 -> Err (𝛴, [T.Type])
+fvs (𝑃 chs procs) = do
   ctx <- foldM (\θ ch -> chanFVs $ ch >: θ) mkTCtx chs
   ctx' <- foldM (\θ p -> stmtFVs $ p >: θ) ctx procs
   -- S.unions (map chanFVs chs ++ map stmtFVs procs)
@@ -125,7 +125,7 @@ chanFVs ctx@(Ctx {datum = Chan _ e}) = do
   ctx'' <- unifyTypes ctx' T.TInt t
   done ctx''
 
-stmtFVs :: TCtx Stmt -> Err (TCtx ())
+stmtFVs :: TCtx 𝑆 -> Err (TCtx ())
 stmtFVs ctx@(Ctx {datum = s}) =
   let updateWithExp t ctx' e = do
         ctx1@(Ctx {datum = t1}) <- expFVs $ e >: ctx'
@@ -156,7 +156,7 @@ stmtFVs ctx@(Ctx {datum = s}) =
 -- -- chanFVs _ (Chan _ e) = expFVs e
 
 -- Extract, and infer the types of, free variables in expressions.
-expFVs :: TCtx Exp -> Err (TCtx T.Type)
+expFVs :: TCtx 𝐸 -> Err (TCtx T.Type)
 expFVs ctx@(Ctx {datum = e, supply}) =
   let -- Short-hand for unifying the operands of binary operators.
       -- It accepts a possible baseline type, a result type, and
@@ -212,22 +212,20 @@ expFVs ctx@(Ctx {datum = e, supply}) =
         -- Boolean arithmetic produces a boolean type.
         -- Unify operand types with bool.
         Not e1 -> arith T.TBool BTrue e1
-        And e1 e2 -> arith T.TBool e1 e2
-        Or e1 e2 -> arith T.TBool e1 e2
+        e1 :& e2 -> arith T.TBool e1 e2
+        e1 :| e2 -> arith T.TBool e1 e2
         -- Comparisons produce a boolean type.
         -- Unify operand types with each other.
         -- Comparison may be polymorphic.
-        Eq e1 e2 -> comp T.TBool e1 e2
-        Ne e1 e2 -> comp T.TBool e1 e2
-        Lt e1 e2 -> comp T.TBool e1 e2
-        Leq e1 e2 -> comp T.TBool e1 e2
-        Gt e1 e2 -> comp T.TBool e1 e2
-        Geq e1 e2 -> comp T.TBool e1 e2
+        e1 :== e2 -> comp T.TBool e1 e2
+        e1 :!= e2 -> comp T.TBool e1 e2
+        e1 :< e2 -> comp T.TBool e1 e2
+        e1 :<= e2 -> comp T.TBool e1 e2
+        e1 :> e2 -> comp T.TBool e1 e2
+        e1 :>= e2 -> comp T.TBool e1 e2
         -- Numeric arithmetic produces the int type.
         -- Unify operand types with int.
-        Plus e1 e2 -> arith T.TInt e1 e2
-        Minus e1 e2 -> arith T.TInt e1 e2
-        Mult e1 e2 -> arith T.TInt e1 e2
-        Div e1 e2 -> arith T.TInt e1 e2
-
--- _ -> return $ T.TBool >: ctx
+        e1 :+ e2 -> arith T.TInt e1 e2
+        e1 :- e2 -> arith T.TInt e1 e2
+        e1 :* e2 -> arith T.TInt e1 e2
+        e1 :/ e2 -> arith T.TInt e1 e2

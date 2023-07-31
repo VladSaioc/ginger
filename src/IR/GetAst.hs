@@ -20,15 +20,15 @@ composeSyntax f rs = do
 
 -- Parses the given string as a Promela program and
 -- performs additional refinement on the existing parse tree.
-getAst :: String -> Err Prog
+getAst :: String -> Err 𝑃
 getAst = pProgram . pProg . myLexer
 
-pProgram :: R''.Err R'.Prog -> Err Prog
+pProgram :: R''.Err R'.Prog -> Err 𝑃
 pProgram = \case
   R''.Ok (R'.Prog chs ps) -> do
     chs' <- composeSyntax pChan chs
     ps' <- composeSyntax pProc ps
-    return (Prog chs' ps')
+    return (𝑃 chs' ps')
   R''.Bad err -> Bad err
 
 pChan :: R'.Chan -> Err Chan
@@ -36,10 +36,10 @@ pChan (R'.Chan c e) = do
   e' <- pExp e
   return (Chan (c &) e')
 
-pProc :: R'.Proc -> Err Stmt
+pProc :: R'.Proc -> Err 𝑆
 pProc (R'.Proc _ ss) = pStms ss
 
-pStms :: [R'.Stm] -> Err Stmt
+pStms :: [R'.Stm] -> Err 𝑆
 pStms ss =
   let (|>) rs1 rs2 = do
         s1 <- rs1
@@ -47,7 +47,7 @@ pStms ss =
         return (Seq s1 s2)
    in foldl (|>) (return Skip) ss
 
-pStm :: R'.Stm -> Err Stmt
+pStm :: R'.Stm -> Err 𝑆
 pStm = \case
   R'.Skip {} -> return Skip
   R'.SOp o -> do
@@ -69,23 +69,23 @@ pOp = \case
   R'.Snd c _ -> return (Send (c &))
   R'.Rcv c _ -> return (Recv (c &))
 
-pExp :: R'.Exp -> Err Exp
+pExp :: R'.Exp -> Err 𝐸
 pExp =
   let un = unaryCons pExp
       bin = binaryCons pExp
    in \case
-        R'.Or e1 _ e2 -> bin Or e1 e2
-        R'.And e1 _ e2 -> bin And e1 e2
+        R'.Or e1 _ e2 -> bin (:|) e1 e2
+        R'.And e1 _ e2 -> bin (:&) e1 e2
         R'.Not _ e -> un Not e
-        R'.Eq e1 _ e2 -> bin Eq e1 e2
-        R'.Ne e1 _ e2 -> bin Ne e1 e2
-        R'.Le e1 _ e2 -> bin Leq e1 e2
-        R'.Lt e1 _ e2 -> bin Lt e1 e2
-        R'.Ge e1 _ e2 -> bin Geq e1 e2
-        R'.Gt e1 _ e2 -> bin Gt e1 e2
-        R'.Plus e1 _ e2 -> bin Plus e1 e2
-        R'.Minus e1 _ e2 -> bin Minus e1 e2
-        R'.Mult e1 _ e2 -> bin Mult e1 e2
+        R'.Eq e1 _ e2 -> bin (:==) e1 e2
+        R'.Ne e1 _ e2 -> bin (:!=) e1 e2
+        R'.Le e1 _ e2 -> bin (:<=) e1 e2
+        R'.Lt e1 _ e2 -> bin (:<) e1 e2
+        R'.Ge e1 _ e2 -> bin (:>=) e1 e2
+        R'.Gt e1 _ e2 -> bin (:<) e1 e2
+        R'.Plus e1 _ e2 -> bin (:+) e1 e2
+        R'.Minus e1 _ e2 -> bin (:-) e1 e2
+        R'.Mult e1 _ e2 -> bin (:*) e1 e2
         R'.Div {} -> Bad "Unsupported division"
         R'.Const n -> return (Const (n #))
         R'.Var x -> return (Var (x &))

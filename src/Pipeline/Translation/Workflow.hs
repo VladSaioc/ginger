@@ -2,7 +2,7 @@ module Pipeline.Translation.Workflow where
 
 import Debug.Trace (trace)
 import Go.GoForCommute (goForCommute)
-import IR.Ast (Prog)
+import IR.Ast (𝑃)
 import IR.Simplifier (simplify)
 import Pipeline.Sanity.CallgraphOk (noRecursion)
 import Pipeline.Sanity.GoAllowed (allowed)
@@ -12,7 +12,7 @@ import Pipeline.Translation.PromelaToGo (getGo)
 import Promela.Ast (Spec)
 import Utilities.Err
 
-promelaToIR :: Spec -> Err Prog
+promelaToIR :: Spec -> Err 𝑃
 promelaToIR p = do
   let p' = alphaConvert p
   _ <- noRecursion p'

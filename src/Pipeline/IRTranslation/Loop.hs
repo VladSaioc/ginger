@@ -13,15 +13,15 @@ import Pipeline.IRTranslation.Utilities
 
 -- Collect all loops found in the program.
 -- Assume that all loops are initially guarded by true.
-loops :: Prog -> [ℒ]
-loops (Prog _ procs) =
+loops :: 𝑃 -> [ℒ]
+loops (𝑃 _ procs) =
   let zeros = 0 : zeros
       procs' = zip [0 ..] (zip zeros procs)
       process = processLoops (P'.ECon P'.CTrue)
    in concatMap (fst . uncurry process) procs'
 
 -- Collect all loops found in a process.
-processLoops :: P'.Exp -> P -> (P𝑛, Stmt) -> ([ℒ], P𝑛)
+processLoops :: P'.Exp -> P -> (P𝑛, 𝑆) -> ([ℒ], P𝑛)
 processLoops e p (𝑛, s) = case s of
   -- Statement sequences merge the sets of loops produced by each sub-statement.
   Seq s1 s2 ->

@@ -8,20 +8,20 @@ class ProgramPointOffset a where
   ppOffset :: a -> Int
 
 -- {c = [e]; ...}* {go { S } ...}*
-data Prog = Prog [Chan] [Stmt] deriving (Eq, Ord, Read)
+data 𝑃 = 𝑃 [Chan] [𝑆] deriving (Eq, Ord, Read)
 
 -- c = [e]
-data Chan = Chan String Exp deriving (Eq, Ord, Read)
+data Chan = Chan String 𝐸 deriving (Eq, Ord, Read)
 
-data Stmt
+data 𝑆
   = -- S1; S2
-    Seq Stmt Stmt
+    Seq 𝑆 𝑆
   | -- if b then S1 else S2
-    If Exp Stmt Stmt
+    If 𝐸 𝑆 𝑆
   | -- skip
     Skip
   | -- for (x : e .. e) { s }
-    For String Exp Exp [Op]
+    For String 𝐸 𝐸 [Op]
   | -- c! | c?
     Atomic Op
   deriving (Eq, Ord, Read)
@@ -33,33 +33,33 @@ data Op
     Recv String
   deriving (Eq, Ord, Read)
 
-data Exp
+data 𝐸
   = -- e1 && e2
-    And Exp Exp
+    𝐸 :& 𝐸
   | -- e1 || e2
-    Or Exp Exp
+    𝐸 :| 𝐸
   | -- not e
-    Not Exp
+    Not 𝐸
   | -- e1 == e2
-    Eq Exp Exp
+    𝐸 :== 𝐸
   | -- e1 != e2
-    Ne Exp Exp
+    𝐸 :!= 𝐸
   | -- e1 >= e2
-    Geq Exp Exp
+    𝐸 :>= 𝐸
   | -- e1 > e2
-    Gt Exp Exp
+    𝐸 :> 𝐸
   | -- e1 <= e2
-    Leq Exp Exp
+    𝐸 :<= 𝐸
   | -- e1 < e2
-    Lt Exp Exp
+    𝐸 :< 𝐸
   | -- e1 + e2
-    Plus Exp Exp
+    𝐸 :+ 𝐸
   | -- e1 - e2
-    Minus Exp Exp
+    𝐸 :- 𝐸
   | -- e1 * e2
-    Mult Exp Exp
+    𝐸 :* 𝐸
   | -- e1 / e2
-    Div Exp Exp
+    𝐸 :/ 𝐸
   | -- n ∈ ℤ
     Const Int
   | -- true
@@ -70,8 +70,8 @@ data Exp
     Var String
   deriving (Eq, Ord, Read)
 
-instance Show Prog where
-  show (Prog cs ps) =
+instance Show 𝑃 where
+  show (𝑃 cs ps) =
     let showp s = unlines ["go {", prettyPrint 1 s, "}"]
         cs' = unlines (map show cs)
         ps' = unlines (map showp ps)
@@ -80,10 +80,10 @@ instance Show Prog where
 instance Show Chan where
   show (Chan c e) = unwords [c, "=", "[" ++ show e ++ "];"]
 
-instance Show Stmt where
+instance Show 𝑆 where
   show = prettyPrint 0
 
-instance PrettyPrint Stmt where
+instance PrettyPrint 𝑆 where
   prettyPrint n = \case
     Seq s1 s2 -> unlines [prettyPrint n s1 ++ ";", prettyPrint n s2]
     Skip -> indent n ++ "skip"
@@ -103,24 +103,24 @@ instance PrettyPrint Stmt where
           indent n ++ "}"
         ]
 
-instance Show Exp where
+instance Show 𝐸 where
   show =
     let bin e1 op e2 = unwords ["(" ++ show e1 ++ ")", op, "(" ++ show e2 ++ ")"]
         un op e = unwords [op, "(" ++ show e ++ ")"]
      in \case
-          And e1 e2 -> bin e1 "&" e2
-          Or e1 e2 -> bin e1 "|" e2
+          e1 :& e2 -> bin e1 "&" e2
+          e1 :| e2 -> bin e1 "|" e2
           Not e -> un "!" e
-          Eq e1 e2 -> bin e1 "==" e2
-          Ne e1 e2 -> bin e1 "!=" e2
-          Geq e1 e2 -> bin e1 ">=" e2
-          Gt e1 e2 -> bin e1 ">" e2
-          Leq e1 e2 -> bin e1 "<=" e2
-          Lt e1 e2 -> bin e1 "<" e2
-          Plus e1 e2 -> bin e1 "+" e2
-          Minus e1 e2 -> bin e1 "-" e2
-          Mult e1 e2 -> bin e1 "*" e2
-          Div e1 e2 -> bin e1 "/" e2
+          e1 :== e2 -> bin e1 "==" e2
+          e1 :!= e2 -> bin e1 "!=" e2
+          e1 :>= e2 -> bin e1 ">=" e2
+          e1 :> e2 -> bin e1 ">" e2
+          e1 :<= e2 -> bin e1 "<=" e2
+          e1 :< e2 -> bin e1 "<" e2
+          e1 :+ e2 -> bin e1 "+" e2
+          e1 :- e2 -> bin e1 "-" e2
+          e1 :* e2 -> bin e1 "*" e2
+          e1 :/ e2 -> bin e1 "/" e2
           Const n -> show n
           BTrue -> "true"
           BFalse -> "false"
@@ -131,8 +131,8 @@ instance Show Op where
     Send c -> c ++ "!"
     Recv c -> c ++ "?"
 
-instance ProgramPointOffset Prog where
-  ppOffset (Prog _ ss) = sum $ map ppOffset ss
+instance ProgramPointOffset 𝑃 where
+  ppOffset (𝑃 _ ss) = sum $ map ppOffset ss
 
 -- Computes the offset required, in terms of program points, to reach
 -- the instruction following the channel operation, based on its
@@ -147,7 +147,7 @@ instance ProgramPointOffset Prog where
 -- 4. if e S1 S2 -> 2 + |S1| + |S2|
 --      1 for the guard
 --      1 for the continuation of the 'then' path
-instance ProgramPointOffset Stmt where
+instance ProgramPointOffset 𝑆 where
   ppOffset = \case
     Skip -> 0
     Seq s1 s2 -> ppOffset s1 + ppOffset s2

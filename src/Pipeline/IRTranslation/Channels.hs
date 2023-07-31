@@ -8,7 +8,7 @@ import Pipeline.IRTranslation.Meta.Channel
 {- Extract capacity expressions from channel definitions in
   IR program.
 -}
-getCaps :: Prog -> K
-getCaps (Prog chs _) =
+getCaps :: 𝑃 -> K
+getCaps (𝑃 chs _) =
   let updateChanEnv env (Chan c e) = M.insert c (parseExp e) env
    in Prelude.foldl updateChanEnv M.empty chs

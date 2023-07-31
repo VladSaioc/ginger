@@ -12,8 +12,8 @@ import Pipeline.IRTranslation.Utilities
 -- Aggregates all non-loop channel operations across
 -- all processes of the program, including operation
 -- direction, program point, and channel name.
-noloopPsChanInsns :: Prog -> P ↦ (𝐶 ↦ 𝒪s)
-noloopPsChanInsns (Prog _ ps) =
+noloopPsChanInsns :: 𝑃 -> P ↦ (𝐶 ↦ 𝒪s)
+noloopPsChanInsns (𝑃 _ ps) =
   let ps' = zip [0 ..] ps
    in M.mapWithKey (\i p -> fst $ noloopPChanInsns i (True ?) 0 p) $ M.fromList ps'
 
@@ -30,7 +30,7 @@ noloopPsChanInsns (Prog _ ps) =
 --         |- ⟨n', S₂⟩ -> ⟨n'', M₂⟩
 --         |- M = [c ↦ os | c ∈ dom(M₁) ∪ dom(M₂),
 --                          os = [d ↦ { n | n ∈ M₁(c)(d) ∪ M₂(c)(d)} | d ∈ dom(M₁(c)) ∪ dom(M₂(c)) ]]
-noloopPChanInsns :: P -> P'.Exp -> P𝑛 -> Stmt -> (𝐶 ↦ 𝒪s, P𝑛)
+noloopPChanInsns :: P -> P'.Exp -> P𝑛 -> 𝑆 -> (𝐶 ↦ 𝒪s, P𝑛)
 noloopPChanInsns p b 𝑛 s =
   let 𝑛' = 𝑛 + ppOffset s
    in case s of

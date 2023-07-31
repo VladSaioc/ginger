@@ -2,7 +2,7 @@ module Pipeline.Translation.GoToIR (getIR) where
 
 import Data.Map qualified as M
 import Go.Ast qualified as P
-import IR.Ast qualified as P'
+import IR.Ast qualified as T
 import Utilities.Err
 import Utilities.General
 import Utilities.Position
@@ -13,10 +13,10 @@ data Ctxt a b = Ctxt
     pid :: Int,
     nextpid :: Int,
     loopcounter :: Int,
-    varenv :: M.Map String P'.Exp,
+    varenv :: M.Map String T.𝐸,
     chenv :: M.Map String String,
-    procs :: M.Map Int P'.Stmt,
-    chans :: M.Map String P'.Exp,
+    procs :: M.Map Int T.𝑆,
+    chans :: M.Map String T.𝐸,
     curr :: b
   }
   deriving (Eq, Ord, Read)
@@ -30,7 +30,7 @@ wrapCtx ctx = return ctx {syntax = ()}
 (>:) :: a -> Ctxt c b -> Ctxt a b
 (>:) a ctx = ctx {syntax = a}
 
-getIR :: P.Prog -> Err P'.Prog
+getIR :: P.Prog -> Err T.𝑃
 getIR (P.Prog ss) =
   let ctx =
         Ctxt
@@ -42,15 +42,15 @@ getIR (P.Prog ss) =
             procs = M.empty,
             chans = M.empty,
             chenv = M.empty,
-            curr = P'.Skip
+            curr = T.Skip
           }
    in do
         ctx' <- translateStatements ctx
-        let chs = M.elems $ M.mapWithKey P'.Chan (chans ctx')
+        let chs = M.elems $ M.mapWithKey T.Chan (chans ctx')
         let ps = M.elems $ procs ctx'
-        return $ P'.Prog chs ps
+        return $ T.𝑃 chs ps
 
-translateStatements :: Ctxt [Pos P.Stmt] P'.Stmt -> Err (Ctxt () P'.Stmt)
+translateStatements :: Ctxt [Pos P.Stmt] T.𝑆 -> Err (Ctxt () T.𝑆)
 translateStatements ctx = case syntax ctx of
   [] -> wrapCtx (ctx {procs = M.insert (pid ctx) (curr ctx) (procs ctx)})
   Pos _ s : ss -> case s of
@@ -60,14 +60,14 @@ translateStatements ctx = case syntax ctx of
     P.If e ss1 ss2 -> do
       let venv = varenv ctx
       e' <- translateExp venv e
-      ctx1 <- translateStatements (ss1 >: ctx <: P'.Skip)
-      ctx2 <- translateStatements (ss2 >: ctx1 <: P'.Skip)
-      let ctx3 = ss >: ctx2 <: P'.If e' (curr ctx1) (curr ctx2)
+      ctx1 <- translateStatements (ss1 >: ctx <: T.Skip)
+      ctx2 <- translateStatements (ss2 >: ctx1 <: T.Skip)
+      let ctx3 = ss >: ctx2 <: T.If e' (curr ctx1) (curr ctx2)
       translateStatements ctx3
     P.Atomic op -> do
       ctx' <- translateOp $ op >: ctx
-      let op' = P'.Atomic $ curr ctx'
-      let stm = P'.Seq (curr ctx) op'
+      let op' = T.Atomic $ curr ctx'
+      let stm = T.Seq (curr ctx) op'
       translateStatements (ss >: ctx' <: stm)
     P.Chan c e -> do
       e' <- translateExp (varenv ctx) e
@@ -89,7 +89,7 @@ translateStatements ctx = case syntax ctx of
               varenv = varenv ctx,
               chenv = chenv ctx,
               chans = chans ctx,
-              curr = P'.Skip
+              curr = T.Skip
             }
       let ctx2 =
             ctx
@@ -105,14 +105,14 @@ translateStatements ctx = case syntax ctx of
       (e1', e2') <- binaryCons (translateExp venv) (,) e1 e2
       ctx' <- translateFor (ss' >: ctx <: [])
       let for = case diff of
-            P.Inc -> P'.For (x ++ "'" ++ show (loopcounter ctx')) e1' e2' $ curr ctx'
-            P.Dec -> P'.For (x ++ "'" ++ show (loopcounter ctx')) e2' e1' $ curr ctx'
-      let ctx'' = (ctx <: P'.Seq (curr ctx) for) {loopcounter = loopcounter ctx' + 1}
+            P.Inc -> T.For (x ++ "'" ++ show (loopcounter ctx')) e1' e2' $ curr ctx'
+            P.Dec -> T.For (x ++ "'" ++ show (loopcounter ctx')) e2' e1' $ curr ctx'
+      let ctx'' = (ctx <: T.Seq (curr ctx) for) {loopcounter = loopcounter ctx' + 1}
       translateStatements $ ss >: ctx''
     P.Block ss' -> translateStatements $ (ss ++ ss') >: ctx
     _ -> translateStatements $ ss >: ctx
 
-translateFor :: Ctxt [Pos P.Stmt] [P'.Op] -> Err (Ctxt () [P'.Op])
+translateFor :: Ctxt [Pos P.Stmt] [T.Op] -> Err (Ctxt () [T.Op])
 translateFor ctx = case syntax ctx of
   [] -> wrapCtx $ ctx <: reverse (curr ctx)
   Pos p s : ss -> case s of
@@ -123,28 +123,28 @@ translateFor ctx = case syntax ctx of
     P.Skip -> translateFor $ ss >: ctx
     _ -> posErr p $ "Unexpected statement: " ++ prettyPrint 0 s
 
-translateExp :: M.Map String P'.Exp -> P.Exp -> Err P'.Exp
+translateExp :: M.Map String T.𝐸 -> P.Exp -> Err T.𝐸
 translateExp venv =
   let bin = binaryCons (translateExp venv)
    in \case
-        P.CNum n -> return $ P'.Const n
-        P.Plus e1 e2 -> bin P'.Plus e1 e2
-        P.Minus e1 e2 -> bin P'.Minus e1 e2
-        P.Mult e1 e2 -> bin P'.Mult e1 e2
-        P.Div e1 e2 -> bin P'.Div e1 e2
+        P.CNum n -> return $ T.Const n
+        P.Plus e1 e2 -> bin (T.:+) e1 e2
+        P.Minus e1 e2 -> bin (T.:-) e1 e2
+        P.Mult e1 e2 -> bin (T.:*) e1 e2
+        P.Div e1 e2 -> bin (T.:/) e1 e2
         P.Var x ->
           case M.lookup x venv of
             Just e' -> return e'
-            Nothing -> return $ P'.Var x
+            Nothing -> return $ T.Var x
         _ -> Bad "Unexpected expression translation"
 
-translateOp :: Ctxt P.CommOp a -> Err (Ctxt () P'.Op)
+translateOp :: Ctxt P.CommOp a -> Err (Ctxt () T.Op)
 translateOp ctx =
   let translate cons c =
         case M.lookup c (chenv ctx) of
           Just c' -> wrapCtx (ctx <: cons c')
           Nothing -> Bad $ "Invalid channel: value not found: " ++ show c
    in case syntax ctx of
-        P.Send c -> translate P'.Send c
-        P.Recv c -> translate P'.Recv c
+        P.Send c -> translate T.Send c
+        P.Recv c -> translate T.Recv c
         s -> Bad $ "Unexpected communication operation: " ++ show s

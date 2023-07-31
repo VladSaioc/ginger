@@ -6,15 +6,16 @@ import IR.ChanString
 import IR.Utilities
 import Utilities.General
 
-stratified :: Prog -> Bool
-stratified (Prog _ gos) =
+stratified :: 𝑃 -> Bool
+stratified (𝑃 _ gos) =
   let mcss = do results (Prelude.map getChanStrStmt gos)
-  in case mcss of
-    Just css -> all (\c -> all (congruent c) css) css
-    Nothing -> False
+   in case mcss of
+        Just css -> all (\c -> all (congruent c) css) css
+        Nothing -> False
 
-getChanStrStmt :: Stmt -> Maybe [String]
+getChanStrStmt :: 𝑆 -> Maybe [String]
 getChanStrStmt = \case
+  If {} -> Nothing
   Seq s1 s2 -> do
     cs1 <- getChanStrStmt s1
     cs2 <- getChanStrStmt s2

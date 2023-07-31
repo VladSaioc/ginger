@@ -1,8 +1,7 @@
 module Pipeline.IRTranslation.Workflow (irToBackend) where
 
 import Backend.Ast (Program (Program))
-import Data.Map
-import IR.Ast (Prog)
+import IR.Ast
 import IR.Homogeneity (homogeneous)
 import IR.SanityCheck (sanityCheck)
 import IR.Simplifier (simplify)
@@ -16,7 +15,7 @@ import Pipeline.IRTranslation.Loop (loops)
 import Pipeline.IRTranslation.Processes (getProcs)
 import Utilities.Err
 
-irToBackend :: Prog -> Err Program
+irToBackend :: 𝑃 -> Err Program
 irToBackend p' = do
   let p = simplify p'
   _ <- sanityCheck p
