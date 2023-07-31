@@ -19,7 +19,7 @@ Produces:
       else cons e ((zero ⨁ cons) es)
 
 (...⋀) :: [Exp] -> Exp
-(...⋀) = (True ?) ⨁ And
+(...⋀) = (True ?) ⨁ (:&&)
 
 (...⋁) :: [Exp] -> Exp
 (...⋁) = (False ?) ⨁ Or

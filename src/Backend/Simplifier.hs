@@ -108,15 +108,15 @@ eSimplify pe =
             else bin Equiv e1 e2
         -- Conjunction with false is trivially absurd
         -- a. e && false ==> false
-        And _ (ECon CFalse) -> (False ?)
+        _ :&& (ECon CFalse) -> (False ?)
         -- b. false && e ==> false
-        And (ECon CFalse) _ -> (False ?)
+        (ECon CFalse) :&& _ -> (False ?)
         -- True is neutral in conjuction
         -- a. e && true ==> e
-        And e (ECon CTrue) -> eSimplify e
+        e :&& (ECon CTrue) -> eSimplify e
         -- b. true && e ==> e
-        And (ECon CTrue) e -> eSimplify e
-        And e1 e2 -> bin And e1 e2
+        (ECon CTrue) :&& e -> eSimplify e
+        e1 :&& e2 -> bin (:&&) e1 e2
         -- Disjunction with true is trivially tautological
         -- a. e || true ==> true
         Or _ (ECon CTrue) -> (True ?)

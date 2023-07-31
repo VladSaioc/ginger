@@ -144,14 +144,15 @@ instance ProgramPointOffset Prog where
 -- 3. for x : e1 .. e2 { s }: 2 + |s|
 --      1 for the guard
 --      1 for the index incrementing operation
--- 4. if e S1 S2 -> 1 + |S1| + |S2|
+-- 4. if e S1 S2 -> 2 + |S1| + |S2|
 --      1 for the guard
+--      1 for the continuation of the 'then' path
 instance ProgramPointOffset Stmt where
   ppOffset = \case
     Skip -> 0
     Seq s1 s2 -> ppOffset s1 + ppOffset s2
     For _ _ _ os -> 2 + sum (map ppOffset os)
-    If _ s1 s2 -> 1 + ppOffset s1 + ppOffset s2
+    If _ s1 s2 -> 2 + ppOffset s1 + ppOffset s2
     Atomic o -> ppOffset o
 
 -- Computes the offset required, in terms of program points, to reach

@@ -6,19 +6,21 @@ import Data.List qualified as L
 import Data.Map qualified as M
 import Data.Maybe qualified as Mb
 import IR.Utilities
+import Pipeline.IRTranslation.Meta.Channel
+import Pipeline.IRTranslation.Meta.Loop
 import Pipeline.IRTranslation.Utilities
 
 iterations :: Exp -> Exp -> Exp
 iterations lo hi = Call "iter" [lo, hi]
 
-preconditions :: KEnv -> PChInsns -> [Loop] -> [Exp]
-preconditions kenv noloops loops =
+preconditions :: K -> P ↦ (𝐶 ↦ 𝒪s) -> [ℒ] -> [Exp]
+preconditions κ noloops loops =
   let plus e e' = ([e, e'] ...+)
       lR = M.unionsWith (M.unionWith plus) (L.map loopToPre loops)
       nR = noloopOpToPre noloops
       cs = M.keys lR ++ M.keys nR
       prc c =
-        let k = Mb.fromJust (M.lookup c kenv)
+        let k = Mb.fromJust (M.lookup c κ)
             cR r = Mb.fromMaybe M.empty (M.lookup c r)
             cdR d r = Mb.fromMaybe (0 #) (M.lookup d r)
             (clR, cnR) = (cR lR, cR nR)
@@ -28,7 +30,7 @@ preconditions kenv noloops loops =
 
             rcvsUnblock = Leq rcvs sends
             sndsUnblock = Leq sends (plus rcvs k)
-         in And rcvsUnblock sndsUnblock
+         in rcvsUnblock :&& sndsUnblock
    in L.map prc cs
 
 {- Constructs the resource contribution resulting from
@@ -39,15 +41,15 @@ Produces:
 ∀ c. |o!(c)| * iterations(e, e')
 ∀ c. |o?(c)| * iterations(e, e')
 -}
-loopToPre :: Loop -> ChMap (M.Map OpDir Exp)
-loopToPre (Loop {lower, upper, chans, pathexp = b}) =
+loopToPre :: ℒ -> 𝐶 ↦ (OpDir ↦ Exp)
+loopToPre (ℒ {lower, upper, l𝒪s = os, lPathexp = b}) =
   let iter ops =
         let e = case length ops of
               0 -> (0 #)
               1 -> iterations lower upper
               n -> Mult (n #) (iterations lower upper)
          in IfElse b e (0 #)
-   in M.map (M.map iter) chans
+   in M.map (M.map iter) os
 
 {- Constructs the resource contribution resulting from
 non-loop channel operations.
@@ -56,8 +58,8 @@ Depends on: c
 Produces:
 ∀ c. 𝚺 π ∈ Π. |o!(c, π)|, |o?(c, π)|
 -}
-noloopOpToPre :: PChInsns -> ChMap (M.Map OpDir Exp)
+noloopOpToPre :: P ↦ (𝐶 ↦ 𝒪s) -> 𝐶 ↦ (OpDir ↦ Exp)
 noloopOpToPre pis =
-  let chOp ChannelMeta {cmPathexp = b} = IfElse b (1 #) (0 #)
+  let chOp 𝒪 {oPathexp = b} = IfElse b (1 #) (0 #)
       pis' = (M.elems . M.map (M.map (M.map ((...+) . map chOp)))) pis
    in M.unionsWith (M.unionWith Plus) pis'

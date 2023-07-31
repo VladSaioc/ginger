@@ -6,6 +6,8 @@ import Data.List qualified as L
 import Data.Map qualified as M
 import Data.Maybe qualified as Mb
 import IR.Utilities
+import Pipeline.IRTranslation.Meta.Channel
+import Pipeline.IRTranslation.Meta.Loop
 import Pipeline.IRTranslation.Utilities
 
 {- Retrieves all synchronous channel monitor expressions by analyzing
@@ -25,7 +27,7 @@ Produces:
     e2 =  Σ ∀ ℓ, (c, [? ↦ e']) ∈ loopMonitor(ℓ). e'
         + Σ (π, n, ?) ∈ O, e' = noloopMonitor(π, n). e' ]
 -}
-syncChannelMonitors :: PChInsns -> [Loop] -> ChMap Exp
+syncChannelMonitors :: P ↦ (𝐶 ↦ 𝒪s) -> [ℒ] -> 𝐶 ↦ Exp
 syncChannelMonitors noloopOps ls =
   let noloopSubexps = L.map snd (M.toList (M.map noloopMonitors noloopOps))
       loopSubexps = L.map loopMonitor ls
@@ -62,16 +64,16 @@ Produces:
       else 0 ]
   | ∀ c, (n, cd) ∈ op(ℓ) ]
 -}
-loopMonitor :: Loop -> ChMap (M.Map OpDir Exp)
-loopMonitor (Loop {pid, var, lower, exitP, chans, pathexp = b}) =
+loopMonitor :: ℒ -> 𝐶 ↦ (OpDir ↦ Exp)
+loopMonitor (ℒ {lP = p, l𝑋 = var, lower, lExit = exit, l𝒪s = chans, lPathexp = b}) =
   let x = (var @)
-      pc = π pid
-      ext = (exitP #)
-      singleOp ChannelMeta {cmOp = d, cmPoint = n} =
-        let synced = And (Lt (n #) pc) (Lt pc ext)
+      pc = π p
+      ext = (exit #)
+      singleOp 𝒪 {oDir = d, o𝑛 = 𝑛} =
+        let synced = Lt (𝑛 #) pc :&& Lt pc ext
          in case d of
               S ->
-                let rendezvous = And (Lt ((n + 1) #) pc) (Lt pc ext)
+                let rendezvous = Lt ((𝑛 + 1) #) pc :&& Lt pc ext
                  in Plus
                       (IfElse synced (1 #) (0 #))
                       (IfElse rendezvous (1 #) (0 #))
@@ -95,7 +97,7 @@ Produces:
   ? ↦ {if n < pc(π) then 2 else 0 | ∀(n, c?) ∈ ϕ }]
   | ∀ c, (n, cd) ∈ ϕ ]
 -}
-noloopMonitors :: ChMap ChOps -> ChMap (M.Map OpDir Exp)
+noloopMonitors :: 𝐶 ↦ 𝒪s -> 𝐶 ↦ (OpDir ↦ Exp)
 noloopMonitors = M.map (M.map ((...+) . map noloopMonitor))
 
 {- Monitor sub-expression for a non-loop single synchronous channel operation.
@@ -118,11 +120,11 @@ Depnding on the operation direction, it produces:
           if n < pc(π) then 2 else 0 else
       else 0
 -}
-noloopMonitor :: ChannelMeta -> Exp
-noloopMonitor ChannelMeta {cmPid = pid, cmOp = d, cmPoint = n, cmPathexp = b} =
+noloopMonitor :: 𝒪 -> Exp
+noloopMonitor 𝒪 {oP = pid, oDir = d, o𝑛 = 𝑛, oPathexp = b} =
   let pc = π pid
-      synced = Lt (n #) pc
-      rendezvous = Lt ((n + 1) #) pc
+      synced = Lt (𝑛 #) pc
+      rendezvous = Lt ((𝑛 + 1) #) pc
       monitor = case d of
         S ->
           Plus

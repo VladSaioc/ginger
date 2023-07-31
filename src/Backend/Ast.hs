@@ -85,7 +85,7 @@ data Exp
     Implies Exp Exp
   | -- Boolean arithmetic
     -- -- e1 && e2
-    And Exp Exp
+    Exp :&& Exp
   | -- -- e1 || e2
     Or Exp Exp
   | -- Comparison
@@ -181,14 +181,14 @@ newtype Program = Program [Decl] deriving (Eq, Ord, Read)
             (Equiv {}, Left (Equiv {})) -> False
             (Implies {}, Left (Implies {})) -> True
             (Implies {}, Right (Implies {})) -> False
-            (And {}, Right (And {})) -> False
-            (And {}, Left (And {})) -> False
+            (_ :&& _, Right (_ :&& _)) -> False
+            (_ :&& _, Left (_ :&& _)) -> False
             (Or {}, Right (Or {})) -> False
             (Or {}, Left (Or {})) -> False
-            (And {}, Right (Or {})) -> True
-            (And {}, Left (Or {})) -> True
-            (Or {}, Right (And {})) -> True
-            (Or {}, Left (And {})) -> True
+            (_ :&& _, Right (Or {})) -> True
+            (_ :&& _, Left (Or {})) -> True
+            (Or {}, Right (_ :&& _)) -> True
+            (Or {}, Left (_ :&& _)) -> True
             (Eq {}, Right (Eq {})) -> True
             (Eq {}, Left (Eq {})) -> True
             (Eq {}, Right (Ne {})) -> True
@@ -331,7 +331,7 @@ instance PrettyPrint Exp where
           Forall xs e' -> quantifier "forall" xs e'
           Implies e1 e2 -> bin e1 "==>" e2
           Equiv e1 e2 -> bin e1 "<==>" e2
-          And e1 e2 -> bin e1 "&&" e2
+          e1 :&& e2 -> bin e1 "&&" e2
           Or e1 e2 -> bin e1 "||" e2
           Not e' -> un "!" e'
           Eq e1 e2 -> bin e1 "==" e2

@@ -32,7 +32,7 @@ data Ctxt a b = Ctxt
     chenv :: M.Map String String,
     -- Channel capacity environment.
     -- Binds Go channel names to Go capacity expressions.
-    kenv :: M.Map String P'.Exp,
+    κ :: M.Map String P'.Exp,
     -- Current object syntax translation tracker
     curr :: b
   }
@@ -100,7 +100,7 @@ getGo p@(P.Spec ms) =
                   -- Initial variable environment includes all top-level declarations
                   varenv = Prelude.foldl getEnv M.empty ms,
                   -- Capacity and variable name environments are initially empty
-                  kenv = M.empty,
+                  κ = M.empty,
                   chenv = M.empty,
                   -- No calls have yet been executed
                   calls = 0,
@@ -301,7 +301,7 @@ translateStatements ctx = case syntax ctx of
                           -- with capacity expression and its own name.
                           let ctx' =
                                 ctx
-                                  { kenv = M.insert x e' (kenv ctx),
+                                  { κ = M.insert x e' (κ ctx),
                                     chenv = M.insert x x (chenv ctx)
                                   }
                           -- Translate the remaining statements
@@ -367,7 +367,7 @@ translateStatements ctx = case syntax ctx of
                       varenv = Prelude.foldl addVarName (varenv ctx) ps,
                       -- Construct a fresh channel environment based on the parameters.
                       chenv = Prelude.foldl addCh M.empty pes,
-                      kenv = kenv ctx,
+                      κ = κ ctx,
                       curr = Obj {decls = initializers, stmts = []}
                     }
             ctx2 <- translateStatements ctx1
@@ -380,7 +380,7 @@ translateStatements ctx = case syntax ctx of
             let obj' = Obj {decls = ods ++ ods', stmts = Pos p s' : oss}
             -- Absorb any chanel declarations and calls from the context
             -- produced by translating the callee.
-            let ctx3 = ctx {kenv = kenv ctx2, calls = calls ctx2}
+            let ctx3 = ctx {κ = κ ctx2, calls = calls ctx2}
             -- Discard subsequent 'run receiver(c)' statements before
             -- continuing translation.
             let ss'' = skipReceiverRun ss

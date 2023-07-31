@@ -1,6 +1,6 @@
 module IR.Utilities where
 
-import IR.Ast
+import IR.Ast (Op (..))
 
 data OpDir = S | R deriving (Eq, Ord, Read)
 

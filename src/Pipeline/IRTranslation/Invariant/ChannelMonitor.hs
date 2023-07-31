@@ -6,6 +6,8 @@ import Data.Map qualified as M
 import Data.Maybe qualified as Mb
 import Pipeline.IRTranslation.Invariant.ChannelAsyncMonitor (asyncChannelMonitors)
 import Pipeline.IRTranslation.Invariant.ChannelSyncMonitor (syncChannelMonitors)
+import Pipeline.IRTranslation.Meta.Channel
+import Pipeline.IRTranslation.Meta.Loop
 import Pipeline.IRTranslation.Utilities
 
 {- Produces channel monitors by composing both buffered and
@@ -22,12 +24,12 @@ Depends on:
      e2 = asyncChannelMonitor(O, [ℓ])(c).
     c = if κ(c) > 0 then e2 else e1
 -}
-channelMonitors :: KEnv -> PChInsns -> [Loop] -> [Exp]
-channelMonitors kenv noloopOps ls =
+channelMonitors :: K -> P ↦ (𝐶 ↦ 𝒪s) -> [ℒ] -> [Exp]
+channelMonitors κ noloopOps ls =
   let syncMs = syncChannelMonitors noloopOps ls
       asyncMs = asyncChannelMonitors noloopOps ls
       combineMonitors c s a =
-        let cap = Mb.fromMaybe (0 #) (M.lookup c kenv)
+        let cap = Mb.fromMaybe (0 #) (M.lookup c κ)
             isAsync = Lt (0 #) cap
          in Eq (c @) (IfElse isAsync a s)
    in M.elems $ M.unionWithKey combineMonitors syncMs asyncMs

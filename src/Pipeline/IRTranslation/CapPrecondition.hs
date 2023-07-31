@@ -4,14 +4,14 @@ import Backend.Ast
 import Backend.Utilities
 import Data.List qualified as L
 import Data.Map qualified as M
-import Pipeline.IRTranslation.Utilities
+import Pipeline.IRTranslation.Meta.Channel
 
 -- Aggregate all asynchrony preconditions.
-capPreconditions :: KEnv -> [Exp]
+capPreconditions :: K -> [Exp]
 capPreconditions = L.map capPrecondition . M.elems
 
-{- Constructs a precondition certifying that the channel capacity
-is a valid expression i.e., a positive integer.
+{- Constructs a precondition guaranteeing that the channel capacity
+is valid i.e., its expression evaluates to a positive integer.
 Depends on: κ, c
 
 Produces:

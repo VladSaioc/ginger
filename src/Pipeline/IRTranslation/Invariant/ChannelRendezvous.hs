@@ -6,24 +6,26 @@ import Data.List qualified as L
 import Data.Map qualified as M
 import Data.Maybe qualified as Mb
 import IR.Utilities
+import Pipeline.IRTranslation.Meta.Channel
+import Pipeline.IRTranslation.Meta.Loop
 import Pipeline.IRTranslation.Utilities
 
-asyncNoRendezvous :: KEnv -> PChInsns -> [Loop] -> [Exp]
-asyncNoRendezvous kenv atomicOps ls =
-  let atomicRvC = M.map (chanopsToRendezvous kenv)
-      atomicRvs = concat $ concatMap M.elems (M.map atomicRvC atomicOps)
-      loopRvs = concatMap (loopToNoRendezvous kenv) ls
+asyncNoRendezvous :: K -> P ↦ (𝐶 ↦ 𝒪s) -> [ℒ] -> [Exp]
+asyncNoRendezvous 𝜅 os ls =
+  let atomicRvC = M.map (chanopsToRendezvous 𝜅)
+      atomicRvs = concat $ concatMap M.elems (M.map atomicRvC os)
+      loopRvs = concatMap (loopToNoRendezvous 𝜅) ls
    in atomicRvs ++ loopRvs
 
-loopToNoRendezvous :: KEnv -> Loop -> [Exp]
-loopToNoRendezvous kenv Loop {chans} =
-  let invs = M.map (chanopsToRendezvous kenv) chans
+loopToNoRendezvous :: K -> ℒ -> [Exp]
+loopToNoRendezvous κ ℒ {l𝒪s} =
+  let invs = M.map (chanopsToRendezvous κ) l𝒪s
    in concat $ M.elems invs
 
-chanopsToRendezvous :: KEnv -> ChOps -> [Exp]
-chanopsToRendezvous kenv =
+chanopsToRendezvous :: K -> 𝒪s -> [Exp]
+chanopsToRendezvous κ =
   let sends = Mb.fromMaybe [] . M.lookup S
-   in L.map (sendToNoRendezvous kenv) . sends
+   in L.map (sendToNoRendezvous κ) . sends
 
 {- Creates an invariant sub-expression stipulating that the program
 counter will never reach rendezvous points if the channel is buffered.
@@ -32,9 +34,8 @@ Depends on: κ, ϕ, π
 Produces:
 0 < κ(c) => pc(π) /= n + 1
 -}
-sendToNoRendezvous :: KEnv -> ChannelMeta -> Exp
-sendToNoRendezvous kenv ch =
-  let ChannelMeta {cmPid = pid, cmVar = c, cmPoint = n} = ch
-      pc = π pid
-      k = Mb.fromMaybe (0 #) (M.lookup c kenv)
-   in Implies (Lt (0 #) k) (Ne pc ((n + 1) #))
+sendToNoRendezvous :: K -> 𝒪 -> Exp
+sendToNoRendezvous κ 𝒪 {oP = pid, o𝐶 = c, o𝑛 = 𝑛} =
+  let pc = π pid
+      k = Mb.fromMaybe (0 #) (M.lookup c κ)
+   in Implies (Lt (0 #) k) (Ne pc ((𝑛 + 1) #))

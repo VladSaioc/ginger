@@ -2,11 +2,10 @@ module Trace.Ast where
 
 import Data.Map.Strict
 import Data.Set
-import Utilities.Position
 
 type Ident = String
 
-type Pid = Int
+type P = Int
 
 data Trace m = Trace
   { steps :: [m Step],
@@ -14,10 +13,10 @@ data Trace m = Trace
     processes :: Map Int (Ident, [m Step])
   }
 
-data Step = Step Pid Stmt deriving (Eq, Ord, Show, Read)
+data Step = Step P Stmt deriving (Eq, Ord, Show, Read)
 
 data Stmt
-  = Start Pid Ident [Exp]
+  = Start P Ident [Exp]
   | Goto String
   | As LVal Exp
   | Send LVal [Exp]

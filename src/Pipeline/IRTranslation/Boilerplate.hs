@@ -4,7 +4,6 @@ import Backend.Ast
 import Backend.Utilities
 import Data.List qualified as L
 import Data.Map qualified as M
-import Data.Set qualified as S
 import Pipeline.IRTranslation.CapPrecondition (capPreconditions)
 import Pipeline.IRTranslation.CommPrecondition (preconditions)
 import Pipeline.IRTranslation.Enabled (enabledExp)
@@ -12,7 +11,11 @@ import Pipeline.IRTranslation.Invariant.ChannelBound (channelBounds)
 import Pipeline.IRTranslation.Invariant.ChannelMonitor (channelMonitors)
 import Pipeline.IRTranslation.Invariant.ChannelRendezvous (asyncNoRendezvous)
 import Pipeline.IRTranslation.Invariant.CounterBound (counterInvariants)
+import Pipeline.IRTranslation.Invariant.If (ifMonitors)
 import Pipeline.IRTranslation.Invariant.Loop (loopMonitors)
+import Pipeline.IRTranslation.Meta.Channel
+import Pipeline.IRTranslation.Meta.If
+import Pipeline.IRTranslation.Meta.Loop
 import Pipeline.IRTranslation.Postcondition (postconditions)
 import Pipeline.IRTranslation.Utilities
 
@@ -52,7 +55,7 @@ ghost function isSchedule(S : nat -> nat) {
   forall n :: s <= |dom(Π)|
 }
 -}
-isScheduleFunc :: Procs -> Function
+isScheduleFunc :: 𝛱 -> Function
 isScheduleFunc ps =
   let n = "n"
       domPi = ((M.size ps - 1) #)
@@ -80,7 +83,7 @@ switch pc(π) {
   ∀ n ∈ ϕ. case n => ϕ(n)
 }
 -}
-processSwitch :: Pid -> ProgPoints -> Stmt
+processSwitch :: P -> 𝛷 -> Stmt
 processSwitch pid =
   let pc = π pid
       iguard c = PCon (CNum c)
@@ -96,7 +99,7 @@ switch S(step) {
   ∀ π ∈ Π. case π => processSwitch(π, ϕ)
 }
 -}
-scheduleSwitch :: Procs -> Stmt
+scheduleSwitch :: 𝛱 -> Stmt
 scheduleSwitch =
   let iguard pid = PCon (CNum pid)
       cases = M.toList . M.mapKeys iguard . M.mapWithKey processSwitch
@@ -117,26 +120,28 @@ while enabledExp(κ, Π)
   step := step + 1
 }
 -}
-centralLoop :: KEnv -> Procs -> PChInsns -> [Loop] -> Stmt
-centralLoop kenv ps atomicOps loops =
-  let -- Process loop invariants
+centralLoop :: K -> 𝛱 -> P ↦ (𝐶 ↦ 𝒪s) -> [ℐ] -> [ℒ] -> Stmt
+centralLoop κ ps atomicOps ifs loops =
+  let -- If statement invariants
+      i = ifMonitors ifs
+      -- Process loop invariants
       l = loopMonitors loops
       -- Channel bound invariants
-      k = channelBounds kenv
+      k = channelBounds κ
       -- Absence of rendezvous for buffered channels invariants
-      rv = asyncNoRendezvous kenv atomicOps loops
+      rv = asyncNoRendezvous κ atomicOps loops
       -- Process counter invariants
       pc = counterInvariants ps
       -- Channel buffer size invariants
-      m = channelMonitors kenv atomicOps loops
+      m = channelMonitors κ atomicOps loops
       -- Condition under which progress is enabled
       -- 1. Fuel constraint
       hasFuel = Lt ("step" @) ("fuel" @)
       -- 2. Fuel + process operation disjunctions
-      enabled = And hasFuel (enabledExp kenv ps)
+      enabled = hasFuel :&& enabledExp κ ps
    in While
         enabled
-        (concat [k, pc, rv, l, m])
+        (concat [k, pc, rv, i, l, m])
         []
         ( Block
             [ -- Central loop case analysis
@@ -152,12 +157,12 @@ Depends on: Π
 Produces:
 var pc(π)₁, ..., pc(π)ₙ = 0, ..., 0
 -}
-counterDef :: Procs -> Stmt
-counterDef procs =
-  if M.size procs > 0
+counterDef :: 𝛱 -> Stmt
+counterDef ps =
+  if M.size ps > 0
     then
-      let def pid = ((pid <|), (0 #))
-       in Assign . L.map def . M.keys $ procs
+      let def p = ((p <|), (0 #))
+       in Assign . L.map def . M.keys $ ps
     else Assert (True ?)
 
 {- Constructs an initial assignment for all loop variables.
@@ -166,11 +171,11 @@ Depends on: loop(P)
 Produces:
 var x₁, ..., xₙ = lo₁, ..., loₙ
 -}
-loopVarDef :: [Loop] -> Stmt
+loopVarDef :: [ℒ] -> Stmt
 loopVarDef = \case
   [] -> Assert (True ?)
   ls ->
-    let def (Loop {var, lower}) = (var, Nothing, lower)
+    let def (ℒ {l𝑋 = x, lower}) = (x, Nothing, lower)
      in VarDef False . L.map def $ ls
 
 {- Constructs an initial assignment for all channel variables.
@@ -179,12 +184,12 @@ Depends on: κ
 Produces:
 var c₁, ..., cₙ = 0, ..., 0
 -}
-chanDef :: KEnv -> Stmt
-chanDef kenv =
-  if M.size kenv > 0
+chanDef :: K -> Stmt
+chanDef κ =
+  if M.size κ > 0
     then
       let def c = (c, Nothing, (0 #))
-       in VarDef False . L.map def . M.keys $ kenv
+       in VarDef False . L.map def . M.keys $ κ
     else Assert (True ?)
 
 {- Construcs the "isSchedule(S)" precondition.
@@ -213,41 +218,41 @@ decreases * {
 }
 
 -}
-progEncoding :: S.Set String -> KEnv -> Procs -> PChInsns -> [Loop] -> Method
-progEncoding fvs kenv ps atomicOps loops =
+progEncoding :: 𝛴 -> [Type] -> K -> 𝛱 -> P ↦ (𝐶 ↦ 𝒪s) -> [ℐ] -> [ℒ] -> Method
+progEncoding 𝜎 ts κ ps os ifs loops =
   Method
     { returns = ("step", TNat) : (L.map ((,TInt) . (<|)) . M.keys) ps,
       methodHoare =
         HoareWrap
           { ghost = True,
             name = "Program",
-            types = [],
-            params = ("fuel", TNat) : ("S", Arrow TNat TNat) : (L.map (,TInt) . S.toList) fvs,
+            types = ts,
+            params = ("fuel", TNat) : ("S", Arrow TNat TNat) : M.toList 𝜎,
             ensures =
               [ Implies
                   (Lt ("step" @) ("fuel" @))
-                  (Equiv (preconditions kenv atomicOps loops ...⋀) (postconditions ps ...⋀))
+                  (Equiv (preconditions κ os loops ...⋀) (postconditions ps ...⋀))
               ],
             decreases = [],
-            requires = isSchedule : capPreconditions kenv
+            requires = isSchedule : capPreconditions κ
           },
       methodBody =
         Block
           [ counterDef ps,
-            chanDef kenv,
+            chanDef κ,
             loopVarDef loops,
             Assign [("step", (0 #))],
-            centralLoop kenv ps atomicOps loops
+            centralLoop κ ps os ifs loops
           ]
     }
 
 {- Constructs the complete program specification, by emitting
 all the necessary functions, and the program encoding.
 -}
-wholeEncoding :: S.Set String -> KEnv -> Procs -> PChInsns -> [Loop] -> Program
-wholeEncoding fvs kenv ps atomicOps loops =
+wholeEncoding :: 𝛴 -> [Type] -> K -> 𝛱 -> P ↦ (𝐶 ↦ 𝒪s) -> [ℐ] -> [ℒ] -> Program
+wholeEncoding 𝜎 ts κ ps os is ls =
   Program
     [ FDecl iterationsFunc,
       FDecl (isScheduleFunc ps),
-      MDecl (progEncoding fvs kenv ps atomicOps loops)
+      MDecl (progEncoding 𝜎 ts κ ps os is ls)
     ]

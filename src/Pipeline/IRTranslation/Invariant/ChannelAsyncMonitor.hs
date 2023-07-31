@@ -6,6 +6,8 @@ import Data.List qualified as L
 import Data.Map qualified as M
 import Data.Maybe qualified as Mb
 import IR.Utilities
+import Pipeline.IRTranslation.Meta.Channel
+import Pipeline.IRTranslation.Meta.Loop
 import Pipeline.IRTranslation.Utilities
 
 {- Retrieves all asynchronous channel monitor expressions by analyzing
@@ -25,7 +27,7 @@ Produces:
     e2 =  Σ ∀ ℓ, (c, [? ↦ e']) ∈ loopMonitor(ℓ). e'
         + Σ (π, n, ?) ∈ O, e' = noloopMonitor(π, n). e' ]
 -}
-asyncChannelMonitors :: PChInsns -> [Loop] -> ChMap Exp
+asyncChannelMonitors :: P ↦ (𝐶 ↦ 𝒪s) -> [ℒ] -> 𝐶 ↦ Exp
 asyncChannelMonitors noloopOps ls =
   let noloopSubexps = L.map snd (M.toList (M.map noloopMonitors noloopOps))
       loopSubexps = L.map loopMonitor ls
@@ -61,13 +63,13 @@ Produces:
       else 0 ]
   | ∀ c, (n, cd) ∈ op(ℓ) ]
 -}
-loopMonitor :: Loop -> ChMap (M.Map OpDir Exp)
-loopMonitor (Loop {var, lower, exitP, chans}) =
+loopMonitor :: ℒ -> 𝐶 ↦ (OpDir ↦ Exp)
+loopMonitor (ℒ {l𝑋 = var, lower, lExit = exit, l𝒪s = chans}) =
   let x = (var @)
       singleOp ch =
-        let ChannelMeta {cmPoint = op, cmPid = pid} = ch
+        let 𝒪 {o𝑛 = 𝑛, oP = pid} = ch
             pc = π pid
-            hasPassedOp = And (Lt (op #) pc) (Lt pc (exitP #))
+            hasPassedOp = Lt (𝑛 #) pc :&& Lt pc (exit #)
          in IfElse hasPassedOp (1 #) (0 #)
       chanSubexp ops =
         let iterations = Mult (Minus x lower) (length ops #)
@@ -86,7 +88,7 @@ Produces:
     ? ↦ {if n < pc(π) then 1 else 0) | ∀(n, c!) ∈ ϕ(π) }
   ]]
 -}
-noloopMonitors :: ChMap ChOps -> ChMap (M.Map OpDir Exp)
+noloopMonitors :: 𝐶 ↦ 𝒪s -> 𝐶 ↦ (OpDir ↦ Exp)
 noloopMonitors =
   let subexps = L.map noloopMonitor
       setTransform = (...+) . subexps
@@ -98,9 +100,9 @@ Depends on: π, n, where n ∈ dom(Π(π)), b (reachability condition)
 
 if b then if n < pc(π) then 1 else 0 else 0
 -}
-noloopMonitor :: ChannelMeta -> Exp
+noloopMonitor :: 𝒪 -> Exp
 noloopMonitor ch =
-  let ChannelMeta {cmPid = pid, cmPoint = n, cmPathexp = b} = ch
-      pc = π pid
+  let 𝒪 {oP = p, o𝑛 = n, oPathexp = b} = ch
+      pc = π p
       passed = Lt (n #) pc
    in IfElse b (IfElse passed (1 #) (0 #)) (0 #)

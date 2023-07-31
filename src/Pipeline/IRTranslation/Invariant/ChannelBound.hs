@@ -3,7 +3,7 @@ module Pipeline.IRTranslation.Invariant.ChannelBound (channelBounds) where
 import Backend.Ast
 import Backend.Utilities
 import Data.Map qualified as M
-import Pipeline.IRTranslation.Utilities
+import Pipeline.IRTranslation.Meta.Channel
 
 {- Composes all channel bound invariants.
 Depends on: κ
@@ -11,7 +11,7 @@ Depends on: κ
 Produces:
 ∀ c ∈ dom(κ). channelBound(c, κ(c))
 -}
-channelBounds :: KEnv -> [Exp]
+channelBounds :: K -> [Exp]
 channelBounds = map (uncurry channelBound) . M.toList
 
 {- Constructs a channel bound invariant.
@@ -28,12 +28,8 @@ channelBound c k =
       upper = Leq (c @) k
       -- κ(c) = 0
       isSync = Eq k (0 #)
-      -- κ(c) ≥ 0
-      isAsync = Gt k (0 #)
       -- 0 ≤ c ∧ c ≤ κ(c)
-      asyncBound = And lower upper
+      asyncBound = lower :&& upper
       -- c ∈ {1, 0, -1}
       syncBound = In (c @) (ESet [(1 #), (0 #), ((-1) #)])
-   in And
-        (Implies isSync syncBound)
-        (Implies isAsync asyncBound)
+   in IfElse isSync syncBound asyncBound
