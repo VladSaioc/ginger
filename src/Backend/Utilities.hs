@@ -22,16 +22,16 @@ Produces:
 (...⋀) = (True ?) ⨁ (:&&)
 
 (...⋁) :: [Exp] -> Exp
-(...⋁) = (False ?) ⨁ Or
+(...⋁) = (False ?) ⨁ (:||)
 
 arithmCompose :: (Exp -> Exp -> Exp) -> [Exp] -> Exp
 arithmCompose = (⨁) (0 #)
 
 (...+) :: [Exp] -> Exp
-(...+) = arithmCompose Plus
+(...+) = arithmCompose (:+)
 
 (...-) :: [Exp] -> Exp
-(...-) = arithmCompose Minus
+(...-) = arithmCompose (:-)
 
 (#) :: Int -> Exp
 (#) = ECon . CNum

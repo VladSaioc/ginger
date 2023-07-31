@@ -18,4 +18,4 @@ Produces:
 κ(c) ≥ 0
 -}
 capPrecondition :: Exp -> Exp
-capPrecondition = Leq (0 #)
+capPrecondition = (:<=) (0 #)

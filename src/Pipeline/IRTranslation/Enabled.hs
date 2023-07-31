@@ -55,21 +55,21 @@ enabled :: K -> P -> 𝛷 -> Exp
 enabled κ p 𝜙 =
   let pc = π p
       chsops = chanOps p 𝜙
-      notTerminated = Ne pc (𝜙 -|)
+      notTerminated = pc :!= (𝜙 -|)
       subExp 𝒪 {o𝐶 = cn, o𝑛 = 𝑛, oDir = d} =
         let k = Mb.fromJust (M.lookup cn κ)
             c = (cn @)
-            executing = Implies . Eq pc . (#)
+            executing = (:==>) . (:==) pc . (#)
 
             aEnabled = executing 𝑛 $ case d of
-              S -> Lt c k
-              R -> Gt c (0 #)
+              S -> c :< k
+              R -> c :> (0 #)
 
             sEnabled = case d of
               S ->
-                let syncing = executing 𝑛 $ Eq c (0 #)
-                    rendezvous = executing (𝑛 + 1) $ Eq c ((-1) #)
+                let syncing = executing 𝑛 $ c :== (0 #)
+                    rendezvous = executing (𝑛 + 1) $ c :== ((-1) #)
                  in syncing :&& rendezvous
-              R -> executing 𝑛 $ Eq c (1 #)
-         in IfElse (Lt (0 #) k) aEnabled sEnabled
+              R -> executing 𝑛 $ c :== (1 #)
+         in IfElse ((0 #) :< k) aEnabled sEnabled
    in notTerminated :&& (L.map subExp chsops ...⋀)

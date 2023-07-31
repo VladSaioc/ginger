@@ -14,4 +14,4 @@ Produces:
 pc(π) = (max ∘ dom)(ϕ)
 -}
 postcondition :: P -> 𝛷 -> Exp
-postcondition p 𝜙 = Eq (π p) (𝜙 -|)
+postcondition p 𝜙 = π p :== (𝜙 -|)

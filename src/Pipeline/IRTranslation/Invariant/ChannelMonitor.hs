@@ -30,6 +30,6 @@ channelMonitors κ noloopOps ls =
       asyncMs = asyncChannelMonitors noloopOps ls
       combineMonitors c s a =
         let cap = Mb.fromMaybe (0 #) (M.lookup c κ)
-            isAsync = Lt (0 #) cap
-         in Eq (c @) (IfElse isAsync a s)
+            isAsync = (0 #) :< cap
+         in (c @) :== IfElse isAsync a s
    in M.elems $ M.unionWithKey combineMonitors syncMs asyncMs

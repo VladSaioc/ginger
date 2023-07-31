@@ -33,12 +33,11 @@ processIfs p (𝑛, s) = case s of
               iP = p,
               -- Parse lower bound expression
               iGuardExp = parseExp e,
-              -- Guard is at the entry program point
+              -- Guard is at the conditional entry program point
               iGuard = 𝑛,
-              -- Exit point is after the increment operation program point,
-              -- which is the exit program point of the loop body
+              -- Else branch program point
               iElse = 𝑛' + 1,
-              -- Parse upper bound expression
+              -- Conditional exit program point
               iExit = 𝑛''
             }
      in (l : l1 ++ l2, 𝑛' + 1)

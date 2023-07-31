@@ -16,10 +16,10 @@ Produces:
 0 <= pc(π) ∧ pc(π) <= (max ∘ dom)(ϕ)
 -}
 counterInvariant :: (P, 𝛷) -> Exp
-counterInvariant (pid, pp) =
-  let terminated = (pp -|)
-      pc = π pid
+counterInvariant (p, 𝜙) =
+  let terminated = (𝜙 -|)
+      pc = π p
       zero = (0 #)
-      lower = Leq zero pc
-      upper = Leq pc terminated
+      lower = zero :<= pc
+      upper = pc :<= terminated
    in lower :&& upper

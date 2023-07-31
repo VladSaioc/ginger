@@ -31,11 +31,11 @@ syncChannelMonitors :: P ↦ (𝐶 ↦ 𝒪s) -> [ℒ] -> 𝐶 ↦ Exp
 syncChannelMonitors noloopOps ls =
   let noloopSubexps = L.map snd (M.toList (M.map noloopMonitors noloopOps))
       loopSubexps = L.map loopMonitor ls
-      subexps = M.unionsWith (M.unionWith Plus) (noloopSubexps ++ loopSubexps)
+      subexps = M.unionsWith (M.unionWith (:+)) (noloopSubexps ++ loopSubexps)
       chanMonitor dir =
         let sendops = Mb.fromMaybe (0 #) (M.lookup S dir)
             recvops = Mb.fromMaybe (0 #) (M.lookup R dir)
-         in Minus sendops recvops
+         in sendops :- recvops
    in M.map chanMonitor subexps
 
 {- Monitor synchronous channel progress by analyzing the operations in a loop.
@@ -70,19 +70,17 @@ loopMonitor (ℒ {lP = p, l𝑋 = var, lower, lExit = exit, l𝒪s = chans, lPat
       pc = π p
       ext = (exit #)
       singleOp 𝒪 {oDir = d, o𝑛 = 𝑛} =
-        let synced = Lt (𝑛 #) pc :&& Lt pc ext
+        let synced = ((𝑛 #) :< pc) :&& (pc :< ext)
          in case d of
               S ->
-                let rendezvous = Lt ((𝑛 + 1) #) pc :&& Lt pc ext
-                 in Plus
-                      (IfElse synced (1 #) (0 #))
-                      (IfElse rendezvous (1 #) (0 #))
+                let rendezvous = (((𝑛 + 1) #) :< pc) :&& (pc :< ext)
+                 in IfElse synced (1 #) (0 #) :+ IfElse rendezvous (1 #) (0 #)
               R -> IfElse synced (2 #) (0 #)
       chanSubexp ops =
-        let iterations = Mult (Minus x lower) (length ops #)
-            x2 = Mult (2 #) iterations
+        let iterations = (x :- lower) :* (length ops #)
+            x2 = ((2 #) :* iterations)
             ops' = L.map singleOp ops
-         in IfElse b (Plus x2 (ops' ...+)) (0 #)
+         in IfElse b (x2 :+ (ops' ...+)) (0 #)
    in M.map (M.map chanSubexp) chans
 
 {- Organize and compose under addition all non-loop monitor
@@ -123,12 +121,9 @@ Depnding on the operation direction, it produces:
 noloopMonitor :: 𝒪 -> Exp
 noloopMonitor 𝒪 {oP = pid, oDir = d, o𝑛 = 𝑛, oPathexp = b} =
   let pc = π pid
-      synced = Lt (𝑛 #) pc
-      rendezvous = Lt ((𝑛 + 1) #) pc
+      synced = (𝑛 #) :< pc
+      rendezvous = ((𝑛 + 1) #) :< pc
       monitor = case d of
-        S ->
-          Plus
-            (IfElse synced (1 #) (0 #))
-            (IfElse rendezvous (1 #) (0 #))
+        S -> IfElse synced (1 #) (0 #) :+ IfElse rendezvous (1 #) (0 #)
         R -> IfElse synced (2 #) (0 #)
    in IfElse b monitor (0 #)

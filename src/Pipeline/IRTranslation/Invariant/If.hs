@@ -26,6 +26,6 @@ ifMonitor (ℐ {iP = pid, iGuardExp = b, iGuard = 𝑛, iElse = 𝑛', iExit = �
       els = (𝑛' #)
       -- If exit point as a fixed program point
       exit = (𝑛'' #)
-      counterInThen = Lt guard pc :&& Lt pc els
-      counterInElse = Leq els pc :&& Lt pc exit
+      counterInThen = (guard :< pc) :&& (pc :< els)
+      counterInElse = (els :<= pc) :&& (pc :< exit)
    in IfElse b (Not counterInElse) (Not counterInThen)

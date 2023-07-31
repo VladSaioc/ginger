@@ -33,7 +33,7 @@ iterationsFunc =
       hi = ("hi" @)
    in Function
         { yields = TInt,
-          funcBody = IfElse (Leq lo hi) (Minus hi lo) (0 #),
+          funcBody = IfElse (lo :<= hi) (hi :- lo) (0 #),
           funcHoare =
             HoareWrap
               { ghost = True,
@@ -62,13 +62,13 @@ isScheduleFunc ps =
       callS = Call "S" [(n @)]
    in Function
         { yields = TBool,
-          funcBody = Forall [(n, Nothing)] (Leq callS domPi),
+          funcBody = Forall [(n, Nothing)] (callS :<= domPi),
           funcHoare =
             HoareWrap
               { ghost = True,
                 name = "isSchedule",
                 types = [],
-                params = [("S", Arrow TNat TNat)],
+                params = [("S", TNat :-> TNat)],
                 requires = [],
                 ensures = [],
                 decreases = []
@@ -136,7 +136,7 @@ centralLoop κ ps atomicOps ifs loops =
       m = channelMonitors κ atomicOps loops
       -- Condition under which progress is enabled
       -- 1. Fuel constraint
-      hasFuel = Lt ("step" @) ("fuel" @)
+      hasFuel = ("step" @) :< ("fuel" @)
       -- 2. Fuel + process operation disjunctions
       enabled = hasFuel :&& enabledExp κ ps
    in While
@@ -147,7 +147,7 @@ centralLoop κ ps atomicOps ifs loops =
             [ -- Central loop case analysis
               scheduleSwitch ps,
               -- Increment steps
-              Assign [("step", Plus ("step" @) (1 #))]
+              Assign [("step", ("step" @) :+ (1 #))]
             ]
         )
 
@@ -227,11 +227,9 @@ progEncoding 𝜎 ts κ ps os ifs loops =
           { ghost = True,
             name = "Program",
             types = ts,
-            params = ("fuel", TNat) : ("S", Arrow TNat TNat) : M.toList 𝜎,
+            params = ("fuel", TNat) : ("S", TNat :-> TNat) : M.toList 𝜎,
             ensures =
-              [ Implies
-                  (Lt ("step" @) ("fuel" @))
-                  (Equiv (preconditions κ os loops ...⋀) (postconditions ps ...⋀))
+              [ (("step" @) :< ("fuel" @)) :==> ((preconditions κ os loops ...⋀) :<==> (postconditions ps ...⋀))
               ],
             decreases = [],
             requires = isSchedule : capPreconditions κ

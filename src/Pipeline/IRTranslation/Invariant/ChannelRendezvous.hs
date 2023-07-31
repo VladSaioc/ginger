@@ -38,4 +38,4 @@ sendToNoRendezvous :: K -> 𝒪 -> Exp
 sendToNoRendezvous κ 𝒪 {oP = pid, o𝐶 = c, o𝑛 = 𝑛} =
   let pc = π pid
       k = Mb.fromMaybe (0 #) (M.lookup c κ)
-   in Implies (Lt (0 #) k) (Ne pc ((𝑛 + 1) #))
+   in ((0 #) :< k) :==> (pc :!= ((𝑛 + 1) #))

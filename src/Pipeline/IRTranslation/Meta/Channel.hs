@@ -104,7 +104,7 @@ backendChannelOp =
         If capGuard async (Just sync) -> do
           -- Check that the capacity guard is of the form: 0 < κ(c)
           k <- case capGuard of
-            Lt (ECon (CNum 0)) k -> return k
+            ECon (CNum 0) :< k -> return k
             _ -> Nothing
 
           -- Get the asynchronous case guard and body.
@@ -120,12 +120,12 @@ backendChannelOp =
             -- It also checks that the capacity expression is consistent
             -- between the capacity and the operation guards:
             -- c < κ(c)
-            Lt (EVar c) k' -> do
+            EVar c :< k' -> do
               unless (k == k') Nothing
               send c
             -- For receive, the guard checks that the channel is not empty:
             -- c > 0
-            Gt (EVar c) (ECon (CNum 0)) -> recv c
+            EVar c :> ECon (CNum 0) -> recv c
             _ -> Nothing
           -- Check that the statement conforms to asynchronous operation encoded.
           -- The constructor "d" produced at the previous step ensures
@@ -141,7 +141,7 @@ backendChannelOp =
             -- channel buffer length, and progressing to the next operation.
             Left
               ( Block
-                  [ Assign [(c1, Plus (EVar c2) (ECon (CNum 1)))],
+                  [ Assign [(c1, EVar c2 :+ ECon (CNum 1))],
                     Assign [(p1, ECon (CNum n1))]
                     ]
                 ) -> send (p1, n1, c1, c2)
@@ -149,7 +149,7 @@ backendChannelOp =
             -- channel buffer length, and progressing to the next operation.
             Right
               ( Block
-                  [ Assign [(c1, Minus (EVar c2) (ECon (CNum 1)))],
+                  [ Assign [(c1, EVar c2 :- ECon (CNum 1))],
                     Assign [(p1, ECon (CNum n1))]
                     ]
                 ) -> recv (p1, n1, c1, c2)
@@ -167,11 +167,11 @@ backendChannelOp =
             -- For send, the guard checks that the channel is ready to send
             -- (channel value is encoded as 0):
             -- c == 0
-            Left (Eq (EVar c3) (ECon (CNum 0))) -> send c3
+            Left (EVar c3 :== ECon (CNum 0)) -> send c3
             -- For receive, the guard checks that the channel is ready to
             -- synchronize (channel value is encoded as 1):
             -- c == 1
-            Right (Eq (EVar c3) (ECon (CNum 1))) -> recv c3
+            Right (EVar c3 :== ECon (CNum 1)) -> recv c3
             _ -> Nothing
           -- Check that the statement conforms to asynchronous operation encoded.
           -- The constructor "d" produced at the previous step ensures

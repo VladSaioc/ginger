@@ -33,28 +33,28 @@ loopMonitor (ℒ {l𝑋 = var, lP = p, lGuard = g, lExit = ex, lower, upper, lPa
       guard = (g #)
       -- Loop exit point as a fixed program point
       exit = (ex #)
-      counterInLoop = Lt guard pc :&& Lt pc exit
+      counterInLoop = (guard :< pc) :&& (pc :< exit)
       -- Initial guard checks whether the loop will be entered at all.
       -- If the lower bound is already strictly higher than the upper bound,
       -- or the loop is unreachable due to path conditions, then no iterations
       -- are performed.
-      initGuard = b :&& Geq upper lower
+      initGuard = b :&& (upper :>= lower)
       -- The clauses modeling loop behaviour when it has 0 or more
       -- iterations.
       hasIter =
         let -- Loop counter is bounded: lo ≤ x ≤ hi
-            bounded = Leq lo x :&& Leq x hi
+            bounded = (lo :<= x) :&& (x :<= hi)
             -- Counter value before guard is reached: pc(π) < n => x = lo
-            before = Implies (Lt pc guard) (Eq x lo)
+            before = (pc :< guard) :==> (x :== lo)
             -- Counter value while loop is executing: n < pc(π) < n' => x < hi
-            during = Implies counterInLoop (Lt x hi)
+            during = counterInLoop :==> (x :< hi)
             -- Counter value after loop has executed: n' ≤ pc(π) => x = hi
-            after = Implies (Leq exit pc) (Geq x hi)
+            after = (exit :<= pc) :==> (x :>= hi)
          in ([bounded, before, during, after] ...⋀)
       -- The clause modeling loop behaviour if the loop never enters.
       noIter =
         let -- The incrementing variable will remain frozen to the lower bound.
-            bounded = Eq x lower
+            bounded = x :== lower
          in -- The loop counter will never reach loop body program points in these scenarios.
             bounded :&& Not counterInLoop
    in IfElse initGuard hasIter noIter

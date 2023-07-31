@@ -28,8 +28,8 @@ preconditions κ noloops loops =
             sends = plus (cdR S clR) (cdR S cnR)
             rcvs = plus (cdR R clR) (cdR R cnR)
 
-            rcvsUnblock = Leq rcvs sends
-            sndsUnblock = Leq sends (plus rcvs k)
+            rcvsUnblock = rcvs :<= sends
+            sndsUnblock = sends :<= plus rcvs k
          in rcvsUnblock :&& sndsUnblock
    in L.map prc cs
 
@@ -47,7 +47,7 @@ loopToPre (ℒ {lower, upper, l𝒪s = os, lPathexp = b}) =
         let e = case length ops of
               0 -> (0 #)
               1 -> iterations lower upper
-              n -> Mult (n #) (iterations lower upper)
+              n -> (n #) :* iterations lower upper
          in IfElse b e (0 #)
    in M.map (M.map iter) os
 
@@ -62,4 +62,4 @@ noloopOpToPre :: P ↦ (𝐶 ↦ 𝒪s) -> 𝐶 ↦ (OpDir ↦ Exp)
 noloopOpToPre pis =
   let chOp 𝒪 {oPathexp = b} = IfElse b (1 #) (0 #)
       pis' = (M.elems . M.map (M.map (M.map ((...+) . map chOp)))) pis
-   in M.unionsWith (M.unionWith Plus) pis'
+   in M.unionsWith (M.unionWith (:+)) pis'

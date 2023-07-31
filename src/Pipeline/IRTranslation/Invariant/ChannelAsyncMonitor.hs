@@ -31,11 +31,11 @@ asyncChannelMonitors :: P ↦ (𝐶 ↦ 𝒪s) -> [ℒ] -> 𝐶 ↦ Exp
 asyncChannelMonitors noloopOps ls =
   let noloopSubexps = L.map snd (M.toList (M.map noloopMonitors noloopOps))
       loopSubexps = L.map loopMonitor ls
-      subexps = M.unionsWith (M.unionWith Plus) (noloopSubexps ++ loopSubexps)
+      subexps = M.unionsWith (M.unionWith (:+)) (noloopSubexps ++ loopSubexps)
       chanMonitor dir =
         let sendops = Mb.fromMaybe (0 #) (M.lookup S dir)
             recvops = Mb.fromMaybe (0 #) (M.lookup R dir)
-         in Minus sendops recvops
+         in sendops :- recvops
    in M.map chanMonitor subexps
 
 {- Monitor asynchronous channel buffer length by analyzing the operations in a loop.
@@ -69,12 +69,12 @@ loopMonitor (ℒ {l𝑋 = var, lower, lExit = exit, l𝒪s = chans}) =
       singleOp ch =
         let 𝒪 {o𝑛 = 𝑛, oP = pid} = ch
             pc = π pid
-            hasPassedOp = Lt (𝑛 #) pc :&& Lt pc (exit #)
+            hasPassedOp = ((𝑛 #) :< pc) :&& (pc :< (exit #))
          in IfElse hasPassedOp (1 #) (0 #)
       chanSubexp ops =
-        let iterations = Mult (Minus x lower) (length ops #)
+        let iterations = (x :- lower) :* (length ops #)
             ops' = L.map singleOp ops
-         in Plus iterations (ops' ...+)
+         in iterations :+ (ops' ...+)
    in M.map (M.map chanSubexp) chans
 
 {- Organize and compose under addition all non-loop monitor
@@ -104,5 +104,5 @@ noloopMonitor :: 𝒪 -> Exp
 noloopMonitor ch =
   let 𝒪 {oP = p, o𝑛 = n, oPathexp = b} = ch
       pc = π p
-      passed = Lt (n #) pc
+      passed = (n #) :< pc
    in IfElse b (IfElse passed (1 #) (0 #)) (0 #)

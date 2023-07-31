@@ -74,60 +74,57 @@ eSimplify pe =
         ETuple es -> ETuple $ map eSimplify es
         -- Implications from false are always true
         -- false => e ==> true
-        Implies (ECon CFalse) _ -> (True ?)
+        ECon CFalse :==> _ -> (True ?)
         -- Everything implies true
         -- e => true ==> true
-        Implies _ (ECon CTrue) -> (True ?)
+        _ :==> ECon CTrue -> (True ?)
         -- Implications from true are equivalent to the right-hand side
         -- true => e ==> e
-        Implies (ECon CTrue) e -> eSimplify e
+        ECon CTrue :==> e -> eSimplify e
         -- Implying false is equivalent to negation
         -- e => false ==> !e
-        Implies e (ECon CFalse) -> eSimplify (Not e)
-        Implies e1 e2 -> bin Implies e1 e2
+        e :==> ECon CFalse -> eSimplify (Not e)
+        e1 :==> e2 -> bin (:==>) e1 e2
         -- True and false are trivially not equivalent
         -- a. true <=> false ==> false
-        Equiv (ECon CTrue) (ECon CFalse) -> (False ?)
+        ECon CTrue :<==> ECon CFalse -> (False ?)
         -- b. false <=> true ==> false
-        Equiv (ECon CFalse) (ECon CTrue) -> (False ?)
+        ECon CFalse :<==> ECon CTrue -> (False ?)
         -- True is neutral in equivalence
         -- a. true <=> e ==> e
-        Equiv (ECon CTrue) e -> eSimplify e
+        ECon CTrue :<==> e -> eSimplify e
         -- b. e <=> true ==> e
-        Equiv e (ECon CTrue) -> eSimplify e
+        e :<==> ECon CTrue -> eSimplify e
         -- Equivalence with false implies the negation of identity
         -- a. false <=> e ==> !e
-        Equiv (ECon CFalse) e -> eSimplify (Not e)
+        ECon CFalse :<==> e -> eSimplify (Not e)
         -- b. e <=> false ==> !e
-        Equiv e (ECon CFalse) -> eSimplify (Not e)
+        e :<==> ECon CFalse -> eSimplify (Not e)
         -- Syntactic equivalence implies tautology
         -- e <=> e ==> true
-        Equiv e1 e2 ->
-          if e1 == e2
-            then (True ?)
-            else bin Equiv e1 e2
+        e1 :<==> e2 -> if e1 == e2 then (True ?) else bin (:<==>) e1 e2
         -- Conjunction with false is trivially absurd
         -- a. e && false ==> false
-        _ :&& (ECon CFalse) -> (False ?)
+        _ :&& ECon CFalse -> (False ?)
         -- b. false && e ==> false
-        (ECon CFalse) :&& _ -> (False ?)
+        ECon CFalse :&& _ -> (False ?)
         -- True is neutral in conjuction
         -- a. e && true ==> e
-        e :&& (ECon CTrue) -> eSimplify e
+        e :&& ECon CTrue -> eSimplify e
         -- b. true && e ==> e
-        (ECon CTrue) :&& e -> eSimplify e
+        ECon CTrue :&& e -> eSimplify e
         e1 :&& e2 -> bin (:&&) e1 e2
         -- Disjunction with true is trivially tautological
         -- a. e || true ==> true
-        Or _ (ECon CTrue) -> (True ?)
+        _ :|| ECon CTrue -> (True ?)
         -- b. true || e ==> true
-        Or (ECon CTrue) _ -> (True ?)
+        ECon CTrue :|| _ -> (True ?)
         -- False is neutral in disjunction
         -- a. e || false ==> e
-        Or e (ECon CFalse) -> eSimplify e
+        e :|| ECon CFalse -> eSimplify e
         -- b. false || e ==> e
-        Or (ECon CFalse) e -> eSimplify e
-        Or e1 e2 -> bin Or e1 e2
+        ECon CFalse :|| e -> eSimplify e
+        e1 :|| e2 -> bin (:||) e1 e2
         -- Constant folding for negation
         -- !true ==> false
         Not (ECon CTrue) -> (False ?)
@@ -139,102 +136,84 @@ eSimplify pe =
         Not e -> un Not e
         -- Constant folding for equality
         -- c == c ==> true, c1 != c2 ==> false
-        Eq (ECon c1) (ECon c2) ->
+        ECon c1 :== ECon c2 ->
           if c1 == c2 then (True ?) else (False ?)
         -- Syntactic equality implies semantic equality
         -- e == e ==> true
-        Eq e1 e2 ->
-          if e1 == e2
-            then (True ?)
-            else bin Eq e1 e2
+        e1 :== e2 -> if e1 == e2 then (True ?) else bin (:==) e1 e2
         -- Constant folding for inequality
         -- c != c ==> false, c1 != c2 ==> true
-        Ne (ECon c1) (ECon c2) ->
+        ECon c1 :!= ECon c2 ->
           if c1 == c2 then (False ?) else (True ?)
         -- Syntactic equality implies semantic inequality is false
         -- e != e ==> false
-        Ne e1 e2 ->
-          if e1 == e2
-            then (False ?)
-            else bin Ne e1 e2
+        e1 :!= e2 -> if e1 == e2 then (False ?) else bin (:!=) e1 e2
         -- Constant folding for lesser-than-or-equal numeric comparison
         -- n1 <= n2
-        Leq (ECon (CNum n1)) (ECon (CNum n2)) -> ((n1 <= n2) ?)
+        ECon (CNum n1) :<= ECon (CNum n2) -> ((n1 <= n2) ?)
         -- Syntactic equality implies lesser-than-or-equal comparison is trivially true
         -- e <= e ==> true
-        Leq e1 e2 ->
+        e1 :<= e2 ->
           if e1 == e2
             then (True ?)
-            else bin Leq e1 e2
+            else bin (:<=) e1 e2
         -- Constant folding for strictly-lesser-than numeric comparison
         -- n1 < n2
-        Lt (ECon (CNum n1)) (ECon (CNum n2)) -> ((n1 < n2) ?)
+        ECon (CNum n1) :< ECon (CNum n2) -> ((n1 < n2) ?)
         -- Syntactic equality implies strictly-lesser-than comparison is trivially false
         -- e < e ==> false
-        Lt e1 e2 ->
-          if e1 == e2
-            then (False ?)
-            else bin Lt e1 e2
+        e1 :< e2 -> if e1 == e2 then (False ?) else bin (:<) e1 e2
         -- Constant folding for greater-than-or-equal numeric comparison
         -- n1 >= n2
-        Geq (ECon (CNum n1)) (ECon (CNum n2)) -> ((n1 >= n2) ?)
+        ECon (CNum n1) :>= ECon (CNum n2) -> ((n1 >= n2) ?)
         -- Syntactic equality implies greater-than-or-equal comparison is trivially true
         -- e >= e ==> true
-        Geq e1 e2 ->
-          if e1 == e2
-            then (True ?)
-            else bin Geq e1 e2
+        e1 :>= e2 -> if e1 == e2 then (True ?) else bin (:>=) e1 e2
         -- Constant folding for strictly-greater-than numeric comparison
         -- n1 > n2
-        Gt (ECon (CNum n1)) (ECon (CNum n2)) -> ((n1 > n2) ?)
+        ECon (CNum n1) :> (ECon (CNum n2)) -> ((n1 > n2) ?)
         -- Syntactic equality implies strictly-greater-than comparison is trivially false
         -- e > e ==> false
-        Gt e1 e2 ->
-          if e1 == e2
-            then (False ?)
-            else bin Gt e1 e2
+        e1 :> e2 -> if e1 == e2 then (False ?) else bin (:>) e1 e2
         -- Constant folding for addition
         -- n1 + n2 ==> n
-        Plus (ECon (CNum n1)) (ECon (CNum n2)) -> ((n1 + n2) #)
+        ECon (CNum n1) :+ ECon (CNum n2) -> ((n1 + n2) #)
         -- Zero is neutral for addition
         -- a. e + 0 ==> e
-        Plus e (ECon (CNum 0)) -> eSimplify e
+        e :+ ECon (CNum 0) -> eSimplify e
         -- b. 0 + e ==> e
-        Plus (ECon (CNum 0)) e -> eSimplify e
-        Plus e1 e2 -> bin Plus e1 e2
+        ECon (CNum 0) :+ e -> eSimplify e
+        e1 :+ e2 -> bin (:+) e1 e2
         -- Constant folding for subtraction
         -- n1 - n2 ==> n
-        Minus (ECon (CNum n1)) (ECon (CNum n2)) -> ((n1 - n2) #)
+        ECon (CNum n1) :- ECon (CNum n2) -> ((n1 - n2) #)
         -- Zero is right-hand-side neutral for subtraction
         -- e - 0 ==> e
-        Minus e (ECon (CNum 0)) -> eSimplify e
+        e :- ECon (CNum 0) -> eSimplify e
         -- Subtraction of syntactically equal expressions is 0
         -- e - e ==> 0
-        Minus e1 e2 ->
-          if e1 == e2
-            then (0 #)
-            else bin Minus e1 e2
+        e1 :- e2 -> if e1 == e2 then (0 #) else bin (:-) e1 e2
         -- Constant folding for multiplication
         -- n1 * n2 ==> n
-        Mult (ECon (CNum n1)) (ECon (CNum n2)) -> ((n1 * n2) #)
+        ECon (CNum n1) :* ECon (CNum n2) -> ((n1 * n2) #)
         -- One is neutral for multiplication
         -- a. 1 * e ==> e
-        Mult (ECon (CNum 1)) e -> eSimplify e
+        ECon (CNum 1) :* e -> eSimplify e
         -- b. e * 1 ==> e
-        Mult e (ECon (CNum 1)) -> eSimplify e
+        e :* ECon (CNum 1) -> eSimplify e
         -- Zero is absorbing for multiplication
         -- a. e * 0 ==> 0
-        Mult _ (ECon (CNum 0)) -> (0 #)
+        _ :* ECon (CNum 0) -> (0 #)
         -- b. 0 * e ==> e
-        Mult (ECon (CNum 0)) _ -> (0 #)
-        Mult e1 e2 -> bin Mult e1 e2
+        ECon (CNum 0) :* _ -> (0 #)
+        e1 :* e2 -> bin (:*) e1 e2
         -- One is right-hand-side neutral for division
         -- e / 1 ==> e
-        Div e (ECon (CNum 1)) -> e
+        e :/ ECon (CNum 1) -> e
         -- Zero is left-hand-side absorbing for division
         -- 0 / e ==> 0
-        Div (ECon (CNum 0)) _ -> (0 #)
-        Div e1 e2 -> bin Div e1 e2
+        ECon (CNum 0) :/ _ -> (0 #)
+        e1 :/ e2 -> bin (:/) e1 e2
         -- Reduction of statically determinable conditional statements
         -- to corresponding branch.
         -- a. if true then e1 else e2 ==> e1
@@ -251,8 +230,8 @@ eSimplify pe =
         Call f es -> Call f $ map eSimplify es
         -- Modulo 1 is trivially 0
         -- e % 1 ==> 0
-        Mod _ (ECon (CNum 1)) -> (0 #)
-        Mod e1 e2 -> bin Mod e1 e2
+        _ :% ECon (CNum 1) -> (0 #)
+        e1 :% e2 -> bin (:%) e1 e2
         -- Terminal expressions
         EVar x -> (x @)
         ECon c -> ECon c

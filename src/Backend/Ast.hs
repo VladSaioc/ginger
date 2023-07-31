@@ -14,7 +14,7 @@ data Type
   | -- T
     TVar String
   | -- Type -> Type
-    Arrow Type Type
+    Type :-> Type
   | -- (Type, ...)
     Tuple [Type]
   deriving (Eq, Ord, Read)
@@ -80,38 +80,38 @@ data Exp
   | -- BINARY OPERATORS
     -- Propositional logic
     -- -- e1 <==> e2
-    Equiv Exp Exp
+    Exp :<==> Exp
   | -- -- e1 ==> e2
-    Implies Exp Exp
+    Exp :==> Exp
   | -- Boolean arithmetic
     -- -- e1 && e2
     Exp :&& Exp
   | -- -- e1 || e2
-    Or Exp Exp
+    Exp :|| Exp
   | -- Comparison
     -- -- e1 == e2
-    Eq Exp Exp
+    Exp :== Exp
   | -- -- e1 != e2
-    Ne Exp Exp
+    Exp :!= Exp
   | -- -- e1 >= e2
-    Geq Exp Exp
+    Exp :>= Exp
   | -- -- e1 > e2
-    Gt Exp Exp
+    Exp :> Exp
   | -- -- e1 <= e2
-    Leq Exp Exp
+    Exp :<= Exp
   | -- -- e1 < e2
-    Lt Exp Exp
+    Exp :< Exp
   | -- Arithmetic
     -- -- e1 + e2
-    Plus Exp Exp
+    Exp :+ Exp
   | -- -- e1 - e2
-    Minus Exp Exp
+    Exp :- Exp
   | -- -- e1 * e2
-    Mult Exp Exp
+    Exp :* Exp
   | -- -- e1 / e2
-    Div Exp Exp
+    Exp :/ Exp
   | -- -- e1 % e2
-    Mod Exp Exp
+    Exp :% Exp
   | -- UNARY OPERATORS
     -- -- !e
     Not Exp
@@ -177,40 +177,40 @@ newtype Program = Program [Decl] deriving (Eq, Ord, Read)
 (<.|.>) e1 lre2 =
   let needParens =
         ( case (e1, lre2) of
-            (Equiv {}, Right Equiv {}) -> False
-            (Equiv {}, Left (Equiv {})) -> False
-            (Implies {}, Left (Implies {})) -> True
-            (Implies {}, Right (Implies {})) -> False
+            (_ :<==> _, Right (_ :<==> _)) -> False
+            (_ :<==> _, Left (_ :<==> _)) -> False
+            (_ :==> _, Left (_ :==> _)) -> True
+            (_ :==> _, Right (_ :==> _)) -> False
             (_ :&& _, Right (_ :&& _)) -> False
             (_ :&& _, Left (_ :&& _)) -> False
-            (Or {}, Right (Or {})) -> False
-            (Or {}, Left (Or {})) -> False
-            (_ :&& _, Right (Or {})) -> True
-            (_ :&& _, Left (Or {})) -> True
-            (Or {}, Right (_ :&& _)) -> True
-            (Or {}, Left (_ :&& _)) -> True
-            (Eq {}, Right (Eq {})) -> True
-            (Eq {}, Left (Eq {})) -> True
-            (Eq {}, Right (Ne {})) -> True
-            (Eq {}, Left (Ne {})) -> True
-            (Plus {}, Right (Plus {})) -> False
-            (Plus {}, Left (Plus {})) -> False
-            (Plus {}, Right (Minus {})) -> False
-            (Plus {}, Left (Minus {})) -> False
-            (Minus {}, Right (Minus {})) -> True
-            (Minus {}, Left (Minus {})) -> False
-            (Minus {}, Left (Plus {})) -> False
-            (Minus {}, Right (Plus {})) -> True
-            (Mult {}, Right (Mult {})) -> False
-            (Mult {}, Left (Mult {})) -> False
-            (Mult {}, Right (Div {})) -> False
-            (Mult {}, Left (Div {})) -> False
-            (Div {}, Right (Div {})) -> True
-            (Div {}, Left (Div {})) -> False
-            (Div {}, Left (Mult {})) -> False
-            (Div {}, Right (Mult {})) -> True
-            (Mod {}, Left (Mod {})) -> True
-            (Mod {}, Right (Mod {})) -> True
+            (_ :|| _, Right (_ :|| _)) -> False
+            (_ :|| _, Left (_ :|| _)) -> False
+            (_ :&& _, Right (_ :|| _)) -> True
+            (_ :&& _, Left (_ :|| _)) -> True
+            (_ :|| _, Right (_ :&& _)) -> True
+            (_ :|| _, Left (_ :&& _)) -> True
+            (_ :== _, Right (_ :== _)) -> True
+            (_ :== _, Left (_ :== _)) -> True
+            (_ :== _, Right (_ :!= _)) -> True
+            (_ :== _, Left (_ :!= _)) -> True
+            (_ :+ _, Right (_ :+ _)) -> False
+            (_ :+ _, Left (_ :+ _)) -> False
+            (_ :+ _, Right (_ :- _)) -> False
+            (_ :+ _, Left (_ :- _)) -> False
+            (_ :- _, Right (_ :- _)) -> True
+            (_ :- _, Left (_ :- _)) -> False
+            (_ :- _, Left (_ :+ _)) -> False
+            (_ :- _, Right (_ :+ _)) -> True
+            (_ :* _, Right (_ :* _)) -> False
+            (_ :* _, Left (_ :* _)) -> False
+            (_ :* _, Right (_ :/ _)) -> False
+            (_ :* _, Left (_ :/ _)) -> False
+            (_ :/ _, Right (_ :/ _)) -> True
+            (_ :/ _, Left (_ :/ _)) -> False
+            (_ :/ _, Left (_ :* _)) -> False
+            (_ :/ _, Right (_ :* _)) -> True
+            (_ :% _, Left (_ :% _)) -> True
+            (_ :% _, Right (_ :% _)) -> True
             _ -> e1 > either id id lre2
         )
       trans = (if needParens then ("(" ++) . (++ ")") else id) . prettyPrint 0
@@ -239,7 +239,7 @@ instance PrettyPrint Type where
           TNat -> "nat"
           TBool -> "bool"
           TVar x -> x
-          Arrow t1 t2 -> concat ["(" ++ pp t1 ++ ")", " -> ", "(" ++ pp t2 ++ ")"]
+          t1 :-> t2 -> concat ["(" ++ pp t1 ++ ")", " -> ", "(" ++ pp t2 ++ ")"]
           Tuple ts -> "(" ++ intercalate ", " (map pp ts) ++ ")"
 
 instance PrettyPrint Pattern where
@@ -329,22 +329,22 @@ instance PrettyPrint Exp where
           ESet es -> unwords ["{", intercalate ", " $ map (prettyPrint i) es, "}"]
           Exists xs e' -> quantifier "exists" xs e'
           Forall xs e' -> quantifier "forall" xs e'
-          Implies e1 e2 -> bin e1 "==>" e2
-          Equiv e1 e2 -> bin e1 "<==>" e2
+          e1 :==> e2 -> bin e1 "==>" e2
+          e1 :<==> e2 -> bin e1 "<==>" e2
           e1 :&& e2 -> bin e1 "&&" e2
-          Or e1 e2 -> bin e1 "||" e2
+          e1 :|| e2 -> bin e1 "||" e2
           Not e' -> un "!" e'
-          Eq e1 e2 -> bin e1 "==" e2
-          Ne e1 e2 -> bin e1 "!=" e2
-          Geq e1 e2 -> bin e1 ">=" e2
-          Gt e1 e2 -> bin e1 ">" e2
-          Leq e1 e2 -> bin e1 "<=" e2
-          Lt e1 e2 -> bin e1 "<" e2
-          Plus e1 e2 -> bin e1 "+" e2
-          Minus e1 e2 -> bin e1 "-" e2
-          Mult e1 e2 -> bin e1 "*" e2
-          Div e1 e2 -> bin e1 "/" e2
-          Mod e1 e2 -> bin e1 "%" e2
+          e1 :== e2 -> bin e1 "==" e2
+          e1 :!= e2 -> bin e1 "!=" e2
+          e1 :>= e2 -> bin e1 ">=" e2
+          e1 :> e2 -> bin e1 ">" e2
+          e1 :<= e2 -> bin e1 "<=" e2
+          e1 :< e2 -> bin e1 "<" e2
+          e1 :+ e2 -> bin e1 "+" e2
+          e1 :- e2 -> bin e1 "-" e2
+          e1 :* e2 -> bin e1 "*" e2
+          e1 :/ e2 -> bin e1 "/" e2
+          e1 :% e2 -> bin e1 "%" e2
           IfElse e1 e2 e3 -> unwords ["if", pp e1, "then", pp e2, "else", pp e3]
           Match e' cs ->
             let def (p, e'') = unwords ["case", prettyPrint 0 p, "=>", pp e'']

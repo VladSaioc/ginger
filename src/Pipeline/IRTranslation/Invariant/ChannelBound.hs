@@ -23,11 +23,11 @@ Produces:
 channelBound :: String -> Exp -> Exp
 channelBound c k =
   let -- 0 ≤ c
-      lower = Leq (0 #) (c @)
+      lower = (0 #) :<= (c @)
       -- c ≤ κ(c)
-      upper = Leq (c @) k
+      upper = (c @) :<= k
       -- κ(c) = 0
-      isSync = Eq k (0 #)
+      isSync = k :== (0 #)
       -- 0 ≤ c ∧ c ≤ κ(c)
       asyncBound = lower :&& upper
       -- c ∈ {1, 0, -1}

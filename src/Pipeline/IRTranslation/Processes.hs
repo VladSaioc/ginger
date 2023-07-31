@@ -48,57 +48,57 @@ Produces, based on S:
           ]
 -}
 stmtToPoints :: K -> P -> (P𝑛, 𝛷) -> Stmt -> (P𝑛, 𝛷)
-stmtToPoints κ pid (n, pp) =
-  let moveTo n' is =
+stmtToPoints κ p (𝑛, 𝜙) =
+  let moveTo 𝑛' is =
         T.Block
-          (T.Assign [((pid <|), (n' #))] : is)
+          (T.Assign [((p <|), (𝑛' #))] : is)
    in \case
-        Skip -> (n, pp)
+        Skip -> (𝑛, 𝜙)
         Seq s1 s2 ->
-          let (n', pp') = stmtToPoints κ pid (n, pp) s1
-           in stmtToPoints κ pid (n', pp') s2
+          let (n', 𝜙') = stmtToPoints κ p (𝑛, 𝜙) s1
+           in stmtToPoints κ p (n', 𝜙') s2
         If e s1 s2 ->
           let -- Translate guard expression
               e' = parseExp e
               -- Translate then branch
-              (n'', pp1) = stmtToPoints κ pid (n + 1, pp) s1
+              (𝑛'', 𝜙₁) = stmtToPoints κ p (𝑛 + 1, 𝜙) s1
               -- Translate else branch
-              (n', pp2) = stmtToPoints κ pid (n'' + 1, pp1) s2
+              (𝑛', 𝜙₂) = stmtToPoints κ p (𝑛'' + 1, 𝜙₁) s2
               -- if e' { pc := n + 1 } else { pc := n'' }
-              thn = moveTo (n + 1) []
-              els = moveTo (n'' + 1) []
+              thn = moveTo (𝑛 + 1) []
+              els = moveTo (𝑛'' + 1) []
               guard = T.If e' thn (Just els)
               -- { pc := n' }
-              leaveThn = moveTo n' []
-              pp' = M.insert n guard pp2
-              pp'' = M.insert n'' leaveThn pp'
-           in (n', pp'')
+              leaveThn = moveTo 𝑛' []
+              𝜙₃ = M.insert 𝑛 guard 𝜙₂
+              𝜙₄ = M.insert 𝑛'' leaveThn 𝜙₃
+           in (𝑛', 𝜙₄)
         For x _ e ops ->
-          let x' = pid % x
+          let x' = p % x
               e' = parseExp e
-              (n', pp1) = opsToPoints κ pid (n + 1, pp) ops
+              (𝑛', 𝜙₁) = opsToPoints κ p (𝑛 + 1, 𝜙) ops
 
               -- x < e
-              guard = T.Lt (T.EVar x') e'
+              guard = (x' @) T.:< e'
               -- { pc := n + 1 }
-              stay = moveTo (n + 1) []
+              stay = moveTo (𝑛 + 1) []
               -- { pc := n' + 1 }
-              leave = moveTo (n' + 1) []
+              leave = moveTo (𝑛' + 1) []
               -- { x := x + 1; pc := n }
-              iter = moveTo n [T.Assign [(x', T.Plus (T.EVar x') (T.ECon (T.CNum 1)))]]
+              iter = moveTo 𝑛 [T.Assign [(x', (x' @) T.:+ (1 #))]]
 
               -- n -> if x < e { pc := n + 1; } else { pc := n' + 1 }
-              pp2 = M.insert n (T.If guard stay (Just leave)) pp1
+              𝜙₂ = M.insert 𝑛 (T.If guard stay (Just leave)) 𝜙₁
               -- n' -> { x := x + 1; pc := n }
-              pp3 = M.insert n' iter pp2
-           in (n' + 1, pp3)
-        Atomic op -> opToPoint κ pid (n, pp) op
+              𝜙₃ = M.insert 𝑛' iter 𝜙₂
+           in (𝑛' + 1, 𝜙₃)
+        Atomic op -> opToPoint κ p (𝑛, 𝜙) op
 
 {- Updates a program point set with the translations of
   the operation in the provided sequence.
 -}
 opsToPoints :: K -> P -> (P𝑛, 𝛷) -> [Op] -> (P𝑛, 𝛷)
-opsToPoints κ pid (n, pp) = Prelude.foldl (opToPoint κ pid) (n, pp)
+opsToPoints κ p (𝑛, 𝜙) = Prelude.foldl (opToPoint κ p) (𝑛, 𝜙)
 
 {- Appends a set of program points with a new program point,
 based on the next available instruction.
@@ -139,17 +139,17 @@ Produces:
   ]⟩
 -}
 opToPoint :: K -> P -> (P𝑛, 𝛷) -> Op -> (P𝑛, 𝛷)
-opToPoint κ pid (n, pp) op =
+opToPoint κ p (𝑛, 𝜙) op =
   let c = chName op
       -- pc(π) = n'
-      nextInstruction n' = T.Assign [((pid <|), (n' #))]
+      nextInstruction 𝑛' = T.Assign [((p <|), (𝑛' #))]
       -- if g { b }
       ifNoElse g b = T.If g (T.Block b) Nothing
       -- κ(c)
       k = Data.Maybe.fromJust (M.lookup c κ)
       -- if 0 < κ(c) { s1 } else { s2 }
       syncPoint s1 s2 =
-        let wrap = T.If (T.Lt (0 #) k)
+        let wrap = T.If ((0 #) T.:< k)
          in -- Ensure statements are wrapped in blocks
             case (s1, s2) of
               (T.Block _, T.Block _) -> wrap s1 (return s2)
@@ -159,48 +159,48 @@ opToPoint κ pid (n, pp) op =
       -- c := e
       assignChan e = T.Assign [(c, e)]
       -- Guarded channel operation for unbuffered communication
-      sync n' current new =
-        let body = [assignChan (new #), nextInstruction n']
-         in ifNoElse (T.Eq (c @) (current #)) body
+      sync 𝑛' current new =
+        let body = [assignChan (new #), nextInstruction 𝑛']
+         in ifNoElse ((c @) T.:== (current #)) body
       -- Guarded channel operation for buffered communication
-      async n' guard inc =
+      async 𝑛' guard inc =
         let body =
               [ -- c := c {+,-} 1
                 assignChan $ inc (c @) (1 #),
                 -- p := n + 1
-                nextInstruction n'
+                nextInstruction 𝑛'
               ]
          in ifNoElse guard body
    in case op of
         Send _ ->
           let -- c < κ(c)
-              guard = T.Lt (c @) k
+              guard = (c @) T.:< k
               -- if c < κ(c) { c := c + 1; p := n + 2 }
-              asyncCase = async (n + 2) guard T.Plus
+              asyncCase = async (𝑛 + 2) guard (T.:+)
               -- if c == 0 { c := 1; p := n + 1 }
-              syncCase = sync (n + 1) 0 1
+              syncCase = sync (𝑛 + 1) 0 1
               -- if 0 < κ(c) { <async case> } else { <sync case> }
               opPoint = syncPoint asyncCase syncCase
               -- if c == -1 { c := 0; p := n + 2 }
-              rendezvousPoint = sync (n + 2) (-1) 0
+              rendezvousPoint = sync (𝑛 + 2) (-1) 0
               -- Insert send operation at program point n
-              pp' = M.insert n opPoint pp
+              𝜙' = M.insert 𝑛 opPoint 𝜙
               -- Insert rendezvous at program point n+1
-              pp'' = M.insert (n + 1) rendezvousPoint pp'
+              𝜙̋₂ = M.insert (𝑛 + 1) rendezvousPoint 𝜙'
            in -- Return program points and next available instruction
               -- point n+2
-              (n + 2, pp'')
+              (𝑛 + 2, 𝜙̋₂)
         Recv _ ->
           let -- c > 0
-              guard = T.Gt (c @) (0 #)
+              guard = (c @) T.:> (0 #)
               -- if c > 0 { c := c - 1; p := n + 1 }
-              asyncCase = async (n + 1) guard T.Minus
+              asyncCase = async (𝑛 + 1) guard (T.:-)
               -- if c == 1 { c := -1; p := n + 1 }
-              syncCase = sync (n + 1) 1 (-1)
+              syncCase = sync (𝑛 + 1) 1 (-1)
               -- if 0 < κ(c) { <async case> } else { <sync case> }
               opPoint = syncPoint asyncCase syncCase
               -- Insert receive operation at program point n
-              pp' = M.insert n opPoint pp
+              𝜙' = M.insert 𝑛 opPoint 𝜙
            in -- Return program points and next available instruction
               -- point n+1
-              (n + 1, pp')
+              (𝑛 + 1, 𝜙')
