@@ -45,6 +45,10 @@ sanityCheckChan ctx (Chan c e) = do
 -- Perform sanity checks on IR statements.
 sanityCheckStm :: Ctx -> Stmt -> Err Ctx
 sanityCheckStm ctx = \case
+  If e s1 s2 -> do
+    ctx' <- sanityCheckExp ctx e
+    ctx'' <- sanityCheckStm ctx' s1
+    sanityCheckStm ctx'' s2
   Skip -> return ctx
   Seq s1 s2 -> do
     ctx' <- sanityCheckStm ctx s1
@@ -86,11 +90,22 @@ sanityCheckExp ctx =
         ctx' <- sanityCheckExp ctx e1
         sanityCheckExp ctx' e2
    in \case
+        And e1 e2 -> bin e1 e2
+        Or e1 e2 -> bin e1 e2
+        Not e1 -> bin BTrue e1
+        Eq e1 e2 -> bin e1 e2
+        Ne e1 e2 -> bin e1 e2
+        Lt e1 e2 -> bin e1 e2
+        Leq e1 e2 -> bin e1 e2
+        Gt e1 e2 -> bin e1 e2
+        Geq e1 e2 -> bin e1 e2
         Plus e1 e2 -> bin e1 e2
         Minus e1 e2 -> bin e1 e2
         Mult e1 e2 -> bin e1 e2
         Div e1 e2 -> bin e1 e2
         Const _ -> return ctx
+        BTrue -> return ctx
+        BFalse -> return ctx
         Var x -> do
           _ <-
             multiGuard
