@@ -27,6 +27,7 @@ dependencies:
 - text
 - directory
 - split
+- transformers
 - union-find
 
 ghc-options:
@@ -56,6 +57,7 @@ executables:
 
 default-extensions:
   - TupleSections
+  - TypeOperators
   - NamedFieldPuns
   - LambdaCase
   - StandaloneDeriving
