@@ -15,16 +15,16 @@ process id, operation direction, program point.
 Depends on: ϕ
 
 Produces:
-{ (c, d, n) | (n, cd) ∈ ϕ \ loop(ϕ). d ∈ {!, ?} }
+{ (c, d, 𝑛) | (𝑛, cd) ∈ ϕ \ loop(ϕ). d ∈ {!, ?} }
 -}
 chanOps :: P -> 𝛷 -> [𝒪]
-chanOps pid =
+chanOps p =
   let insn 𝑛 s = do
         op <- backendChannelOp s
         let (c, d) = either (,S) (,R) op
         return
           𝒪
-            { oP = pid,
+            { oP = p,
               o𝐶 = c,
               oDir = d,
               o𝑛 = 𝑛,
@@ -45,31 +45,34 @@ enabledExp κ = (...⋁) . M.elems . M.mapWithKey (enabled κ)
 {- Computes an enabled predicate for a given process.
 Depends on: κ, π, ϕ
 
-Let E! = ⋀ (c, !, n) ∈ chanOps(ϕ). pc(π) = n => c < κ(c)
-Let E? = ⋀ (c, ?, n) ∈ chanOps(ϕ). pc(π) = n => c > 0
+Let E! = ⋀ (c, !, 𝑛) ∈ chanOps(ϕ). pc(π) = 𝑛 => c < κ(c)
+Let E? = ⋀ (c, ?, 𝑛) ∈ chanOps(ϕ). pc(π) = 𝑛 => c > 0
 
 Produces:
 pc(π) < (max ∘ dom)(ϕ) ∧ E! ∧ E?
 -}
 enabled :: K -> P -> 𝛷 -> Exp
 enabled κ p 𝜙 =
-  let pc = π p
+  let -- Process id variable
+      pc = π p
+      -- Construct match over process id
+      match cs = Match pc (cs ++ [(Wildcard, pc :< (𝜙 -|))])
       chsops = chanOps p 𝜙
-      notTerminated = pc :!= (𝜙 -|)
+      -- Process has not reached termination point
       subExp 𝒪 {o𝐶 = cn, o𝑛 = 𝑛, oDir = d} =
         let k = Mb.fromJust (M.lookup cn κ)
             c = (cn @)
-            executing = (:==>) . (:==) pc . (#)
 
-            aEnabled = executing 𝑛 $ case d of
-              S -> c :< k
-              R -> c :> (0 #)
+            executing 𝑛' e = (PCon (CNum 𝑛'), e)
+            bufCase = IfElse ((0 #) :< k)
 
-            sEnabled = case d of
+            opEnabled = case d of
               S ->
-                let syncing = executing 𝑛 $ c :== (0 #)
-                    rendezvous = executing (𝑛 + 1) $ c :== ((-1) #)
-                 in syncing :&& rendezvous
-              R -> executing 𝑛 $ c :== (1 #)
-         in IfElse ((0 #) :< k) aEnabled sEnabled
-   in notTerminated :&& (L.map subExp chsops ...⋀)
+                [ executing 𝑛 $ bufCase (c :< k) (c :== (0 #)),
+                  executing (𝑛 + 1) (c :== ((-1) #))
+                ]
+              R ->
+                [ executing 𝑛 $ bufCase (c :> (0 #)) (c :== (1 #))
+                ]
+         in opEnabled
+   in match (concatMap subExp chsops)
