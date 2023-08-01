@@ -16,34 +16,34 @@ Depends on: κ, P = S₁, ..., Sₙ
 Produces: Π = [ πᵢ ↦ ϕᵢ | ϕᵢ = stmtsToPoints(κ, πᵢ, ⟨0, []⟩, Sᵢ) ]
 -}
 getProcs :: K -> 𝑃 -> 𝛱
-getProcs κ (𝑃 _ prcs) =
-  let pidsAndSyntax = zip (take (length prcs) [0 ..]) prcs
+getProcs κ (𝑃 _ ss) =
+  let pidsAndSyntax = zip (take (length ss) [0 ..]) ss
       makeProc (p, stmt) =
-        let (n, 𝜙) = stmtToPoints κ p (0, M.empty) stmt
-            𝜙' = M.insert n (T.Block []) 𝜙
+        let (𝑛, 𝜙) = stmtToPoints κ p (0, M.empty) stmt
+            𝜙' = M.insert 𝑛 (T.Block []) 𝜙
          in (p, 𝜙')
    in M.fromList (map makeProc pidsAndSyntax)
 
 {- Transform an IR statement into a map of program points.
-Depends on: κ, π, ⟨n, ϕ⟩, S
+Depends on: κ, π, ⟨𝑛, ϕ⟩, S
 
 Produces, based on S:
-1. [SKIP]: skip -> ⟨n, ϕ⟩
-2. [COMM]: c{!,?} -> opToPoints(κ, π, ⟨n, ϕ⟩, c{!,?})
-3. [SEQ]: S₁; S₂ -> ⟨n', ϕ'⟩
-          |- S₁ -> ⟨n'', ϕ''⟩
-          |- S₂ -> ⟨n', ϕ'⟩
-4. [FOR]: for (i : e₁ .. e₂) { s } -> ⟨n' + 1, ϕ''⟩
-          |- ⟨n', ϕ'⟩ = opToPoints(κ, π, ⟨n + 1, ϕ⟩, s)
+1. [SKIP]: skip -> ⟨𝑛, ϕ⟩
+2. [COMM]: c{!,?} -> opToPoints(κ, π, ⟨𝑛, ϕ⟩, c{!,?})
+3. [SEQ]: S₁; S₂ -> ⟨𝑛', ϕ'⟩
+          |- S₁ -> ⟨𝑛'', ϕ''⟩
+          |- S₂ -> ⟨𝑛', ϕ'⟩
+4. [FOR]: for (i : e₁ .. e₂) { s } -> ⟨𝑛' + 1, ϕ''⟩
+          |- ⟨𝑛', ϕ'⟩ = opToPoints(κ, π, ⟨𝑛 + 1, ϕ⟩, s)
           |- ϕ'' = ϕ'[
-            n ↦ if x < e₂ {
-                pc(π) := n + 1
+            𝑛 ↦ if x < e₂ {
+                pc(π) := 𝑛 + 1
               } else {
-                pc(π) := n' + 1
+                pc(π) := 𝑛' + 1
               },
-            n' ↦ {
+            𝑛' ↦ {
               x := x + 1;
-              pc(π) := n;
+              pc(π) := 𝑛;
             }
           ]
 -}
@@ -51,28 +51,28 @@ stmtToPoints :: K -> P -> (P𝑛, 𝛷) -> 𝑆 -> (P𝑛, 𝛷)
 stmtToPoints κ p (𝑛, 𝜙) =
   let moveTo 𝑛' is =
         T.Block
-          (T.Assign [((p <|), (𝑛' #))] : is)
+          (T.Assign [((p ⊲), (𝑛' #))] : is)
    in \case
         Skip -> (𝑛, 𝜙)
         Seq s1 s2 ->
-          let (n', 𝜙') = stmtToPoints κ p (𝑛, 𝜙) s1
-           in stmtToPoints κ p (n', 𝜙') s2
+          let (𝑛', 𝜙') = stmtToPoints κ p (𝑛, 𝜙) s1
+           in stmtToPoints κ p (𝑛', 𝜙') s2
         If e s1 s2 ->
           let -- Translate guard expression
               e' = parseExp e
               -- Translate then branch
-              (𝑛'', 𝜙₁) = stmtToPoints κ p (𝑛 + 1, 𝜙) s1
+              (𝑛₁, 𝜙₁) = stmtToPoints κ p (𝑛 + 1, 𝜙) s1
               -- Translate else branch
-              (𝑛', 𝜙₂) = stmtToPoints κ p (𝑛'' + 1, 𝜙₁) s2
-              -- if e' { pc := n + 1 } else { pc := n'' }
+              (𝑛₂, 𝜙₂) = stmtToPoints κ p (𝑛₁ + 1, 𝜙₁) s2
+              -- if e' { pc := 𝑛 + 1 } else { pc := 𝑛'' }
               thn = moveTo (𝑛 + 1) []
-              els = moveTo (𝑛'' + 1) []
+              els = moveTo (𝑛₁ + 1) []
               guard = T.If e' thn (Just els)
-              -- { pc := n' }
-              leaveThn = moveTo 𝑛' []
+              -- { pc := 𝑛' }
+              leaveThn = moveTo 𝑛₂ []
               𝜙₃ = M.insert 𝑛 guard 𝜙₂
-              𝜙₄ = M.insert 𝑛'' leaveThn 𝜙₃
-           in (𝑛', 𝜙₄)
+              𝜙₄ = M.insert 𝑛₁ leaveThn 𝜙₃
+           in (𝑛₂, 𝜙₄)
         For x _ e ops ->
           let x' = p % x
               e' = parseExp e
@@ -80,16 +80,16 @@ stmtToPoints κ p (𝑛, 𝜙) =
 
               -- x < e
               guard = (x' @) T.:< e'
-              -- { pc := n + 1 }
+              -- { pc := 𝑛 + 1 }
               stay = moveTo (𝑛 + 1) []
-              -- { pc := n' + 1 }
+              -- { pc := 𝑛' + 1 }
               leave = moveTo (𝑛' + 1) []
-              -- { x := x + 1; pc := n }
+              -- { x := x + 1; pc := 𝑛 }
               iter = moveTo 𝑛 [T.Assign [(x', (x' @) T.:+ (1 #))]]
 
-              -- n -> if x < e { pc := n + 1; } else { pc := n' + 1 }
+              -- 𝜙₂ = 𝜙[𝑛 ↦ if x < e { pc := 𝑛 + 1; } else { pc := 𝑛' + 1 }]
               𝜙₂ = M.insert 𝑛 (T.If guard stay (Just leave)) 𝜙₁
-              -- n' -> { x := x + 1; pc := n }
+              -- 𝜙₃ = 𝜙[𝑛' ↦ { x := x + 1; pc := 𝑛 }]
               𝜙₃ = M.insert 𝑛' iter 𝜙₂
            in (𝑛' + 1, 𝜙₃)
         Atomic op -> opToPoint κ p (𝑛, 𝜙) op
@@ -142,7 +142,7 @@ opToPoint :: K -> P -> (P𝑛, 𝛷) -> Op -> (P𝑛, 𝛷)
 opToPoint κ p (𝑛, 𝜙) op =
   let c = chName op
       -- pc(π) = n'
-      nextInstruction 𝑛' = T.Assign [((p <|), (𝑛' #))]
+      nextInstruction 𝑛' = T.Assign [((p ⊲), (𝑛' #))]
       -- if g { b }
       ifNoElse g b = T.If g (T.Block b) Nothing
       -- κ(c)

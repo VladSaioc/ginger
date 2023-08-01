@@ -19,17 +19,17 @@ noloopPsChanInsns (𝑃 _ ps) =
 
 -- Aggregates all non-loop channel operations, including operation
 -- direction, program point, and channel name.
--- Depends on: n, S
+-- Depends on: 𝑛, S
 --
 -- Produces:
--- [SEND]: ⟨n, c!⟩ -> ⟨n + 2, [c ↦ [! ↦ {n}]]⟩
--- [RECV]: ⟨n, c?⟩ -> ⟨n + 1, [c ↦ [? ↦ {n}]]⟩
--- [FOR]: ⟨n, for (i : e .. e) { s }⟩ -> ⟨n + |s| + 2, []⟩
--- [SEQ]: ⟨n, S₁; S₂⟩ -> ⟨n'', M⟩
---         |- ⟨n, S₁⟩ -> ⟨n', M₁⟩
---         |- ⟨n', S₂⟩ -> ⟨n'', M₂⟩
+-- [SEND]: ⟨𝑛, c!⟩ -> ⟨n + 2, [c ↦ [! ↦ {𝑛}]]⟩
+-- [RECV]: ⟨𝑛, c?⟩ -> ⟨n + 1, [c ↦ [? ↦ {𝑛}]]⟩
+-- [FOR]: ⟨𝑛, for (i : e .. e) { s }⟩ -> ⟨𝑛 + |s| + 2, []⟩
+-- [SEQ]: ⟨𝑛, S₁; S₂⟩ -> ⟨𝑛'', M⟩
+--         |- ⟨𝑛, S₁⟩ -> ⟨𝑛', M₁⟩
+--         |- ⟨𝑛', S₂⟩ -> ⟨𝑛'', M₂⟩
 --         |- M = [c ↦ os | c ∈ dom(M₁) ∪ dom(M₂),
---                          os = [d ↦ { n | n ∈ M₁(c)(d) ∪ M₂(c)(d)} | d ∈ dom(M₁(c)) ∪ dom(M₂(c)) ]]
+--                          os = [d ↦ { 𝑛 | 𝑛 ∈ M₁(c)(d) ∪ M₂(c)(d)} | d ∈ dom(M₁(c)) ∪ dom(M₂(c)) ]]
 noloopPChanInsns :: P -> P'.Exp -> P𝑛 -> 𝑆 -> (𝐶 ↦ 𝒪s, P𝑛)
 noloopPChanInsns p b 𝑛 s =
   let 𝑛' = 𝑛 + ppOffset s

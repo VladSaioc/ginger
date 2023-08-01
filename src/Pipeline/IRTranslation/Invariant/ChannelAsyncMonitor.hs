@@ -18,14 +18,14 @@ on the size of the channel buffer.
 Depends on:
 1. All program loops: [ℓ]
 2. All non-loop operations:
-    O = {(π, n, o) | (n, o) ∉ op(ℓ), ℓ ∈ [ℓ], (n, o) ∈ ϕ, (π, ϕ) ∈ Π }
+    O = {(π, 𝑛, o) | (𝑛, o) ∉ op(ℓ), ℓ ∈ [ℓ], (𝑛, o) ∈ ϕ, (π, ϕ) ∈ Π }
 
 Produces:
-[ c ↦ e1 - e2 | ∀ c. (n, cd) ∈ ϕ, (π, ϕ) ∈ Π,
+[ c ↦ e1 - e2 | ∀ c. (𝑛, cd) ∈ ϕ, (π, ϕ) ∈ Π,
     e1 =  Σ ∀ ℓ, (c, [! ↦ e']) ∈ loopMonitor(ℓ). e'
-        + Σ (π, n, !) ∈ O, e' = noloopMonitor(π, n). e',
+        + Σ (π, 𝑛, !) ∈ O, e' = noloopMonitor(π, 𝑛). e',
     e2 =  Σ ∀ ℓ, (c, [? ↦ e']) ∈ loopMonitor(ℓ). e'
-        + Σ (π, n, ?) ∈ O, e' = noloopMonitor(π, n). e' ]
+        + Σ (π, 𝑛, ?) ∈ O, e' = noloopMonitor(π, 𝑛). e' ]
 -}
 asyncChannelMonitors :: P ↦ (𝐶 ↦ 𝒪s) -> [ℒ] -> 𝐶 ↦ Exp
 asyncChannelMonitors noloopOps ls =
@@ -52,24 +52,24 @@ Depends on: ℓ, with the following properties:
 Produces:
 [ c ↦ [
   ! ↦ if b then
-          (x(ℓ) - lo(ℓ)) * |{ c! | (n, c!) ∈ op(ℓ) }|
-        + (Σ ∀(n, c!) ∈ op(ℓ).
+          (x(ℓ) - lo(ℓ)) * |{ c! | (𝑛, c!) ∈ op(ℓ) }|
+        + (Σ ∀(𝑛, c!) ∈ op(ℓ).
             if n < π(ℓ) < exit(ℓ) then 1 else 0)
       else 0,
   ? ↦ if b then
-          (x(ℓ) - lo(ℓ)) * |{ c? | (n, c?) ∈ op(ℓ) }|
-        + (Σ ∀(n, c?) ∈ op(ℓ).
-            if n < π(ℓ) < exit(ℓ) then 1 else 0)
+          (x(ℓ) - lo(ℓ)) * |{ c? | (𝑛, c?) ∈ op(ℓ) }|
+        + (Σ ∀(𝑛, c?) ∈ op(ℓ).
+            if 𝑛 < π(ℓ) < exit(ℓ) then 1 else 0)
       else 0 ]
-  | ∀ c, (n, cd) ∈ op(ℓ) ]
+  | ∀ c, (𝑛, cd) ∈ op(ℓ) ]
 -}
 loopMonitor :: ℒ -> 𝐶 ↦ (OpDir ↦ Exp)
-loopMonitor (ℒ {l𝑋 = var, lower, lExit = exit, l𝒪s = chans}) =
+loopMonitor (ℒ {l𝑋 = var, lower, lExit = 𝑛, l𝒪s = chans}) =
   let x = (var @)
       singleOp ch =
-        let 𝒪 {o𝑛 = 𝑛, oP = pid} = ch
-            pc = π pid
-            hasPassedOp = ((𝑛 #) :< pc) :&& (pc :< (exit #))
+        let 𝒪 {o𝑛 = 𝑛', oP = p} = ch
+            pc = π p
+            hasPassedOp = ((𝑛' #) :< pc) :&& (pc :< (𝑛 #))
          in IfElse hasPassedOp (1 #) (0 #)
       chanSubexp ops =
         let iterations = (x :- lower) :* (length ops #)
@@ -84,8 +84,8 @@ Depends on: π, ϕ
 Produces:
 ⋃ ∀ c.
   [c ↦ [
-    ! ↦ {if n < pc(π) then 1 else 0) | ∀(n, c!) ∈ ϕ(π) },
-    ? ↦ {if n < pc(π) then 1 else 0) | ∀(n, c!) ∈ ϕ(π) }
+    ! ↦ {if 𝑛 < pc(π) then 1 else 0) | ∀(𝑛, c!) ∈ ϕ(π) },
+    ? ↦ {if 𝑛 < pc(π) then 1 else 0) | ∀(𝑛, c!) ∈ ϕ(π) }
   ]]
 -}
 noloopMonitors :: 𝐶 ↦ 𝒪s -> 𝐶 ↦ (OpDir ↦ Exp)
@@ -96,13 +96,13 @@ noloopMonitors =
 
 {- Monitor sub-expression for a non-loop single asynchronous channel operation.
 If the operation has occurred, its resource contribution is 1.
-Depends on: π, n, where n ∈ dom(Π(π)), b (reachability condition)
+Depends on: π, 𝑛, where n ∈ dom(Π(π)), b (reachability condition)
 
-if b then if n < pc(π) then 1 else 0 else 0
+if b then if 𝑛 < pc(π) then 1 else 0 else 0
 -}
 noloopMonitor :: 𝒪 -> Exp
 noloopMonitor ch =
-  let 𝒪 {oP = p, o𝑛 = n, oPathexp = b} = ch
+  let 𝒪 {oP = p, o𝑛 = 𝑛, oPathexp = b} = ch
       pc = π p
-      passed = (n #) :< pc
-   in IfElse b (IfElse passed (1 #) (0 #)) (0 #)
+      passed = (𝑛 #) :< pc
+   in IfElse (b :&& passed) (1 #) (0 #)

@@ -17,7 +17,7 @@ over the capacity expression.
 Depends on:
 1. All program loops: [ℓ]
 2. All non-loop operations:
-    O = {(π, n, o) | (n, o) ∉ op(ℓ), ℓ ∈ [ℓ], (n, o) ∈ ϕ, (π, ϕ) ∈ Π }
+    O = {(π, 𝑛, o) | (𝑛, o) ∉ op(ℓ), ℓ ∈ [ℓ], (𝑛, o) ∈ ϕ, (π, ϕ) ∈ Π }
 3. Channel capacity environments: κ
 
 ∀ c, e1 = syncChannelMonitor(O, [ℓ])(c),
@@ -30,6 +30,6 @@ channelMonitors κ noloopOps ls =
       asyncMs = asyncChannelMonitors noloopOps ls
       combineMonitors c s a =
         let cap = Mb.fromMaybe (0 #) (M.lookup c κ)
-            isAsync = (0 #) :< cap
+            isAsync = cap :> (0 #)
          in (c @) :== IfElse isAsync a s
    in M.elems $ M.unionWithKey combineMonitors syncMs asyncMs

@@ -32,19 +32,19 @@ type 𝛱 = P ↦ 𝛷
 -- counters for each process. Given process id p,  the naming schema is
 -- (contents between braces are swapped with the variable contents):
 --  P{p}
-(<|) :: P -> String
-(<|) p = "P" ++ show p
+(⊲) :: P -> String
+(⊲) p = "P" ++ show p
 
 -- Annotate process-local variable. Given process id p and name x,
 -- the naming schema is (contents between braces are swapped with
 -- the variable contents):
 --  P{p}'{x}
 (%) :: P -> 𝑋 -> 𝑋
-(%) p x = (p <|) ++ "'" ++ x
+(%) p x = (p ⊲) ++ "'" ++ x
 
 -- Program id to program counter variable expression
 π :: P -> Exp
-π p = ((p <|) @)
+π p = ((p ⊲) @)
 
 -- Given a set of program points, produces the next available program point.
 (-|) :: 𝛷 -> Exp

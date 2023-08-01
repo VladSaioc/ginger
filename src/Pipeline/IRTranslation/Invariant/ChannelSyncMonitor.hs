@@ -18,14 +18,14 @@ synchronization that should have already occurred.
 Depends on:
 1. All program loops: [ℓ]
 2. All non-loop operations:
-    O = {(π, n, o) | (n, o) ∉ op(ℓ), ℓ ∈ [ℓ], (n, o) ∈ ϕ, (π, ϕ) ∈ Π }
+    O = {(π, 𝑛, o) | (𝑛, o) ∉ op(ℓ), ℓ ∈ [ℓ], (𝑛, o) ∈ ϕ, (π, ϕ) ∈ Π }
 
 Produces:
-[ c ↦ e1 - e2 | ∀ c. (n, cd) ∈ ϕ, (π, ϕ) ∈ Π,
+[ c ↦ e1 - e2 | ∀ c. (𝑛, cd) ∈ ϕ, (π, ϕ) ∈ Π,
     e1 =  Σ ∀ ℓ, (c, [! ↦ e']) ∈ loopMonitor(ℓ). e'
-        + Σ (π, n, !) ∈ O, e' = noloopMonitor(π, n). e',
+        + Σ (π, 𝑛, !) ∈ O, e' = noloopMonitor(π, 𝑛). e',
     e2 =  Σ ∀ ℓ, (c, [? ↦ e']) ∈ loopMonitor(ℓ). e'
-        + Σ (π, n, ?) ∈ O, e' = noloopMonitor(π, n). e' ]
+        + Σ (π, 𝑛, ?) ∈ O, e' = noloopMonitor(π, 𝑛). e' ]
 -}
 syncChannelMonitors :: P ↦ (𝐶 ↦ 𝒪s) -> [ℒ] -> 𝐶 ↦ Exp
 syncChannelMonitors noloopOps ls =
@@ -43,7 +43,7 @@ It returns an expression representing the resource contribution of each channel
 operated on in a loop.
 Depends on: ℓ, with the following properties:
 1. π(ℓ) is the process id counter variable of the loop
-2. op(ℓ) = {(n₁, c₁{!,?}), ..., (nₘ, cₘ{!,?})} are loop channel operations.
+2. op(ℓ) = {(𝑛₁, c₁{!,?}), ..., (𝑛ₘ, cₘ{!,?})} are loop channel operations.
 3. lo(ℓ) is the lower bound expression
 4. x(ℓ) is the loop index variable
 5. exit(ℓ) is the exit point
@@ -52,23 +52,23 @@ Depends on: ℓ, with the following properties:
 Produces:
 [ c ↦ [
   ! ↦ if b(ℓ) then
-          2(x(ℓ) - lo(ℓ)) * |{ c! | (n, c!) ∈ op(ℓ) }|
-        + (Σ ∀(n, c!) ∈ op(ℓ).
-            if n < π(ℓ) < exit(ℓ) then 1 else 0
-          + if n + 1 < π(ℓ) < exit(ℓ) then 1 else 0)
+          2(x(ℓ) - lo(ℓ)) * |{ c! | (𝑛, c!) ∈ op(ℓ) }|
+        + (Σ ∀(𝑛, c!) ∈ op(ℓ).
+            if 𝑛 < π(ℓ) < exit(ℓ) then 1 else 0
+          + if 𝑛 + 1 < π(ℓ) < exit(ℓ) then 1 else 0)
       else 0,
   ? ↦ if b(ℓ) then
-          2(x(ℓ) - lo(ℓ)) * |{ c? | (n, c?) ∈ op(ℓ) }|
-        + (Σ ∀(n, c?) ∈ op(ℓ).
-            if n < π(ℓ) < exit(ℓ) then 2 else 0)
+          2(x(ℓ) - lo(ℓ)) * |{ c? | (𝑛, c?) ∈ op(ℓ) }|
+        + (Σ ∀(𝑛, c?) ∈ op(ℓ).
+            if 𝑛 < π(ℓ) < exit(ℓ) then 2 else 0)
       else 0 ]
-  | ∀ c, (n, cd) ∈ op(ℓ) ]
+  | ∀ c, (𝑛, cd) ∈ op(ℓ) ]
 -}
 loopMonitor :: ℒ -> 𝐶 ↦ (OpDir ↦ Exp)
-loopMonitor (ℒ {lP = p, l𝑋 = var, lower, lExit = exit, l𝒪s = chans, lPathexp = b}) =
+loopMonitor (ℒ {lP = p, l𝑋 = var, lower, lExit = 𝑛', l𝒪s = chans, lPathexp = b}) =
   let x = (var @)
       pc = π p
-      ext = (exit #)
+      ext = (𝑛' #)
       singleOp 𝒪 {oDir = d, o𝑛 = 𝑛} =
         let synced = ((𝑛 #) :< pc) :&& (pc :< ext)
          in case d of
@@ -89,11 +89,11 @@ Depends on: π, ϕ
 
 Produces:
 [c ↦ [
-  ! ↦ {if b(n) then
-          if n < pc(π) then 1 else 0) + (if n + 1 < pc(π) then 1 else 0)
-        else 0 | ∀(n, c!) ∈ ϕ },
-  ? ↦ {if n < pc(π) then 2 else 0 | ∀(n, c?) ∈ ϕ }]
-  | ∀ c, (n, cd) ∈ ϕ ]
+  ! ↦ {if b(𝑛) then
+          if 𝑛 < pc(π) then 1 else 0) + (if 𝑛 + 1 < pc(π) then 1 else 0)
+        else 0 | ∀(𝑛, c!) ∈ ϕ },
+  ? ↦ {if 𝑛 < pc(π) then 2 else 0 | ∀(𝑛, c?) ∈ ϕ }]
+  | ∀ c, (𝑛, cd) ∈ ϕ ]
 -}
 noloopMonitors :: 𝐶 ↦ 𝒪s -> 𝐶 ↦ (OpDir ↦ Exp)
 noloopMonitors = M.map (M.map ((...+) . map noloopMonitor))
@@ -106,16 +106,16 @@ its resource contribution is 1 more.
 For receive operations:
 After synchronization, its resource contribution is 2.
 
-Depends on: π, n, where n ∈ dom(Π(π))
+Depends on: π, 𝑛, where 𝑛 ∈ dom(Π(π))
 
 Depnding on the operation direction, it produces:
   ! ↦ if b then
-          if n < pc(π) then 1 else 0
-        + if n + 1 < pc(π) then 1 else 0
+          if 𝑛 < pc(π) then 1 else 0
+        + if 𝑛 + 1 < pc(π) then 1 else 0
       else 0
 
   ? ↦ if b then
-          if n < pc(π) then 2 else 0 else
+          if 𝑛 < pc(π) then 2 else 0 else
       else 0
 -}
 noloopMonitor :: 𝒪 -> Exp
@@ -124,6 +124,6 @@ noloopMonitor 𝒪 {oP = pid, oDir = d, o𝑛 = 𝑛, oPathexp = b} =
       synced = (𝑛 #) :< pc
       rendezvous = ((𝑛 + 1) #) :< pc
       monitor = case d of
-        S -> IfElse synced (1 #) (0 #) :+ IfElse rendezvous (1 #) (0 #)
-        R -> IfElse synced (2 #) (0 #)
-   in IfElse b monitor (0 #)
+        S -> IfElse (b :&& synced) (1 #) (0 #) :+ IfElse (b :&& rendezvous) (1 #) (0 #)
+        R -> IfElse (b :&& synced) (2 #) (0 #)
+   in monitor

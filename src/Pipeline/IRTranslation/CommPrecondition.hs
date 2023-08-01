@@ -15,21 +15,20 @@ iterations lo hi = Call "iter" [lo, hi]
 
 preconditions :: K -> P ↦ (𝐶 ↦ 𝒪s) -> [ℒ] -> [Exp]
 preconditions κ noloops loops =
-  let plus e e' = ([e, e'] ...+)
-      lR = M.unionsWith (M.unionWith plus) (L.map loopToPre loops)
+  let lR = M.unionsWith (M.unionWith (:+)) (L.map loopToPre loops)
       nR = noloopOpToPre noloops
-      cs = M.keys lR ++ M.keys nR
+      cs = L.union (M.keys lR) (M.keys nR)
       prc c =
         let k = Mb.fromJust (M.lookup c κ)
             cR r = Mb.fromMaybe M.empty (M.lookup c r)
             cdR d r = Mb.fromMaybe (0 #) (M.lookup d r)
             (clR, cnR) = (cR lR, cR nR)
 
-            sends = plus (cdR S clR) (cdR S cnR)
-            rcvs = plus (cdR R clR) (cdR R cnR)
+            sends = cdR S clR :+ cdR S cnR
+            rcvs = cdR R clR :+ cdR R cnR
 
             rcvsUnblock = rcvs :<= sends
-            sndsUnblock = sends :<= plus rcvs k
+            sndsUnblock = sends :<= (rcvs :+ k)
          in rcvsUnblock :&& sndsUnblock
    in L.map prc cs
 

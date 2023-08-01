@@ -161,7 +161,7 @@ counterDef :: 𝛱 -> Stmt
 counterDef ps =
   if M.size ps > 0
     then
-      let def p = ((p <|), (0 #))
+      let def p = ((p ⊲), (0 #))
        in Assign . L.map def . M.keys $ ps
     else Assert (True ?)
 
@@ -221,7 +221,7 @@ decreases * {
 progEncoding :: 𝛴 -> [Type] -> K -> 𝛱 -> P ↦ (𝐶 ↦ 𝒪s) -> [ℐ] -> [ℒ] -> Method
 progEncoding 𝜎 ts κ ps os ifs loops =
   Method
-    { returns = ("step", TNat) : (L.map ((,TInt) . (<|)) . M.keys) ps,
+    { returns = ("step", TNat) : (L.map ((,TInt) . (⊲)) . M.keys) ps,
       methodHoare =
         HoareWrap
           { ghost = True,

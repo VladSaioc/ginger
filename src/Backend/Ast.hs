@@ -57,7 +57,7 @@ data Const
     CTrue
   | -- -- false
     CFalse
-  | -- -- n, n ∈ ℤ
+  | -- -- n ∈ ℤ
     CNum Int
   deriving (Eq, Ord, Show, Read)
 
