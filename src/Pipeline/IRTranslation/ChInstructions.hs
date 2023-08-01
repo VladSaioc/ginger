@@ -35,18 +35,19 @@ noloopPChanInsns p b 𝑛 s =
   let 𝑛' = 𝑛 + ppOffset s
    in case s of
         -- Sequence maps are aggregated via point-wise union
-        Seq s1 s2 ->
-          let (o1, 𝑛1) = noloopPChanInsns p b 𝑛 s1
-              (o2, 𝑛2) = noloopPChanInsns p b 𝑛1 s2
-           in (o1 ⊎ o2, 𝑛2)
+        Seq s₁ s₂ ->
+          let (o₁, 𝑛₁) = noloopPChanInsns p b 𝑛 s₁
+              (o₂, 𝑛₂) = noloopPChanInsns p b 𝑛₁ s₂
+           in (o₁ ⊎ o₂, 𝑛₂)
         Skip -> (M.empty, 𝑛')
         -- Loops are handled separately
         For {} -> (M.empty, 𝑛')
         -- Atomic operations are added to the list of triples.
         Atomic o ->
-          let (c, d) = (chName o, chDir o) in (𝒪 {oP = p, o𝐶 = c, oDir = d, o𝑛 = 𝑛, oPathexp = b} +> M.empty, 𝑛')
-        If b' s1 s2 ->
+          let (c, d) = (chName o, chDir o)
+           in (𝒪 {oP = p, o𝐶 = c, oDir = d, o𝑛 = 𝑛, oPathexp = b} +> M.empty, 𝑛')
+        If b' s₁ s₂ ->
           let b'' = parseExp b'
-              (o1, n1) = noloopPChanInsns p (b'' P'.:&& b) (𝑛 + 1) s1
-              (o2, n2) = noloopPChanInsns p (P'.Not b'' P'.:&& b) n1 s2
-           in (o1 ⊎ o2, n2)
+              (o₁, 𝑛₁) = noloopPChanInsns p (b'' P'.:&& b) (𝑛 + 1) s₁
+              (o₂, 𝑛₂) = noloopPChanInsns p (P'.Not b'' P'.:&& b) (𝑛₁ + 1) s₂
+           in (o₁ ⊎ o₂, 𝑛₂)
