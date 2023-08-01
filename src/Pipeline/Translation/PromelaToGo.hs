@@ -189,11 +189,12 @@ translateStatements ctx = case syntax ctx of
                   (ods, cs, def) ->
                     -- Add a communicating case
                     let addCommCase op c ss' = do
+                          c' <- maybe (err ("Channel name not found: " ++ show c)) return $ M.lookup c (chenv ctx')
                           -- Translate the statements in the case body.
                           ctx'' <- translateStatements (ss' >: ctx' <: freshObj)
                           let Obj {stmts, decls = ods'} = curr ctx''
                           -- Add the translated case to the select statement.
-                          let select = (ods ++ ods', (Pos p $ op c, stmts) : cs, def)
+                          let select = (ods ++ ods', (Pos p $ op c', stmts) : cs, def)
                           wrapCtx $ ctx'' <: select
                      in \case
                           -- The 'default -> ...' branch discovered is considered
