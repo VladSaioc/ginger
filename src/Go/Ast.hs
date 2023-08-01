@@ -1,7 +1,7 @@
 module Go.Ast where
 
 import Utilities.Position
-import Utilities.PrettyPrint (PrettyPrint, indent, prettyPrint)
+import Utilities.PrettyPrint (PrettyPrint, indent, multiline, prettyPrint)
 
 newtype Prog = Prog [Pos Stmt] deriving (Eq, Ord, Read)
 
@@ -52,14 +52,14 @@ data Exp
   deriving (Eq, Ord, Read)
 
 instance Show Prog where
-  show (Prog ss) = unlines $ map (prettyPrint 0) ss
+  show (Prog ss) = multiline $ map (prettyPrint 0) ss
 
 instance Show Stmt where
   show = prettyPrint 0
 
 instance PrettyPrint Stmt where
   prettyPrint n s =
-    let block n' = unlines . map (prettyPrint $ n + n')
+    let block n' = multiline . map (prettyPrint $ n + n')
         tab = (++) $ indent n
      in case s of
           Skip -> tab "skip"
@@ -72,36 +72,36 @@ instance PrettyPrint Stmt where
           Close c -> tab "close(" ++ c ++ ")"
           Block ss -> block 0 ss
           If e s1 s2 ->
-            let s2' = [unwords [tab "}, else", unlines ["{", block 1 s2]] | s2 /= []]
-             in unlines $
+            let s2' = [unwords [tab "}, else", multiline ["{", block 1 s2]] | s2 /= []]
+             in multiline $
                   [ tab $ unwords ["if", show e, "{"],
                     block 1 s1
                   ]
                     ++ s2'
                     ++ [tab "}"]
-          Go ss -> unlines [tab "go {", block 1 ss, tab "}"]
+          Go ss -> multiline [tab "go {", block 1 ss, tab "}"]
           While e ss ->
-            unlines
+            multiline
               [ unwords [tab "for", show e, "{"],
                 block 1 ss,
                 tab "}"
               ]
           Select cs dfs ->
             let showCase (Pos _ c, ss) =
-                  unlines
+                  multiline
                     [ unwords [indent (n + 1) ++ "case", show c ++ ":"],
                       block 2 ss
                     ]
                 defCase = case dfs of
                   Nothing -> []
-                  Just dfs' -> [unlines [indent (n + 1) ++ "default:", block 2 dfs']]
-             in unlines $
+                  Just dfs' -> [multiline [indent (n + 1) ++ "default:", block 2 dfs']]
+             in multiline $
                   [tab "select {"]
                     ++ map showCase cs
                     ++ defCase
                     ++ [tab "}"]
           For x e1 e2 diff ss ->
-            unlines
+            multiline
               [ unwords [tab "for", x, "=", show e1 ++ ";", x, "<=", show e2 ++ ";", x ++ show diff, "{"],
                 block 1 ss,
                 tab "}"

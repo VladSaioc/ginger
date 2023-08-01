@@ -20,7 +20,7 @@ data ℐ = ℐ
 
 instance Show ℐ where
   show ℐ {iP = p, iGuardExp = g, iGuard = n1, iElse = n2, iExit = n3} =
-    unlines
+    multiline
       -- PID: for x (lo .. hi) <n₁ --> n₂>
       [ unwords
           [ show p ++ ":",

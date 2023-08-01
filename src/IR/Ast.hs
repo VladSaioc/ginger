@@ -1,6 +1,6 @@
 module IR.Ast where
 
-import Utilities.PrettyPrint (PrettyPrint (prettyPrint), indent)
+import Utilities.PrettyPrint (PrettyPrint (prettyPrint), indent, multiline)
 
 -- Every syntactical construct that may be converted to program
 -- points must implement program point offset.
@@ -72,9 +72,9 @@ data 𝐸
 
 instance Show 𝑃 where
   show (𝑃 cs ps) =
-    let showp s = unlines ["go {", prettyPrint 1 s, "}"]
-        cs' = unlines (map show cs)
-        ps' = unlines (map showp ps)
+    let showp s = multiline ["go {", prettyPrint 1 s, "}"]
+        cs' = multiline (map show cs)
+        ps' = multiline (map showp ps)
      in concat [cs', "\n", ps']
 
 instance Show Chan where
@@ -85,11 +85,11 @@ instance Show 𝑆 where
 
 instance PrettyPrint 𝑆 where
   prettyPrint n = \case
-    Seq s1 s2 -> unlines [prettyPrint n s1 ++ ";", prettyPrint n s2]
+    Seq s1 s2 -> multiline [prettyPrint n s1 ++ ";", prettyPrint n s2]
     Skip -> indent n ++ "skip"
     Atomic o -> indent n ++ show o
     If e s1 s2 ->
-      unlines
+      multiline
         [ unwords [indent n ++ "if", show e, "{"],
           prettyPrint (n + 1) s1,
           unwords [indent n ++ "} else {"],
@@ -97,9 +97,9 @@ instance PrettyPrint 𝑆 where
           indent n ++ "}"
         ]
     For x e1 e2 os ->
-      unlines
+      multiline
         [ unwords [indent n ++ "for", x, ":", show e1, "..", show e2, "{"],
-          unlines $ map ((indent (n + 1) ++) . (++ ";") . show) os,
+          multiline $ map ((indent (n + 1) ++) . (++ ";") . show) os,
           indent n ++ "}"
         ]
 

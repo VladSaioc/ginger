@@ -29,7 +29,7 @@ data ℒ = ℒ
 
 instance Show ℒ where
   show ℒ {lP = p, l𝑋 = x, lGuard = n1, lExit = n2, lower, upper, l𝒪s} =
-    unlines
+    multiline
       -- PID: for x (lo .. hi) <n₁ --> n₂>
       [ unwords
           [ show p ++ ":",

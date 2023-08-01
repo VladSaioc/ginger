@@ -80,20 +80,20 @@ data Type
   deriving (Eq, Ord, Read)
 
 block :: PrettyPrint a => Int -> [a] -> String
-block n ss = unlines $ map ((++ ";") . prettyPrint n) ss
+block n ss = multiline $ map ((++ ";") . prettyPrint n) ss
 
 instance Show Spec where
-  show (Spec ms) = unlines $ map show ms
+  show (Spec ms) = multiline $ map show ms
 
 instance Show Module where
   show = \case
     TopDecl x _ v -> unwords ["#define ", x, show v]
-    Init ss -> unlines $ ["init {"] ++ map (prettyPrint 1) ss ++ ["}"]
+    Init ss -> multiline $ ["init {"] ++ map (prettyPrint 1) ss ++ ["}"]
     Proc f ps ss ->
       let params = intercalate "; " $ map showParam ps
           header = unwords ["proctype", f ++ "(" ++ params ++ ")", "{"]
-       in unlines $ header : map (prettyPrint 1) ss
-    Typedef x fs -> unwords ["typedef", x ++ "{", unlines $ map ((++ ";") . prettyPrintField 1) fs, "}"]
+       in multiline $ header : map (prettyPrint 1) ss
+    Typedef x fs -> unwords ["typedef", x ++ "{", multiline $ map ((++ ";") . prettyPrintField 1) fs, "}"]
 
 instance Show Stmt where
   show = prettyPrint 0
@@ -107,7 +107,7 @@ instance PrettyPrint Stmt where
           maybe
             ""
             ( \ss ->
-                unlines
+                multiline
                   [ indent n ++ "else  ->",
                     block (n + 1) ss
                   ]
@@ -115,23 +115,23 @@ instance PrettyPrint Stmt where
      in \case
           Decl x t me -> prettyPrintField n (x, t, me)
           If os els ->
-            unlines
+            multiline
               [ indent n ++ "if",
-                unlines $ map (prettyPrintCase n) os,
+                multiline $ map (prettyPrintCase n) os,
                 makeElse els,
                 indent n ++ "fi"
               ]
           Do os els ->
-            unlines
+            multiline
               [ indent n ++ "do",
-                unlines $ map (prettyPrintCase n) os,
+                multiline $ map (prettyPrintCase n) os,
                 makeElse els,
                 indent n ++ "od"
               ]
           For r ss ->
-            unlines
+            multiline
               [ indent n ++ "for(" ++ show r ++ ") {",
-                unlines $ map (prettyPrint $ n + 1) ss,
+                multiline $ map (prettyPrint $ n + 1) ss,
                 indent n ++ "}"
               ]
           As x e -> unwords [indent n ++ show x, "=", show e]
@@ -151,7 +151,7 @@ instance Show Range where
 
 prettyPrintCase :: (Show a1, PrettyPrint a2) => Int -> (a1, [a2]) -> String
 prettyPrintCase n (c, ss) =
-  unlines
+  multiline
     [ unwords [indent n ++ "::", show c, "->"],
       block (n + 1) ss
     ]
