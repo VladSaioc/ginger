@@ -45,3 +45,4 @@ src/IR/ErrM.hs
 
 # Output
 output
+examples\#*
