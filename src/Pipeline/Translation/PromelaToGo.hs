@@ -113,61 +113,61 @@ getGo p@(P.Spec ms) =
         return $ P'.Prog (decls ++ stmts)
 
 translateStatements :: Ctxt [Pos P.Stmt] Go -> Err (Ctxt () Go)
-translateStatements ctx = case syntax ctx of
+translateStatements ρ = case syntax ρ of
   -- Produce object syntax.
   -- ! Statements reversed here to preserve linearity
   -- ! in the complexity of construction.
   [] ->
-    let Obj {decls, stmts} = curr ctx
-     in wrapCtx $ ctx <: Obj {decls = decls, stmts = reverse stmts}
+    let Obj {decls, stmts} = curr ρ
+     in wrapCtx $ ρ <: Obj {decls = decls, stmts = reverse stmts}
   Pos p s : ss ->
     let freshObj = Obj {decls = [], stmts = []}
         translateExp = translateExpPos p
         err = posErr p
         addOp op = do
           -- Translate channel operation
-          ctx' <- translateOp (Pos p op >: ctx)
-          let stm = curr ctx'
-          let oss = stmts $ curr ctx
+          ρ' <- translateOp (Pos p op >: ρ)
+          let stm = curr ρ'
+          let oss = stmts $ curr ρ
           -- Add statement to object syntax.
-          let ctx2 = ss >: ctx' <: (curr ctx) {stmts = stm : oss}
-          translateStatements ctx2
+          let ρ₂ = ss >: ρ' <: (curr ρ) {stmts = stm : oss}
+          translateStatements ρ₂
      in case s of
           -- Translation of assignment statements.
           -- Only assignments to plain variables are allowed.
           P.As (P.Var x) e -> do
             x' <-
-              ( case M.lookup x (varenv ctx) of
+              ( case M.lookup x (varenv ρ) of
                   Just x' -> return x'
                   Nothing -> err $ "[INVALID VARIABLE] binding not found for: " ++ x
                 )
-            e' <- translateExp (varenv ctx) e
-            let Obj {stmts = oss} = curr ctx
+            e' <- translateExp (varenv ρ) e
+            let Obj {stmts = oss} = curr ρ
             let oss' = Pos p (P'.As x' e') : oss
-            let obj = (curr ctx) {stmts = oss'}
-            translateStatements (ss >: ctx <: obj)
+            let obj = (curr ρ) {stmts = oss'}
+            translateStatements (ss >: ρ <: obj)
           P.As _ _ -> err "[INVALID ASSIGNMENT] unrecognized write to complex data structure"
           -- Channel operations
           P.Send {} -> addOp s
           P.Recv {} -> addOp s
           -- Assert statements are irrelevant
-          P.Assert _ -> translateStatements (ss >: ctx)
+          P.Assert _ -> translateStatements (ss >: ρ)
           -- Skip statements are irrelevant
-          P.Skip -> translateStatements (ss >: ctx)
+          P.Skip -> translateStatements (ss >: ρ)
           -- 'label:' statements are irrelevant
-          P.Label _ -> translateStatements (ss >: ctx)
+          P.Label _ -> translateStatements (ss >: ρ)
           -- Can discard the continuation of 'break', since it is unreachable.
           P.Break -> do
-            let oss = stmts $ curr ctx
+            let oss = stmts $ curr ρ
             let oss' = Pos p P'.Break : oss
-            let obj = (curr ctx) {stmts = oss'}
-            translateStatements ([] >: ctx <: obj)
+            let obj = (curr ρ) {stmts = oss'}
+            translateStatements ([] >: ρ <: obj)
           -- Can discard the continuation of 'goto stop_process', since it is unreachable.
           P.Goto "stop_process" -> do
-            let oss = stmts $ curr ctx
+            let oss = stmts $ curr ρ
             let oss' = Pos p P'.Return : oss
-            let obj = (curr ctx) {stmts = oss'}
-            translateStatements ([] >: ctx <: obj)
+            let obj = (curr ρ) {stmts = oss'}
+            translateStatements ([] >: ρ <: obj)
           P.Goto l -> err $ "Unexpected statement: goto " ++ l
           -- Reduce Gomela for statements non-determinstic wrapping
           -- to underlying for statement:
@@ -177,21 +177,21 @@ translateStatements ctx = case syntax ctx of
           -- fi
           P.If
             ((_, for@((Pos _ (P.For _ _)) : _)) : _)
-            (Just _) -> translateStatements ((for ++ ss) >: ctx)
+            (Just _) -> translateStatements ((for ++ ss) >: ρ)
           -- General if statement translation
           P.If os mels ->
             let notSelectMessage = "if is not select"
                 -- First try to check whether the 'if' statement models a Go select statement
-                makeSelect ctx' = case curr ctx' of
+                makeSelect ρ' = case curr ρ' of
                   -- These represent the select statement so far.
                   -- 'cs' are the existing cases
                   -- 'def' is the optional default case
                   (ods, cs, def) ->
                     -- Add a communicating case
                     let addCommCase op c ss' = do
-                          c' <- maybe (err ("Channel name not found: " ++ show c)) return $ M.lookup c (chenv ctx')
+                          c' <- maybe (err ("Channel name not found: " ++ show c)) return $ M.lookup c (chenv ρ')
                           -- Translate the statements in the case body.
-                          ctx'' <- translateStatements (ss' >: ctx' <: freshObj)
+                          ctx'' <- translateStatements (ss' >: ρ' <: freshObj)
                           let Obj {stmts, decls = ods'} = curr ctx''
                           -- Add the translated case to the select statement.
                           let select = (ods ++ ods', (Pos p $ op c', stmts) : cs, def)
@@ -202,12 +202,12 @@ translateStatements ctx = case syntax ctx of
                           (Pos _ (P.ExpS (P.EVar (P.Var "default"))), ss') -> do
                             -- If more than one 'default' case exists,
                             -- then it's not a select statement.
-                            ctx'' <- case def of
-                              Nothing -> translateStatements (ss' >: ctx' <: freshObj)
+                            ρ'' <- case def of
+                              Nothing -> translateStatements (ss' >: ρ' <: freshObj)
                               Just _ -> Bad notSelectMessage
-                            let Obj {stmts, decls = ods'} = curr ctx''
+                            let Obj {stmts, decls = ods'} = curr ρ''
                             let select = (ods ++ ods', cs, Just stmts)
-                            wrapCtx $ ctx'' <: select
+                            wrapCtx $ ρ'' <: select
                           -- Cases of the form: 'c!_ -> ...'.
                           (Pos _ (P.Send (P.Var c) _), ss') -> addCommCase P'.Send c ss'
                           -- Cases of the form: 'c?_ -> ...'.
@@ -216,11 +216,11 @@ translateStatements ctx = case syntax ctx of
                           -- operations on always potentially enabled channels.
                           -- This applies to timeouts or context channels.
                           (Pos p' (P.ExpS (P.Const (P.VBool True))), ss') -> do
-                            ctx'' <- translateStatements (ss' >: ctx' <: freshObj)
+                            ρ'' <- translateStatements (ss' >: ρ' <: freshObj)
                             let caseClause = Pos p' P'.Star
-                            let Obj {stmts, decls = ods'} = curr ctx''
+                            let Obj {stmts, decls = ods'} = curr ρ''
                             let select = (ods ++ ods', (caseClause, stmts) : cs, def)
-                            wrapCtx $ ctx'' <: select
+                            wrapCtx $ ρ'' <: select
                           -- Cases of the form 'c[_]!_ -> ...' or 'x.c!_ -> ...' are not
                           -- covered features.
                           (Pos _ (P.Send _ _), _) -> Bad "[INVALID SEND]: Operations on channel in aggregate data structures are not supported"
@@ -230,14 +230,14 @@ translateStatements ctx = case syntax ctx of
                           _ -> Bad notSelectMessage
                 -- If the 'if' is not considered viable to model a select statement,
                 -- produce a regular 'if' statement instead.
-                makeIf ctx1@Ctxt {curr = (ods, ifSoFar), varenv} = \case
+                makeIf ρ1@Ctxt {curr = (ods, ifSoFar), varenv} = \case
                   (Pos p' (P.ExpS e), ss') -> do
                     e' <- translateExpPos p' varenv e
-                    ctx2 <- translateStatements (ss' >: ctx1 <: freshObj)
-                    let Obj {stmts = ss'', decls = ods'} = curr ctx2
+                    ρ2 <- translateStatements (ss' >: ρ1 <: freshObj)
+                    let Obj {stmts = ss'', decls = ods'} = curr ρ2
                     let body = P'.If e' ss'' [Pos p' ifSoFar]
                     let obj' = (ods ++ ods', body)
-                    wrapCtx $ ctx2 <: obj'
+                    wrapCtx $ ρ2 <: obj'
                   -- Cases of the form 'c[_]!_ -> ...' or 'x.c!_ -> ...' are not
                   -- covered features.
                   (Pos _ (P.Send _ _), _) -> Bad "[INVALID SEND]: Operations on channel in perceived 'if'-statement"
@@ -245,13 +245,13 @@ translateStatements ctx = case syntax ctx of
                   -- covered features.
                   (Pos _ (P.Recv _ _), _) -> Bad "[INVALID RECEIVE]: Operations on channel in perceived 'if'-statement"
                   _ -> Bad "[INVALID IF BRANCH]: If statement has unrecognizable branch."
-             in case foldM makeSelect (() >: ctx <: ([], [], Nothing)) os of
+             in case foldM makeSelect (() >: ρ <: ([], [], Nothing)) os of
                   Bad msg -> do
                     -- If constructing a select failed because the if statement does
                     -- not model one, attempt to build a regular if statement.
                     _ <- if msg == notSelectMessage then return () else err msg
                     -- Translate the 'else' case, if present.
-                    ctx1 <- maybe (wrapCtx $ ctx <: freshObj) (translateStatements . (>: (ctx <: freshObj))) mels
+                    ctx1 <- maybe (wrapCtx $ ρ <: freshObj) (translateStatements . (>: (ρ <: freshObj))) mels
                     let Obj {decls = ods', stmts = els} = curr ctx1
                     let body = P'.Block els
                     -- Construct massive 'if-else' statement out of all if
@@ -260,30 +260,30 @@ translateStatements ctx = case syntax ctx of
                     -- Flip cases, such that the first syntactical Promela case is executed first.
                     let (ods, os') = curr ctx2
                     let ifStmt = flipIfs $ Pos p os'
-                    let obj = curr ctx
+                    let obj = curr ρ
                     let obj' = obj {decls = ods ++ decls obj, stmts = ifStmt : stmts obj}
                     translateStatements $ ss >: ctx2 <: obj'
-                  Ok ctx' -> do
-                    let (ods', cs, def) = curr ctx'
+                  Ok ρ' -> do
+                    let (ods', cs, def) = curr ρ'
                     let select' = P'.Select (reverse cs) def
-                    let Obj {stmts = oss, decls = ods} = curr ctx
+                    let Obj {stmts = oss, decls = ods} = curr ρ
                     let obj = Obj {stmts = Pos p select' : oss, decls = ods ++ ods'}
-                    translateStatements $ ss >: ctx' <: obj
+                    translateStatements $ ss >: ρ' <: obj
           -- Translation of declarations
           P.Decl x t me ->
             let -- Translation of primitive declaration with default zero value.
                 primitiveDecl zero = do
                   -- Construct translated variable name.
-                  let x' = prefix ctx ++ x
+                  let x' = prefix ρ ++ x
                   -- Translate right-hand side expression, or fall back on zero value.
-                  rhs <- maybe (return zero) (translateExp (varenv ctx)) me
-                  let Obj {decls = ods, stmts = oss} = curr ctx
+                  rhs <- maybe (return zero) (translateExp (varenv ρ)) me
+                  let Obj {decls = ods, stmts = oss} = curr ρ
                   -- Add declaration to the list of declarations.
                   let obj = Obj {decls = ods ++ [Pos p (P'.Decl x rhs)], stmts = oss}
                   -- Insert the declared name in the variable environment,
                   -- bound to its translated name.
-                  let ctx'' = ctx {varenv = M.insert x x' $ varenv ctx}
-                  translateStatements (ss >: ctx'' <: obj)
+                  let ρ'' = ρ {varenv = M.insert x x' $ varenv ρ}
+                  translateStatements (ss >: ρ'' <: obj)
              in case t of
                   -- For channel declarations
                   P.TChan ->
@@ -293,42 +293,38 @@ translateStatements ctx = case syntax ctx of
                       case me of
                         Just (P.Chan e) -> do
                           -- Translate capacity expression
-                          e' <- translateExp (varenv ctx) e
+                          e' <- translateExp (varenv ρ) e
                           -- Construct translated channel declaration
                           let chdecl = Pos p $ P'.Chan x e'
                           -- Add channel declaration to context declarations
-                          let obj' = (curr ctx) {decls = decls (curr ctx) ++ [chdecl]}
+                          let obj' = (curr ρ) {decls = decls (curr ρ) ++ [chdecl]}
                           -- Insert channel in the capacity and variable environments,
                           -- with capacity expression and its own name.
-                          let ctx' =
-                                ctx
-                                  { κ = M.insert x e' (κ ctx),
-                                    chenv = M.insert x x (chenv ctx)
-                                  }
+                          let ρ' = ρ {κ = M.insert x e' (κ ρ), chenv = M.insert x x (chenv ρ)}
                           -- Translate the remaining statements
-                          translateStatements $ ss >: ctx' <: obj'
+                          translateStatements $ ss >: ρ' <: obj'
                         _ -> err $ "Channel " ++ x ++ " has no capacity."
-                      else translateStatements $ ss >: ctx
+                      else translateStatements $ ss >: ρ
                   -- For integers, translate primitive declaration with default value 0
                   P.TInt -> primitiveDecl $ P'.CNum 0
                   -- For booleans, translate primitive declaration with default value 'false'
                   P.TBool -> primitiveDecl P'.CFalse
                   -- FIXME: Ignore named types
-                  P.TNamed _ -> translateStatements $ ss >: ctx
+                  P.TNamed _ -> translateStatements $ ss >: ρ
           P.ExpS (P.Run f es) -> do
             -- Extract callee from call graph
-            (ps, ss') <- case Mb.fromJust $ M.lookup f (cg ctx) of
+            (ps, ss') <- case Mb.fromJust $ M.lookup f (cg ρ) of
               P.Proc _ ps ss' -> return (ps, ss')
               _ -> err $ "[INVALID FUNCTION] " ++ f ++ " not in call-graph."
             -- Uniquely denominate the calling context by suffixing the call index.
-            let f' = f ++ "'" ++ show (calls ctx)
+            let f' = f ++ "'" ++ show (calls ρ)
             let -- Associate formal and actual parameters
                 pes = zip ps es
                 -- Add an initialization statement for each formal-actual parameter pair
                 addVarInit ((x, t), e) =
                   let -- Uniquely identify local variable by prefixing the unique denomination.
                       x' = f' ++ "_" ++ x
-                      addExp = translateExp (varenv ctx) >=> return . (: []) . Pos p . P'.Decl x'
+                      addExp = translateExp (varenv ρ) >=> return . (: []) . Pos p . P'.Decl x'
                    in case t of
                         P.TChan -> return []
                         P.TNamed t' -> case t' of
@@ -354,57 +350,58 @@ translateStatements ctx = case syntax ctx of
             -- Construct all formal parameter declarations.
             initializers <- foldMonad addVarInit [] (++) pes
             -- Context-sensitively translate body of the callee
-            let ctx1 =
+            let ρ1 =
                   Ctxt
                     { -- Body statements
                       syntax = ss',
                       -- Call graph is identical
-                      cg = cg ctx,
+                      cg = cg ρ,
                       -- Name prefix of callee-local variables
                       prefix = f' ++ "_",
                       -- Number of calls has increased by 1
-                      calls = calls ctx + 1,
+                      calls = calls ρ + 1,
                       -- Add all parameter names to the local context.
-                      varenv = Prelude.foldl addVarName (varenv ctx) ps,
+                      varenv = Prelude.foldl addVarName (varenv ρ) ps,
                       -- Construct a fresh channel environment based on the parameters.
                       chenv = Prelude.foldl addCh M.empty pes,
-                      κ = κ ctx,
+                      κ = κ ρ,
                       curr = Obj {decls = initializers, stmts = []}
                     }
-            ctx2 <- translateStatements ctx1
-            let Obj {stmts = oss'} = curr ctx2
+            ρ2 <- translateStatements ρ1
+            let Obj {stmts = oss'} = curr ρ2
             let (ods', s') =
                   if isSequential ss
-                    then (decls $ curr ctx2, P'.Block oss')
+                    then (decls $ curr ρ2, P'.Block oss')
                     else ([], P'.Go $ ods' ++ oss')
-            let Obj {decls = ods, stmts = oss} = curr ctx
+            let Obj {decls = ods, stmts = oss} = curr ρ
             let obj' = Obj {decls = ods ++ ods', stmts = Pos p s' : oss}
             -- Absorb any chanel declarations and calls from the context
             -- produced by translating the callee.
-            let ctx3 = ctx {κ = κ ctx2, calls = calls ctx2}
+            let ρ3 = ρ {κ = κ ρ2, calls = calls ρ2}
             -- Discard subsequent 'run receiver(c)' statements before
             -- continuing translation.
             let ss'' = skipReceiverRun ss
-            translateStatements (ss'' >: ctx3 <: obj')
+            translateStatements (ss'' >: ρ3 <: obj')
           -- Non-run expression are considered irrelevant (Only checks for the absence of calls)
           P.ExpS e -> do
-            _ <- translateExp (varenv ctx) e
-            translateStatements (ss >: ctx)
+            _ <- translateExp (varenv ρ) e
+            translateStatements (ss >: ρ)
           P.For r ss' -> do
             -- Obtain translated range expression components:
             -- 1. Loop variable
             -- 2. Translated lower bound
             -- 3. Translated upper bound
-            (x, e1', e2') <- translateRange p (varenv ctx) r
-            ctx' <- translateStatements (ss' >: ctx <: freshObj)
-            let Obj {decls = ods, stmts = oss} = curr ctx
-            let Obj {decls = ods', stmts = oss'} = curr ctx'
+            (x, e1', e2') <- translateRange p (varenv ρ) r
+            ρ₁ <- translateStatements (ss' >: ρ <: freshObj)
+            let Obj {decls = ods, stmts = oss} = curr ρ
+            let Obj {decls = ods', stmts = oss'} = curr ρ₁
             -- Add 'for' loop to the list of translated statements
             let oss2 = Pos p (P'.For x e1' e2' P'.Inc oss') : oss
             -- Construct translation object and proceed with the
             -- rest of the translation.
             let obj' = Obj {decls = ods ++ ods', stmts = oss2}
-            translateStatements $ ss >: ctx <: obj'
+            let ρ₂ = ρ {calls = calls ρ₁, chenv = chenv ρ₁, κ = κ ρ₁}
+            translateStatements $ ss >: ρ₂ <: obj'
           -- 'do' statements are not supported
           P.Do _ _ -> err "Unexpected 'do' statement with non-deterministic branches."
 
@@ -422,11 +419,11 @@ translateRange p venv = \case
 -- Translate expression, taking variable environment into consideration.
 -- Uses positional information for debugging and error reporting purposes.
 translateExpPos :: Int -> M.Map String String -> P.Exp -> Err P'.Exp
-translateExpPos p venv =
+translateExpPos p σ =
   let err = posErr p
       translateExp = translateExpPos p
-      bin = binaryCons (translateExp venv)
-      un = unaryCons (translateExp venv)
+      bin = binaryCons (translateExp σ)
+      un = unaryCons (translateExp σ)
    in \case
         -- Constant expression translation
         P.Const (P.VInt n) -> return $ P'.CNum n
@@ -454,27 +451,27 @@ translateExpPos p venv =
           let errMsg = err $ "[INVALID VARIABLE] binding not found for: " ++ x
           -- Look up appropriate Go variable name for the
           -- given Promela variable in the environment
-          maybe errMsg (return . P'.Var) $ M.lookup x venv
+          maybe errMsg (return . P'.Var) $ M.lookup x σ
         e -> err $ "Promela to Go: Unexpected expression translation: " ++ show e
 
 -- Translate Promela channel operation to Go channel operation
 translateOp :: Ctxt (Pos P.Stmt) a -> Err (Ctxt () (Pos P'.Stmt))
-translateOp ctx =
+translateOp ρ =
   let translate p cons c =
         -- Skip by convention channels preceded by "child".
         -- They are only introduced to model single-threaded function
         -- calls in Promela.
         if "child" `L.isPrefixOf` c
-          then wrapCtx $ ctx <: Pos p P'.Skip
+          then wrapCtx $ ρ <: Pos p P'.Skip
           else -- Look up the Go name for the Promela channel name
 
             let errMsg = Bad $ "[INVALID CHANNEL] binding not found for: " ++ c
                 -- Translate to equivalent Go operation.
-                makeCtx = wrapCtx . (ctx <:) . Pos p . P'.Atomic . cons
+                makeCtx = wrapCtx . (ρ <:) . Pos p . P'.Atomic . cons
                 -- Look up channel name in translation context
-                c' = M.lookup c (chenv ctx)
+                c' = M.lookup c (chenv ρ)
              in Mb.maybe errMsg makeCtx c'
-   in case syntax ctx of
+   in case syntax ρ of
         -- Translate send statement
         Pos p (P.Send (P.Var c) _) -> translate p P'.Send c
         -- Translate receive statement

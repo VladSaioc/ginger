@@ -17,16 +17,16 @@ processIfs :: P -> (P𝑛, 𝑆) -> ([ℐ], P𝑛)
 processIfs p (𝑛, s) = case s of
   -- Statement sequences merge the sets of loops produced by each sub-statement.
   Seq s1 s2 ->
-    let (l1, 𝑛') = processIfs p (𝑛, s1)
-        (l2, 𝑛'') = processIfs p (𝑛', s2)
-     in (l1 ++ l2, 𝑛'')
+    let (l1, 𝑛₁) = processIfs p (𝑛, s1)
+        (l2, 𝑛₂) = processIfs p (𝑛₁, s2)
+     in (l1 ++ l2, 𝑛₂)
   For {} -> ([], 𝑛 + ppOffset s)
   -- Atomic operations have no ifs, but may offset the program counter.
   Atomic _ -> ([], 𝑛 + ppOffset s)
   If e s1 s2 ->
     let -- Process if branches continuation points.
-        (l1, 𝑛') = processIfs p (𝑛 + 1, s1)
-        (l2, 𝑛'') = processIfs p (𝑛' + 1, s2)
+        (l1, 𝑛₁) = processIfs p (𝑛 + 1, s1)
+        (l2, 𝑛₂) = processIfs p (𝑛₁ + 1, s2)
         l =
           ℐ
             { -- Loop process
@@ -36,9 +36,9 @@ processIfs p (𝑛, s) = case s of
               -- Guard is at the conditional entry program point
               iGuard = 𝑛,
               -- Else branch program point
-              iElse = 𝑛' + 1,
+              iElse = 𝑛₁ + 1,
               -- Conditional exit program point
-              iExit = 𝑛''
+              iExit = 𝑛₂
             }
-     in (l : l1 ++ l2, 𝑛' + 1)
+     in (l : l1 ++ l2, 𝑛₂)
   Skip -> ([], 𝑛)

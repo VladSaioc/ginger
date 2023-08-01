@@ -6,7 +6,6 @@ import Data.List qualified as L
 import Data.Map qualified as M
 import Data.Maybe
 import Data.UnionFind.IntMap
-import Debug.Trace (trace)
 import IR.Ast
 import Pipeline.IRTranslation.Utilities
 import Utilities.Err
@@ -197,9 +196,8 @@ expFVs ctx@(Ctx {datum = e, supply}) =
               n = next ctx
               ctx' = case M.lookup x env of
                 Nothing ->
-                  let t' = nextTypeVar n
+                  let t = nextTypeVar n
                       (supply', p) = fresh supply t
-                      t = trace (show x ++ ":" ++ show t') t'
                    in t
                         >: ctx
                           { next = n + 1,
