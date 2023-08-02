@@ -1,37 +1,35 @@
 module Pipeline.Translation.PromelaToIR (getIR) where
 
 import Data.Map qualified as M
-import IR.Ast qualified as T
+import IR.Ast
 import Pipeline.Callgraph (getCG)
 import Promela.Ast qualified as P
 import Promela.Utilities
 import Utilities.Err
 import Utilities.General
 import Utilities.Position
+import Utilities.TransformationCtx
 
 data Ctxt a b = Ctxt
   { syntax :: a,
     pid :: Int,
     nextpid :: Int,
     cg :: M.Map String P.Module,
-    varenv :: M.Map String T.𝐸,
+    varenv :: M.Map String 𝐸,
     chenv :: M.Map String String,
-    procs :: M.Map Int T.𝑆,
-    chans :: M.Map String T.𝐸,
+    procs :: M.Map Int 𝑆,
+    chans :: M.Map String 𝐸,
     curr :: b
   }
   deriving (Eq, Ord, Read)
 
-wrapCtx :: Ctxt a b -> Err (Ctxt () b)
-wrapCtx ctx = return ctx {syntax = ()}
+instance TransformCtx Ctxt where
+  source = syntax
+  updateSource ctx a = ctx {syntax = a}
+  object = curr
+  updateObject ctx a = ctx {curr = a}
 
-(<:) :: Ctxt a c -> b -> Ctxt a b
-(<:) ctx b = ctx {curr = b}
-
-(>:) :: a -> Ctxt c b -> Ctxt a b
-(>:) a ctx = ctx {syntax = a}
-
-getIR :: P.Spec -> Err T.𝑃
+getIR :: P.Spec -> Err 𝑃
 getIR p@(P.Spec ms) =
   let getFV venv = \case
         P.TopDecl x P.TInt v -> M.insert x (translateVal x v) venv
@@ -46,21 +44,21 @@ getIR p@(P.Spec ms) =
             procs = M.empty,
             chans = M.empty,
             chenv = M.empty,
-            curr = T.Skip
+            curr = Skip
           }
    in do
         ctx' <- translateStatements ctx
-        let chs = M.elems $ M.mapWithKey T.Chan (chans ctx')
+        let chs = M.elems $ M.mapWithKey Chan (chans ctx')
         let ps = M.elems $ procs ctx'
-        return $ T.𝑃 chs ps
+        return $ 𝑃 chs ps
 
-translateStatements :: Ctxt [Pos P.Stmt] T.𝑆 -> Err (Ctxt () T.𝑆)
+translateStatements :: Ctxt [Pos P.Stmt] 𝑆 -> Err (Ctxt () 𝑆)
 translateStatements ctx = case syntax ctx of
-  [] -> wrapCtx (ctx {procs = M.insert (pid ctx) (curr ctx) (procs ctx)})
+  [] -> done (ctx {procs = M.insert (pid ctx) (curr ctx) (procs ctx)})
   Pos p s : ss -> do
     let addOp op = do
           ctx' <- translateOp (Pos p op >: ctx)
-          let stm = T.Seq (curr ctx) (T.Atomic (curr ctx'))
+          let stm = Seq (curr ctx) (Atomic (curr ctx'))
           translateStatements (ss >: ctx' <: stm)
         err = posErr p
     case s of
@@ -101,7 +99,7 @@ translateStatements ctx = case syntax ctx of
                       chenv = Prelude.foldl addCh M.empty pes,
                       procs = procs ctx,
                       chans = chans ctx,
-                      curr = T.Skip
+                      curr = Skip
                     }
             ctx2 <- translateStatements ctx1
             let ctx3 =
@@ -115,13 +113,13 @@ translateStatements ctx = case syntax ctx of
       P.For r ss' -> do
         (x, e1', e2') <- translateRange (varenv ctx) r
         ctx' <- translateFor (ss' >: ctx <: [])
-        let ctx'' = ctx <: T.Seq (curr ctx) (T.For x e1' e2' (curr ctx'))
+        let ctx'' = ctx <: Seq (curr ctx) (For x e1' e2' (curr ctx'))
         translateStatements (ss >: ctx'')
       _ -> translateStatements (ss >: ctx)
 
-translateFor :: Ctxt [Pos P.Stmt] [T.Op] -> Err (Ctxt () [T.Op])
+translateFor :: Ctxt [Pos P.Stmt] [Op] -> Err (Ctxt () [Op])
 translateFor ctx = case syntax ctx of
-  [] -> wrapCtx (ctx {curr = reverse (curr ctx)})
+  [] -> done (ctx {curr = reverse (curr ctx)})
   Pos p s : ss -> do
     let err = posErr p
     let addOp op = do
@@ -131,48 +129,48 @@ translateFor ctx = case syntax ctx of
       if commStmt s
         then addOp s
         else case s of
-          P.Label _ -> wrapCtx ctx
-          P.Assert _ -> wrapCtx ctx
-          P.Skip -> wrapCtx ctx
+          P.Label _ -> done ctx
+          P.Assert _ -> done ctx
+          P.Skip -> done ctx
           _ -> err ("Unexpected statement in for: " ++ show s)
     translateFor (ctx' {syntax = ss})
 
-translateRange :: M.Map String T.𝐸 -> P.Range -> Err (String, T.𝐸, T.𝐸)
+translateRange :: M.Map String 𝐸 -> P.Range -> Err (String, 𝐸, 𝐸)
 translateRange venv = \case
   P.Between x e1 e2 -> do
     (e1', e2') <- binaryCons (translateExp venv) (,) e1 e2
     return (x, e1', e2')
   _ -> Bad "Unexpected range over array."
 
-translateExp :: M.Map String T.𝐸 -> P.Exp -> Err T.𝐸
+translateExp :: M.Map String 𝐸 -> P.Exp -> Err 𝐸
 translateExp venv =
   let bin = binaryCons (translateExp venv)
    in \case
-        P.Const (P.VInt n) -> return (T.Const n)
-        P.And e1 e2 -> bin (T.:&) e1 e2
-        P.Or e1 e2 -> bin (T.:|) e1 e2
-        P.Plus e1 e2 -> bin (T.:+) e1 e2
-        P.Minus e1 e2 -> bin (T.:-) e1 e2
-        P.Mult e1 e2 -> bin (T.:*) e1 e2
-        P.Div e1 e2 -> bin (T.:/) e1 e2
+        P.Const (P.VInt n) -> return (Const n)
+        P.And e1 e2 -> bin (:&) e1 e2
+        P.Or e1 e2 -> bin (:|) e1 e2
+        P.Plus e1 e2 -> bin (:+) e1 e2
+        P.Minus e1 e2 -> bin (:-) e1 e2
+        P.Mult e1 e2 -> bin (:*) e1 e2
+        P.Div e1 e2 -> bin (:/) e1 e2
         P.EVar (P.Var x) ->
           case M.lookup x venv of
             Just e' -> return e'
             Nothing -> Bad ("Unrecognized variable: " ++ x)
         _ -> Bad "Unexpected expression translation"
 
-translateOp :: Ctxt (Pos P.Stmt) a -> Err (Ctxt () T.Op)
+translateOp :: Ctxt (Pos P.Stmt) a -> Err (Ctxt () Op)
 translateOp ctx =
   let translate cons c =
         case M.lookup c (chenv ctx) of
-          Just c' -> wrapCtx (ctx <: cons c')
+          Just c' -> done (ctx <: cons c')
           Nothing -> Bad "Invalid channel: value not found."
    in case syntax ctx of
-        Pos _ (P.Send (P.Var c) _) -> translate T.Send c
-        Pos _ (P.Recv (P.Var c) _) -> translate T.Recv c
+        Pos _ (P.Send (P.Var c) _) -> translate Send c
+        Pos _ (P.Recv (P.Var c) _) -> translate Recv c
         Pos p s -> posErr p $ "Unexpected statement: " ++ show s
 
-translateVal :: String -> P.Val -> T.𝐸
+translateVal :: String -> P.Val -> 𝐸
 translateVal x = \case
-  P.VInt n -> T.Const n
-  _ -> T.Var x
+  P.VInt n -> Const n
+  _ -> Var x

@@ -17,7 +17,8 @@ rendezvousMutexes ps =
    in concatMap concat $ M.elems mes
 
 {- For the given channel and process, ensures that no other process may
-simultaneously sit on the rendezvous point.
+simultaneously sit on the rendezvous point as long as the current process
+also visits a rendezvous point.
 Depends on: π, c, 𝒪
 
 Let:

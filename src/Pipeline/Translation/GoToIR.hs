@@ -7,6 +7,7 @@ import Utilities.Err
 import Utilities.General
 import Utilities.Position
 import Utilities.PrettyPrint (PrettyPrint (prettyPrint))
+import Utilities.TransformationCtx
 
 data Ctxt a b = Ctxt
   { syntax :: a,
@@ -22,14 +23,11 @@ data Ctxt a b = Ctxt
   }
   deriving (Eq, Ord, Read)
 
-wrapCtx :: Ctxt a b -> Err (Ctxt () b)
-wrapCtx ctx = return ctx {syntax = ()}
-
-(<:) :: Ctxt a c -> b -> Ctxt a b
-(<:) ctx b = ctx {curr = b}
-
-(>:) :: a -> Ctxt c b -> Ctxt a b
-(>:) a ctx = ctx {syntax = a}
+instance TransformCtx Ctxt where
+  source = syntax
+  updateSource ctx a = ctx {syntax = a}
+  object = curr
+  updateObject ctx a = ctx {curr = a}
 
 getIR :: P.Prog -> Err 𝑃
 getIR (P.Prog ss) =
@@ -54,7 +52,7 @@ getIR (P.Prog ss) =
 
 translateStatements :: Ctxt [Pos P.Stmt] 𝑆 -> Err (Ctxt () 𝑆)
 translateStatements ρ = case syntax ρ of
-  [] -> wrapCtx (ρ {procs = M.insert (pid ρ) (curr ρ) (procs ρ)})
+  [] -> done (ρ {procs = M.insert (pid ρ) (curr ρ) (procs ρ)})
   Pos _ s : ss -> case s of
     P.Skip -> translateStatements (ss >: ρ)
     P.Return -> translateStatements ([] >: ρ)
@@ -146,7 +144,7 @@ translateStatements ρ = case syntax ρ of
 
 translateFor :: Ctxt [Pos P.Stmt] [Op] -> Err (Ctxt () [Op])
 translateFor ρ = case syntax ρ of
-  [] -> wrapCtx $ ρ <: reverse (curr ρ)
+  [] -> done $ ρ <: reverse (curr ρ)
   Pos p s : ss -> case s of
     P.Atomic op -> do
       ρ₁ <- translateOp $ op >: ρ
@@ -187,7 +185,7 @@ translateOp :: Ctxt P.CommOp a -> Err (Ctxt () Op)
 translateOp ρ =
   let translate cons c =
         case M.lookup c (chenv ρ) of
-          Just c' -> wrapCtx (ρ <: cons c')
+          Just c' -> done (ρ <: cons c')
           Nothing -> Bad $ "Invalid channel: value not found: " ++ show c
    in case syntax ρ of
         P.Send c -> translate Send c

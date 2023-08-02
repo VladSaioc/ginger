@@ -12,6 +12,7 @@ import Promela.Utilities
 import Utilities.Err
 import Utilities.General
 import Utilities.Position
+import Utilities.TransformationCtx
 
 -- Promela-to-Go translation context
 data Ctxt a b = Ctxt
@@ -38,6 +39,12 @@ data Ctxt a b = Ctxt
   }
   deriving (Eq, Ord, Read, Show)
 
+instance TransformCtx Ctxt where
+  source = syntax
+  updateSource ctx a = ctx {syntax = a}
+  object = curr
+  updateObject ctx a = ctx {curr = a}
+
 -- Object syntax wrapper. Helps with hoisting declarations
 -- before statements.
 data Obj a b = Obj
@@ -46,18 +53,6 @@ data Obj a b = Obj
   }
 
 type Go = Obj [Pos P'.Stmt] [Pos P'.Stmt]
-
--- Marks a context as done.
-wrapCtx :: Ctxt a b -> Err (Ctxt () b)
-wrapCtx ctx = return ctx {syntax = ()}
-
--- Update object syntax
-(<:) :: Ctxt a c -> b -> Ctxt a b
-(<:) ctx b = ctx {curr = b}
-
--- Update source syntax
-(>:) :: a -> Ctxt c b -> Ctxt a b
-(>:) a ctx = ctx {syntax = a}
 
 -- Reconstruct a Go AST from the Promela encoding.
 -- Explode program by following call edges.
@@ -119,7 +114,7 @@ translateStatements ρ = case syntax ρ of
   -- ! in the complexity of construction.
   [] ->
     let Obj {decls, stmts} = curr ρ
-     in wrapCtx $ ρ <: Obj {decls = decls, stmts = reverse stmts}
+     in done $ ρ <: Obj {decls = decls, stmts = reverse stmts}
   Pos p s : ss ->
     let freshObj = Obj {decls = [], stmts = []}
         translateExp = translateExpPos p
@@ -195,7 +190,7 @@ translateStatements ρ = case syntax ρ of
                           let Obj {stmts, decls = ods'} = curr ctx''
                           -- Add the translated case to the select statement.
                           let select = (ods ++ ods', (Pos p $ op c', stmts) : cs, def)
-                          wrapCtx $ ctx'' <: select
+                          done $ ctx'' <: select
                      in \case
                           -- The 'default -> ...' branch discovered is considered
                           -- a 'default' case.
@@ -207,7 +202,7 @@ translateStatements ρ = case syntax ρ of
                               Just _ -> Bad notSelectMessage
                             let Obj {stmts, decls = ods'} = curr ρ''
                             let select = (ods ++ ods', cs, Just stmts)
-                            wrapCtx $ ρ'' <: select
+                            done $ ρ'' <: select
                           -- Cases of the form: 'c!_ -> ...'.
                           (Pos _ (P.Send (P.Var c) _), ss') -> addCommCase P'.Send c ss'
                           -- Cases of the form: 'c?_ -> ...'.
@@ -220,7 +215,7 @@ translateStatements ρ = case syntax ρ of
                             let caseClause = Pos p' P'.Star
                             let Obj {stmts, decls = ods'} = curr ρ''
                             let select = (ods ++ ods', (caseClause, stmts) : cs, def)
-                            wrapCtx $ ρ'' <: select
+                            done $ ρ'' <: select
                           -- Cases of the form 'c[_]!_ -> ...' or 'x.c!_ -> ...' are not
                           -- covered features.
                           (Pos _ (P.Send _ _), _) -> Bad "[INVALID SEND]: Operations on channel in aggregate data structures are not supported"
@@ -237,7 +232,7 @@ translateStatements ρ = case syntax ρ of
                     let Obj {stmts = ss'', decls = ods'} = curr ρ2
                     let body = P'.If e' ss'' [Pos p' ifSoFar]
                     let obj' = (ods ++ ods', body)
-                    wrapCtx $ ρ2 <: obj'
+                    done $ ρ2 <: obj'
                   -- Cases of the form 'c[_]!_ -> ...' or 'x.c!_ -> ...' are not
                   -- covered features.
                   (Pos _ (P.Send _ _), _) -> Bad "[INVALID SEND]: Operations on channel in perceived 'if'-statement"
@@ -251,7 +246,7 @@ translateStatements ρ = case syntax ρ of
                     -- not model one, attempt to build a regular if statement.
                     _ <- if msg == notSelectMessage then return () else err msg
                     -- Translate the 'else' case, if present.
-                    ctx1 <- maybe (wrapCtx $ ρ <: freshObj) (translateStatements . (>: (ρ <: freshObj))) mels
+                    ctx1 <- maybe (done $ ρ <: freshObj) (translateStatements . (>: (ρ <: freshObj))) mels
                     let Obj {decls = ods', stmts = els} = curr ctx1
                     let body = P'.Block els
                     -- Construct massive 'if-else' statement out of all if
@@ -462,12 +457,12 @@ translateOp ρ =
         -- They are only introduced to model single-threaded function
         -- calls in Promela.
         if "child" `L.isPrefixOf` c
-          then wrapCtx $ ρ <: Pos p P'.Skip
+          then done $ ρ <: Pos p P'.Skip
           else -- Look up the Go name for the Promela channel name
 
             let errMsg = Bad $ "[INVALID CHANNEL] binding not found for: " ++ c
                 -- Translate to equivalent Go operation.
-                makeCtx = wrapCtx . (ρ <:) . Pos p . P'.Atomic . cons
+                makeCtx = done . (ρ <:) . Pos p . P'.Atomic . cons
                 -- Look up channel name in translation context
                 c' = M.lookup c (chenv ρ)
              in Mb.maybe errMsg makeCtx c'

@@ -9,6 +9,7 @@ import Data.UnionFind.IntMap
 import IR.Ast
 import Pipeline.IRTranslation.Utilities
 import Utilities.Err
+import Utilities.TransformationCtx
 
 -- Context for union-based inferrence of the IR program.
 data Ctx a b = Ctx
@@ -24,13 +25,16 @@ data Ctx a b = Ctx
     tenv :: M.Map b (Point b)
   }
 
+-- Partial implementation is safe because no access
+-- of object is necessary for type inference.
+instance TransformCtx Ctx where
+  source = datum
+  updateSource ctx a = ctx {datum = a}
+
 type TCtx a = Ctx a T.Type
 
 nextTypeVar :: Int -> T.Type
 nextTypeVar n = T.TVar ("T'" ++ show n)
-
-(>:) :: a -> Ctx c b -> Ctx a b
-a >: ctx = ctx {datum = a}
 
 mkTCtx :: TCtx ()
 mkTCtx =
@@ -48,9 +52,6 @@ mkTCtx =
           supply = ps,
           tenv = te
         }
-
-done :: Monad m => Ctx a b -> m (Ctx () b)
-done ctx = return $ () >: ctx
 
 {- Order type points, such that the "dominant" type in the second position.
 Will return an error if the two types cannot be unified.
