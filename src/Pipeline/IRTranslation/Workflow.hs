@@ -29,6 +29,6 @@ irToBackend p' = do
   let is = ifs p
   let k = getCaps p
   let ps = getProcs k p
-  let chops = noloopPsChanInsns p
-  let prog = wholeEncoding fv ts k ps chops is ls
+  let as = noloopPsChanInsns p
+  let prog = wholeEncoding fv ts k ps as is ls
   return prog

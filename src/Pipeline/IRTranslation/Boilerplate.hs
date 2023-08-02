@@ -9,10 +9,11 @@ import Pipeline.IRTranslation.CommPrecondition (preconditions)
 import Pipeline.IRTranslation.Enabled (enabledExp)
 import Pipeline.IRTranslation.Invariant.ChannelBound (channelBounds)
 import Pipeline.IRTranslation.Invariant.ChannelMonitor (channelMonitors)
-import Pipeline.IRTranslation.Invariant.ChannelRendezvous (asyncNoRendezvous)
 import Pipeline.IRTranslation.Invariant.CounterBound (counterInvariants)
 import Pipeline.IRTranslation.Invariant.If (ifMonitors)
 import Pipeline.IRTranslation.Invariant.Loop (loopMonitors)
+import Pipeline.IRTranslation.Invariant.RendezvousMutex (rendezvousMutexes)
+import Pipeline.IRTranslation.Invariant.RendezvousNoAsync (noAsyncRendezvous)
 import Pipeline.IRTranslation.Meta.Channel
 import Pipeline.IRTranslation.Meta.If
 import Pipeline.IRTranslation.Meta.Loop
@@ -76,11 +77,11 @@ isScheduleFunc ps =
         }
 
 {- Case analysis of a single process over its program points.
-Depends on: π, ϕ
+Depends on: π, 𝜙
 
 Produces:
 switch pc(π) {
-  ∀ n ∈ ϕ. case n => ϕ(n)
+  ∀ n ∈ 𝜙. case n => 𝜙(n)
 }
 -}
 processSwitch :: P -> 𝛷 -> Stmt
@@ -96,7 +97,7 @@ Depends on: Π
 
 Produces:
 switch S(step) {
-  ∀ π ∈ Π. case π => processSwitch(π, ϕ)
+  ∀ π ∈ Π. case π => processSwitch(π, 𝜙)
 }
 -}
 scheduleSwitch :: 𝛱 -> Stmt
@@ -112,7 +113,7 @@ Depends on: κ, Π, nonloop(P), loop(P)
 
 Produces:
 while enabledExp(κ, Π)
-∀ (π, ϕ) ∈ Π. invariant counterInvariant(π, ϕ)
+∀ (π, 𝜙) ∈ Π. invariant counterInvariant(π, 𝜙)
 ∀ e ∈ channelMonitors(noloop(P), loop(P)). invariant e
 ∀ l ∈ loop(P). invariant loopMonitor(l)
 {
@@ -129,7 +130,10 @@ centralLoop κ ps atomicOps ifs loops =
       -- Channel bound invariants
       k = channelBounds κ
       -- Absence of rendezvous for buffered channels invariants
-      rv = asyncNoRendezvous κ atomicOps loops
+      rv = noAsyncRendezvous κ atomicOps loops
+      -- Mutual exclusion between rendezvous points of different process
+      -- on the same channel
+      rvm = rendezvousMutexes ps
       -- Process counter invariants
       pc = counterInvariants ps
       -- Channel buffer size invariants
@@ -141,7 +145,7 @@ centralLoop κ ps atomicOps ifs loops =
       enabled = hasFuel :&& enabledExp κ ps
    in While
         enabled
-        (concat [k, pc, rv, i, l, m])
+        (concat [k, pc, rv, rvm, i, l, m])
         []
         ( Block
             [ -- Central loop case analysis
@@ -202,7 +206,7 @@ Depends on: κ, Π, nonloop(P), loop(P), fv(P)
 
 Produces:
 method Program(S : nat -> nat, ∀ x ∈ fv(P). x : int)
-returns (∀ (π, ϕ) ∈ Π. pc(π) : int)
+returns (∀ (π, 𝜙) ∈ Π. pc(π) : int)
 
 requires capPreconditions(κ)
 requires preconditions(κ, nonloop(P), loop(P))

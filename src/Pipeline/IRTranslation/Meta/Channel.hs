@@ -1,6 +1,7 @@
 module Pipeline.IRTranslation.Meta.Channel where
 
 import Backend.Ast
+import Backend.Utilities
 import Control.Monad (unless)
 import Data.Map qualified as M
 import Data.Maybe
@@ -213,3 +214,67 @@ backendChannelOp =
           return (dfinal c')
         -- The statement does not conform to any channel operation pattern.
         _ -> Nothing
+
+{- Convert back-end instruction point to channel metadata.
+Depends on: π, 𝜙, 𝑛
+
+! Metadata does not include path conditions.
+
+Produces:
+𝒪 {π, c, d, 𝑛}, where cd = 𝜙(𝑛)
+-}
+insnToChMetadata :: P -> P𝑛 -> Stmt -> Maybe 𝒪
+insnToChMetadata p 𝑛 s = do
+  op <- backendChannelOp s
+  let (c, d) = either (,S) (,R) op
+  return
+    𝒪
+      { oP = p,
+        o𝐶 = c,
+        oDir = d,
+        o𝑛 = 𝑛,
+        oPathexp = (True ?)
+      }
+
+{- Aggregate all channel operation points from all processes, indexed.
+Produces a map of channel operation metadata indexed by the channel name.
+Depends on: π, 𝜙
+
+! Metadata does not include path conditions.
+
+Produces:
+[ c ↦ 𝒪 {π, c, d, 𝑛} | (𝑛, cd) ∈ 𝜙 . d ∈ {!, ?} ]
+-}
+chanOpsMap :: 𝛱 -> P ↦ (𝐶 ↦ [𝒪])
+chanOpsMap = M.mapWithKey processChanOpsMap
+
+{- Aggregate all channel operation points from a given process and its program points.
+Produces a map of channel operation metadata indexed by the channel name.
+Depends on: π, 𝜙
+
+! Metadata does not include path conditions.
+
+Produces:
+[ c ↦ 𝒪 {π, c, d, 𝑛} | (𝑛, cd) ∈ 𝜙 . d ∈ {!, ?} ]
+-}
+processChanOpsMap :: P -> 𝛷 -> 𝐶 ↦ [𝒪]
+processChanOpsMap p =
+  let addChanOp 𝑛 i cos =
+        case insnToChMetadata p 𝑛 i of
+          Just o@(𝒪 {o𝐶 = c}) -> M.insertWith (++) c [o] cos
+          Nothing -> cos
+   in M.foldrWithKey addChanOp M.empty
+
+{- Aggregate all channel operation points from a given map of program points.
+Produces a list of channel operation metadata, including the channel name,
+process id, operation direction, program point.
+
+! Metadata does not include path conditions.
+
+Depends on: π, 𝜙
+
+Produces:
+{ 𝒪 {π, c, d, 𝑛} | (𝑛, cd) ∈ 𝜙. d ∈ {!, ?} }
+-}
+processChanOps :: P -> 𝛷 -> [𝒪]
+processChanOps p = catMaybes . M.elems . M.mapWithKey (insnToChMetadata p)

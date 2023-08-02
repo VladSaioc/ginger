@@ -18,10 +18,10 @@ synchronization that should have already occurred.
 Depends on:
 1. All program loops: [ℓ]
 2. All non-loop operations:
-    O = {(π, 𝑛, o) | (𝑛, o) ∉ op(ℓ), ℓ ∈ [ℓ], (𝑛, o) ∈ ϕ, (π, ϕ) ∈ Π }
+    O = {(π, 𝑛, o) | (𝑛, o) ∉ op(ℓ), ℓ ∈ [ℓ], (𝑛, o) ∈ 𝜙, (π, 𝜙) ∈ Π }
 
 Produces:
-[ c ↦ e1 - e2 | ∀ c. (𝑛, cd) ∈ ϕ, (π, ϕ) ∈ Π,
+[ c ↦ e1 - e2 | ∀ c. (𝑛, cd) ∈ 𝜙, (π, 𝜙) ∈ Π,
     e1 =  Σ ∀ ℓ, (c, [! ↦ e']) ∈ loopMonitor(ℓ). e'
         + Σ (π, 𝑛, !) ∈ O, e' = noloopMonitor(π, 𝑛). e',
     e2 =  Σ ∀ ℓ, (c, [? ↦ e']) ∈ loopMonitor(ℓ). e'
@@ -85,15 +85,15 @@ loopMonitor (ℒ {lP = p, l𝑋 = var, lower, lExit = 𝑛', l𝒪s = chans, lPa
 
 {- Organize and compose under addition all non-loop monitor
 sub-expressions for every synchronous channel for a given process.
-Depends on: π, ϕ
+Depends on: π, 𝜙
 
 Produces:
 [c ↦ [
   ! ↦ {if b(𝑛) then
           if 𝑛 < pc(π) then 1 else 0) + (if 𝑛 + 1 < pc(π) then 1 else 0)
-        else 0 | ∀(𝑛, c!) ∈ ϕ },
-  ? ↦ {if 𝑛 < pc(π) then 2 else 0 | ∀(𝑛, c?) ∈ ϕ }]
-  | ∀ c, (𝑛, cd) ∈ ϕ ]
+        else 0 | ∀(𝑛, c!) ∈ 𝜙 },
+  ? ↦ {if 𝑛 < pc(π) then 2 else 0 | ∀(𝑛, c?) ∈ 𝜙 }]
+  | ∀ c, (𝑛, cd) ∈ 𝜙 ]
 -}
 noloopMonitors :: 𝐶 ↦ 𝒪s -> 𝐶 ↦ (OpDir ↦ Exp)
 noloopMonitors = M.map (M.map ((...+) . map noloopMonitor))

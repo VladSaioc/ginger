@@ -1,4 +1,4 @@
-module Pipeline.IRTranslation.Invariant.ChannelRendezvous where
+module Pipeline.IRTranslation.Invariant.RendezvousNoAsync (noAsyncRendezvous) where
 
 import Backend.Ast
 import Backend.Utilities
@@ -10,8 +10,12 @@ import Pipeline.IRTranslation.Meta.Channel
 import Pipeline.IRTranslation.Meta.Loop
 import Pipeline.IRTranslation.Utilities
 
-asyncNoRendezvous :: K -> P ↦ (𝐶 ↦ 𝒪s) -> [ℒ] -> [Exp]
-asyncNoRendezvous 𝜅 os ls =
+{- For every channel send operation of every process, adds
+an invariant clause stipulating that the process never reaches
+the rendezvous instruction if the channel is buffered.
+-}
+noAsyncRendezvous :: K -> P ↦ (𝐶 ↦ 𝒪s) -> [ℒ] -> [Exp]
+noAsyncRendezvous 𝜅 os ls =
   let atomicRvC = M.map (chanopsToRendezvous 𝜅)
       atomicRvs = concat $ concatMap M.elems (M.map atomicRvC os)
       loopRvs = concatMap (loopToNoRendezvous 𝜅) ls
@@ -29,10 +33,10 @@ chanopsToRendezvous κ =
 
 {- Creates an invariant sub-expression stipulating that the program
 counter will never reach rendezvous points if the channel is buffered.
-Depends on: κ, ϕ, π
+Depends on: κ, 𝜙, π
 
 Produces:
-0 < κ(c) => pc(π) /= n + 1
+0 < κ(c) => pc(π) != n + 1
 -}
 sendToNoRendezvous :: K -> 𝒪 -> Exp
 sendToNoRendezvous κ 𝒪 {oP = pid, o𝐶 = c, o𝑛 = 𝑛} =

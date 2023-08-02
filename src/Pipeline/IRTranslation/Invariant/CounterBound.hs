@@ -10,10 +10,10 @@ counterInvariants :: 𝛱 -> [Exp]
 counterInvariants = map counterInvariant . M.toList
 
 {- Constrict the value of pc(π) over viable program points.
-Depends on: π, ϕ
+Depends on: π, 𝜙
 
 Produces:
-0 <= pc(π) ∧ pc(π) <= (max ∘ dom)(ϕ)
+0 <= pc(π) ∧ pc(π) <= (max ∘ dom)(𝜙)
 -}
 counterInvariant :: (P, 𝛷) -> Exp
 counterInvariant (p, 𝜙) =

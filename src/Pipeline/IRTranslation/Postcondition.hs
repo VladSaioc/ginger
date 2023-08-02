@@ -8,10 +8,10 @@ postconditions :: 𝛱 -> [Exp]
 postconditions = map (uncurry postcondition) . M.toList
 
 {- Constructs a postcondition for the given process.
-Depends on: π, ϕ
+Depends on: π, 𝜙
 
 Produces:
-pc(π) = (max ∘ dom)(ϕ)
+pc(π) = (max ∘ dom)(𝜙)
 -}
 postcondition :: P -> 𝛷 -> Exp
 postcondition p 𝜙 = π p :== (𝜙 -|)

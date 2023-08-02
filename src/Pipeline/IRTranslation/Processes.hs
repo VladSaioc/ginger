@@ -13,7 +13,7 @@ import Pipeline.IRTranslation.Utilities
 {- Transforms a IR program intro a map from process ids to program points.
 Depends on: κ, P = S₁, ..., Sₙ
 
-Produces: Π = [ πᵢ ↦ ϕᵢ | ϕᵢ = stmtsToPoints(κ, πᵢ, ⟨0, []⟩, Sᵢ) ]
+Produces: Π = [ πᵢ ↦ 𝜙ᵢ | 𝜙ᵢ = stmtsToPoints(κ, πᵢ, ⟨0, []⟩, Sᵢ) ]
 -}
 getProcs :: K -> 𝑃 -> 𝛱
 getProcs κ (𝑃 _ ss) =
@@ -25,17 +25,17 @@ getProcs κ (𝑃 _ ss) =
    in M.fromList (map makeProc pidsAndSyntax)
 
 {- Transform an IR statement into a map of program points.
-Depends on: κ, π, ⟨𝑛, ϕ⟩, S
+Depends on: κ, π, ⟨𝑛, 𝜙⟩, S
 
 Produces, based on S:
-1. [SKIP]: skip -> ⟨𝑛, ϕ⟩
-2. [COMM]: c{!,?} -> opToPoints(κ, π, ⟨𝑛, ϕ⟩, c{!,?})
-3. [SEQ]: S₁; S₂ -> ⟨𝑛', ϕ'⟩
-          |- S₁ -> ⟨𝑛'', ϕ''⟩
-          |- S₂ -> ⟨𝑛', ϕ'⟩
-4. [FOR]: for (i : e₁ .. e₂) { s } -> ⟨𝑛' + 1, ϕ''⟩
-          |- ⟨𝑛', ϕ'⟩ = opToPoints(κ, π, ⟨𝑛 + 1, ϕ⟩, s)
-          |- ϕ'' = ϕ'[
+1. [SKIP]: skip -> ⟨𝑛, 𝜙⟩
+2. [COMM]: c{!,?} -> opToPoints(κ, π, ⟨𝑛, 𝜙⟩, c{!,?})
+3. [SEQ]: S₁; S₂ -> ⟨𝑛', 𝜙'⟩
+          |- S₁ -> ⟨𝑛'', 𝜙''⟩
+          |- S₂ -> ⟨𝑛', 𝜙'⟩
+4. [FOR]: for (i : e₁ .. e₂) { s } -> ⟨𝑛' + 1, 𝜙''⟩
+          |- ⟨𝑛', 𝜙'⟩ = opToPoints(κ, π, ⟨𝑛 + 1, 𝜙⟩, s)
+          |- 𝜙'' = 𝜙'[
             𝑛 ↦ if x < e₂ {
                 pc(π) := 𝑛 + 1
               } else {
@@ -102,11 +102,11 @@ opsToPoints κ p (𝑛, 𝜙) = Prelude.foldl (opToPoint κ p) (𝑛, 𝜙)
 
 {- Appends a set of program points with a new program point,
 based on the next available instruction.
-Depends on: κ, π, ⟨n, ϕ⟩, o
+Depends on: κ, π, ⟨n, 𝜙⟩, o
 
 Produces:
 1. If o = c!, then:
-  ⟨n + 2, ϕ = [
+  ⟨n + 2, 𝜙 = [
     n ↦ if 0 < κ(c) {
         if c < κ(c) {
           c := c + 1;
@@ -124,7 +124,7 @@ Produces:
       }
   ]⟩
 1. If o = c?, then:
-  ⟨n + 1, ϕ = [
+  ⟨n + 1, 𝜙 = [
     n ↦ if 0 < κ(c) {
         if c > 0 {
           c := c - 1;

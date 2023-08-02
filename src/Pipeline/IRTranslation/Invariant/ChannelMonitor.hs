@@ -17,7 +17,7 @@ over the capacity expression.
 Depends on:
 1. All program loops: [ℓ]
 2. All non-loop operations:
-    O = {(π, 𝑛, o) | (𝑛, o) ∉ op(ℓ), ℓ ∈ [ℓ], (𝑛, o) ∈ ϕ, (π, ϕ) ∈ Π }
+    O = {(π, 𝑛, o) | (𝑛, o) ∉ op(ℓ), ℓ ∈ [ℓ], (𝑛, o) ∈ 𝜙, (π, 𝜙) ∈ Π }
 3. Channel capacity environments: κ
 
 ∀ c, e1 = syncChannelMonitor(O, [ℓ])(c),
