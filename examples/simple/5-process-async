@@ -1,0 +1,27 @@
+c = [1];
+go {
+  for g : 0 .. v {
+    c!;
+    c!
+  }
+}
+go {
+  for h : 0 .. w {
+    c!
+  }
+}
+go {
+  for i : 0 .. x {
+    c!
+  }
+}
+go {
+  for j : 0 .. y {
+    c?
+  }
+}
+go {
+  for k : 0 .. z {
+    c?
+  }
+}
