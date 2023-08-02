@@ -55,7 +55,7 @@ translateStatements ρ = case syntax ρ of
   [] -> done (ρ {procs = M.insert (pid ρ) (curr ρ) (procs ρ)})
   Pos _ s : ss -> case s of
     P.Skip -> translateStatements (ss >: ρ)
-    P.Return -> translateStatements ([] >: ρ)
+    P.Return -> translateStatements ([] >: ρ <: Seq (curr ρ) Return)
     P.Break -> translateStatements ([] >: ρ)
     P.Decl x e -> do
       let venv = varenv ρ
