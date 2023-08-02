@@ -57,6 +57,11 @@ translateStatements ρ = case syntax ρ of
     P.Skip -> translateStatements (ss >: ρ)
     P.Return -> translateStatements ([] >: ρ)
     P.Break -> translateStatements ([] >: ρ)
+    P.Decl x e -> do
+      let venv = varenv ρ
+      e' <- translateExp venv e
+      let ρ₁ = ss >: ρ {varenv = M.insert x e' venv}
+      translateStatements ρ₁
     P.If e ss1 ss2 -> do
       let venv = varenv ρ
       e' <- translateExp venv e

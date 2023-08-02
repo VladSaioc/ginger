@@ -101,7 +101,7 @@ getGo p@(P.Spec ms) =
                   calls = 0,
                   -- The initial translation object only includes the initialization
                   -- statements for top-level declarations.
-                  curr = Obj {stmts = initStmts, decls = []}
+                  curr = Obj {stmts = [], decls = initStmts}
                 }
         ctx' <- translateStatements ctx
         let Obj {decls, stmts} = curr ctx'
