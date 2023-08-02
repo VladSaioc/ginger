@@ -2,7 +2,6 @@ module Pipeline.IRTranslation.Enabled (enabledExp) where
 
 import Backend.Ast
 import Backend.Utilities
-import Data.List qualified as L
 import Data.Map qualified as M
 import Data.Maybe qualified as Mb
 import IR.Utilities
@@ -45,11 +44,20 @@ enabledExp κ = (...⋁) . M.elems . M.mapWithKey (enabled κ)
 {- Computes an enabled predicate for a given process.
 Depends on: κ, π, ϕ
 
-Let E! = ⋀ (c, !, 𝑛) ∈ chanOps(ϕ). pc(π) = 𝑛 => c < κ(c)
-Let E? = ⋀ (c, ?, 𝑛) ∈ chanOps(ϕ). pc(π) = 𝑛 => c > 0
+Let C! = ⋃ ∀ (c, !, 𝑛) ∈ chanOps(ϕ). {
+    case 𝑛 => if 0 < κ(c) then c < κ(c) else c == 0,
+    case (𝑛 + 1) => c == -1
+  }
+Let C? = ⋃ ∀ (c, !, 𝑛) ∈ chanOps(ϕ). {
+    case 𝑛 => if 0 < κ(c) then c > 0 else c == 1
+  }
 
 Produces:
-pc(π) < (max ∘ dom)(ϕ) ∧ E! ∧ E?
+match pc(π) {
+∀ c ∈ C!. c
+∀ c ∈ C?. c
+case _ => pc(π) < (max ∘ dom)(ϕ)
+}
 -}
 enabled :: K -> P -> 𝛷 -> Exp
 enabled κ p 𝜙 =
