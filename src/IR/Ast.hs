@@ -20,6 +20,8 @@ data 𝑆
     If 𝐸 𝑆 𝑆
   | -- skip
     Skip
+  | -- return
+    Return
   | -- for (x : e .. e) { s }
     For String 𝐸 𝐸 [Op]
   | -- c! | c?
@@ -87,6 +89,7 @@ instance PrettyPrint 𝑆 where
   prettyPrint n = \case
     Seq s1 s2 -> multiline [prettyPrint n s1 ++ ";", prettyPrint n s2]
     Skip -> indent n ++ "skip"
+    Return -> indent n ++ "return"
     Atomic o -> indent n ++ show o
     If e s1 s2 ->
       multiline
@@ -140,16 +143,18 @@ instance ProgramPointOffset 𝑃 where
 --
 -- The offsets are:
 -- 1. skip: 0 (skip statements are ignored)
--- 2. S1; S2: |S1| + |S2|
--- 3. for x : e1 .. e2 { s }: 2 + |s|
+-- 2. return: 1 for the return isntruction point
+-- 3. S1; S2: |S1| + |S2|
+-- 4. for x : e1 .. e2 { s }: 2 + |s|
 --      1 for the guard
 --      1 for the index incrementing operation
--- 4. if e S1 S2 -> 2 + |S1| + |S2|
+-- 5. if e S1 S2 -> 2 + |S1| + |S2|
 --      1 for the guard
 --      1 for the continuation of the 'then' path
 instance ProgramPointOffset 𝑆 where
   ppOffset = \case
     Skip -> 0
+    Return -> 1
     Seq s1 s2 -> ppOffset s1 + ppOffset s2
     For _ _ _ os -> 2 + sum (map ppOffset os)
     If _ s1 s2 -> 2 + ppOffset s1 + ppOffset s2

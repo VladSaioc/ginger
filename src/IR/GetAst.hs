@@ -49,6 +49,7 @@ pStms ss =
 
 pStm :: R'.Stm -> Err 𝑆
 pStm = \case
+  R'.Return {} -> return Return
   R'.Skip {} -> return Skip
   R'.SOp o -> do
     o' <- pOp o

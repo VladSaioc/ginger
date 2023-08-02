@@ -4,6 +4,7 @@ comment "//";
 -- Structural keywords
 position token GO {"go"};
 position token FOR {"for"};
+position token RETURN {"return"};
 position token IF {"if"};
 position token THEN {"then"};
 position token ELSE {"else"};
@@ -50,6 +51,7 @@ Proc. Proc ::= GO "{" [Stm] ;
 -- Statement
 separator Stm ";";
 Skip. Stm ::= SKIP;
+Return. Stm ::= RETURN;
 SOp. Stm ::= Op;
 SIf. Stm ::= IF Exp THEN [Stm] ELSE [Stm];
 For. Stm ::= FOR ID ":" Exp ".." Exp "{" [Op] "}";
