@@ -13,7 +13,7 @@ import Pipeline.IRTranslation.Utilities
 {- Transforms a IR program intro a map from process ids to program points.
 Depends on: κ, P = S₁, ..., Sₙ
 
-Produces: Π = [ πᵢ ↦ 𝜙ᵢ | 𝜙ᵢ = stmtsToPoints(κ, πᵢ, ⟨0, []⟩, Sᵢ) ]
+Produces: 𝛱 = [ πᵢ ↦ 𝜙ᵢ | 𝜙ᵢ = stmtsToPoints(κ, πᵢ, ⟨0, []⟩, Sᵢ) ]
 -}
 getProcs :: K -> 𝑃 -> 𝛱
 getProcs κ (𝑃 _ ss) =
@@ -47,13 +47,17 @@ Produces, based on S:
             }
           ]
 -}
-stmtToPoints :: K -> P -> (P𝑛, 𝛷) -> 𝑆 -> (P𝑛, 𝛷)
+stmtToPoints :: K -> P -> (𝑁, 𝛷) -> 𝑆 -> (𝑁, 𝛷)
 stmtToPoints κ p (𝑛, 𝜙) =
   let moveTo 𝑛' is =
         T.Block
           (T.Assign [((p ⊲), (𝑛' #))] : is)
    in \case
         Skip -> (𝑛, 𝜙)
+        Return ->
+          let exit = T.Block [T.Assign [((p ⊲), 𝜒 p)]]
+              𝜙' = M.insert 𝑛 exit 𝜙
+           in (𝑛 + 1, 𝜙')
         Seq s1 s2 ->
           let (𝑛', 𝜙') = stmtToPoints κ p (𝑛, 𝜙) s1
            in stmtToPoints κ p (𝑛', 𝜙') s2
@@ -97,7 +101,7 @@ stmtToPoints κ p (𝑛, 𝜙) =
 {- Updates a program point set with the translations of
   the operation in the provided sequence.
 -}
-opsToPoints :: K -> P -> (P𝑛, 𝛷) -> [Op] -> (P𝑛, 𝛷)
+opsToPoints :: K -> P -> (𝑁, 𝛷) -> [Op] -> (𝑁, 𝛷)
 opsToPoints κ p (𝑛, 𝜙) = Prelude.foldl (opToPoint κ p) (𝑛, 𝜙)
 
 {- Appends a set of program points with a new program point,
@@ -138,7 +142,7 @@ Produces:
       }
   ]⟩
 -}
-opToPoint :: K -> P -> (P𝑛, 𝛷) -> Op -> (P𝑛, 𝛷)
+opToPoint :: K -> P -> (𝑁, 𝛷) -> Op -> (𝑁, 𝛷)
 opToPoint κ p (𝑛, 𝜙) op =
   let c = chName op
       -- pc(π) = n'
