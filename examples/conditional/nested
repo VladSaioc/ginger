@@ -1,0 +1,22 @@
+c = [k];
+go {
+  if b1 then
+    if b2 then
+      for i : 0 .. x {
+        c!
+      }
+    else
+      for k : 0 .. z {
+        c!
+      }
+  else skip
+}
+go {
+  if b3 then
+    if b4 then skip
+    else
+      for j : 0 .. y {
+        c?
+      }
+  else skip
+}
