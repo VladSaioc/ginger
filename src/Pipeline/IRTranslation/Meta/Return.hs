@@ -1,6 +1,5 @@
 module Pipeline.IRTranslation.Meta.Return where
 
-import Backend.Ast
 import Pipeline.IRTranslation.Utilities
 
 -- Meta(data) about a return instruction.
@@ -8,11 +7,7 @@ data ℛ = ℛ
   { -- Process ID
     rP :: P,
     -- Program point
-    r𝑛 :: N,
-    -- Process exit point
-    rexit :: N,
-    -- Path conditions guarding the return statement
-    rPathexp :: Exp
+    r𝑛 :: 𝑁
   }
 
 instance Show ℛ where
