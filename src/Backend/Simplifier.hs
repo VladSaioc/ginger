@@ -113,7 +113,8 @@ eSimplify pe =
         e :&& ECon CTrue -> eSimplify e
         -- b. true && e ==> e
         ECon CTrue :&& e -> eSimplify e
-        e1 :&& e2 -> bin (:&&) e1 e2
+        -- e && e ==> e
+        e1 :&& e2 -> if e1 == e2 then e1 else bin (:&&) e1 e2
         -- Disjunction with true is trivially tautological
         -- a. e || true ==> true
         _ :|| ECon CTrue -> (True ?)
@@ -124,7 +125,8 @@ eSimplify pe =
         e :|| ECon CFalse -> eSimplify e
         -- b. false || e ==> e
         ECon CFalse :|| e -> eSimplify e
-        e1 :|| e2 -> bin (:||) e1 e2
+        -- e || e ==> e
+        e1 :|| e2 -> if e1 == e2 then e1 else bin (:||) e1 e2
         -- Constant folding for negation
         -- !true ==> false
         Not (ECon CTrue) -> (False ?)
@@ -153,10 +155,7 @@ eSimplify pe =
         ECon (CNum n1) :<= ECon (CNum n2) -> ((n1 <= n2) ?)
         -- Syntactic equality implies lesser-than-or-equal comparison is trivially true
         -- e <= e ==> true
-        e1 :<= e2 ->
-          if e1 == e2
-            then (True ?)
-            else bin (:<=) e1 e2
+        e1 :<= e2 -> if e1 == e2 then (True ?) else bin (:<=) e1 e2
         -- Constant folding for strictly-lesser-than numeric comparison
         -- n1 < n2
         ECon (CNum n1) :< ECon (CNum n2) -> ((n1 < n2) ?)
