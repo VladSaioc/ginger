@@ -46,3 +46,7 @@ src/IR/ErrM.hs
 # Output
 output
 examples\#*
+
+# Dafny
+dafny-4.2.0*
+dafny/
