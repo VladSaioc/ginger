@@ -1,4 +1,4 @@
-module Pipeline.IRTranslation.Processes (getProcs) where
+module Pipeline.IRTranslation.Processes (procs) where
 
 import Backend.Ast qualified as T
 import Backend.Utilities
@@ -15,8 +15,8 @@ Depends on: κ, P = S₁, ..., Sₙ
 
 Produces: 𝛱 = [ πᵢ ↦ 𝜙ᵢ | 𝜙ᵢ = stmtsToPoints(κ, πᵢ, ⟨0, []⟩, Sᵢ) ]
 -}
-getProcs :: K -> 𝑃 -> 𝛱
-getProcs κ (𝑃 _ ss) =
+procs :: K -> 𝑃 -> 𝛱
+procs κ (𝑃 _ ss) =
   let pidsAndSyntax = zip (take (length ss) [0 ..]) ss
       makeProc (p, stmt) =
         let (𝑛, 𝜙) = stmtToPoints κ p (0, M.empty) stmt
