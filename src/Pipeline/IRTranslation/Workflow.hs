@@ -1,6 +1,7 @@
 module Pipeline.IRTranslation.Workflow (irToBackend) where
 
 import Backend.Ast (Program (Program))
+import Backend.Simplifier qualified as T (simplify)
 import IR.Ast
 import IR.Homogeneity (homogeneous)
 import IR.SanityCheck (sanityCheck)
@@ -8,11 +9,13 @@ import IR.Simplifier (simplify)
 import IR.Stratification (stratified)
 import Pipeline.IRTranslation.Boilerplate (wholeEncoding)
 import Pipeline.IRTranslation.ChInstructions (noloopPsChanInsns)
-import Pipeline.IRTranslation.Channels (getCaps)
+import Pipeline.IRTranslation.Channels (caps)
 import Pipeline.IRTranslation.FreeVars (fvs)
 import Pipeline.IRTranslation.If (ifs)
 import Pipeline.IRTranslation.Loop (loops)
-import Pipeline.IRTranslation.Processes (getProcs)
+import Pipeline.IRTranslation.Processes (procs)
+import Pipeline.IRTranslation.Reachability (reachability)
+import Pipeline.IRTranslation.Return (returns)
 import Utilities.Err
 
 irToBackend :: 𝑃 -> Err Program
@@ -24,11 +27,13 @@ irToBackend p' = do
   --   multiGuard
   --     [ (not (stratified p), "Program is not stratified")
   --     ]
-  (fv, ts) <- fvs p
+  (𝜎, ts) <- fvs p
+  let 𝜓 = reachability p
   let ls = loops p
   let is = ifs p
-  let k = getCaps p
-  let ps = getProcs k p
+  let k = caps p
+  let ps = procs k p
   let as = noloopPsChanInsns p
-  let prog = wholeEncoding fv ts k ps as is ls
-  return prog
+  let rs = returns p
+  let prog = wholeEncoding 𝜓 𝜎 ts k ps as is ls rs
+  return $ T.simplify prog
