@@ -7,7 +7,7 @@ import Pipeline.IRTranslation.Utilities
 
 -- Composes all counter invariants under conjunction
 counterInvariants :: 𝛱 -> [Exp]
-counterInvariants = map counterInvariant . M.toList
+counterInvariants = map counterInvariant . M.keys
 
 {- Constrict the value of pc(π) over viable program points.
 Depends on: π, 𝜙
@@ -15,11 +15,10 @@ Depends on: π, 𝜙
 Produces:
 0 <= pc(π) ∧ pc(π) <= (max ∘ dom)(𝜙)
 -}
-counterInvariant :: (P, 𝛷) -> Exp
-counterInvariant (p, 𝜙) =
-  let terminated = (𝜙 -|)
-      pc = π p
+counterInvariant :: P -> Exp
+counterInvariant p =
+  let pc = π p
       zero = (0 #)
       lower = zero :<= pc
-      upper = pc :<= terminated
+      upper = pc :<= 𝜒 p
    in lower :&& upper
