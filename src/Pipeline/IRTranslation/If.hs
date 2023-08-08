@@ -13,8 +13,10 @@ ifs (𝑃 _ procs) =
    in concatMap (fst . uncurry processIfs) procs'
 
 -- Collect all if statement found in a process.
-processIfs :: P -> (P𝑛, 𝑆) -> ([ℐ], P𝑛)
+processIfs :: P -> (𝑁, 𝑆) -> ([ℐ], 𝑁)
 processIfs p (𝑛, s) = case s of
+  Skip -> ([], 𝑛)
+  Return -> ([], 𝑛 + 1)
   -- Statement sequences merge the sets of loops produced by each sub-statement.
   Seq s1 s2 ->
     let (l1, 𝑛₁) = processIfs p (𝑛, s1)
@@ -32,13 +34,12 @@ processIfs p (𝑛, s) = case s of
             { -- Loop process
               iP = p,
               -- Parse lower bound expression
-              iGuardExp = parseExp e,
+              iGuard = parseExp e,
               -- Guard is at the conditional entry program point
-              iGuard = 𝑛,
+              i𝑛 = 𝑛,
               -- Else branch program point
               iElse = 𝑛₁ + 1,
               -- Conditional exit program point
               iExit = 𝑛₂
             }
      in (l : l1 ++ l2, 𝑛₂)
-  Skip -> ([], 𝑛)
