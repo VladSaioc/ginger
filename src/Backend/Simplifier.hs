@@ -135,6 +135,15 @@ eSimplify pe =
         -- Double negation elimination
         -- !!e ==> e
         Not (Not e) -> eSimplify e
+        -- Comparison flipping
+        -- !(e1 < e2) ==> e1 >= e2
+        Not (e1 :< e2) -> eSimplify $ e1 :>= e2
+        -- !(e1 <= e2) ==> e1 > e2
+        Not (e1 :<= e2) -> eSimplify $ e1 :> e2
+        -- !(e1 > e2) ==> e1 <= e2
+        Not (e1 :> e2) -> eSimplify $ e1 :<= e2
+        -- !(e1 >= e2) ==> e1 < e2
+        Not (e1 :>= e2) -> eSimplify $ e1 :< e2
         Not e -> un Not e
         -- Constant folding for equality
         -- c == c ==> true, c1 != c2 ==> false
