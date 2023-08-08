@@ -10,10 +10,10 @@ import Pipeline.IRTranslation.Utilities
 
 {- Composes the enabled predicates for all processes
 under disjunction.
-Depends on: κ, Π
+Depends on: κ, 𝛱
 
 Produces:
-⋁ (π, 𝜙) ∈ Π. enabled(κ, π, 𝜙)
+⋁ (π, 𝜙) ∈ 𝛱. enabled(κ, π, 𝜙)
 -}
 enabledExp :: K -> 𝛱 -> Exp
 enabledExp κ = (...⋁) . M.elems . M.mapWithKey (enabled κ)
@@ -41,7 +41,7 @@ enabled κ p 𝜙 =
   let -- Process id variable
       pc = π p
       -- Construct match over process id
-      match cs = Match pc (cs ++ [(Wildcard, pc :< (𝜙 -|))])
+      match cs = Match pc (cs ++ [(Wildcard, pc :< 𝜒 p)])
       chsops = processChanOps p 𝜙
       -- Process has not reached termination point
       subExp 𝒪 {o𝐶 = cn, o𝑛 = 𝑛, oDir = d} =
