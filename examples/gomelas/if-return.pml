@@ -2,9 +2,10 @@
 // num_mand_comm_params=1
 // num_opt_comm_params=2
 
-#define def_var_k 	?? // mand k line 16
+#define def_var_k 	1 // mand k line 16
 #define def_var_l1  ?? // opt l1 line 16
 #define def_var_l2  ?? // opt l2 line 16
+#define def_b ??
 
 init { 
 	chan child_f16 = [1] of {int};
@@ -42,23 +43,11 @@ proctype receiver9(chan ch_ch;int var_y;chan child) {
 	int i;
 	int q1;
 	int q2;
-	
-	for(i : 0.. var_y-1) {
-		for21: skip;
-		ch_ch?q1;
-		ch_ch?q2;
-		for21_end: skip
-	};
-	for21_exit: skip;
 
 	if
-	:: ch_ch?0 -> ch_ch?0;
-	:: true;
-	fi;
+	:: def_b -> goto stop_process;
+	fi; 
 	ch_ch?0;
-	if
-	:: def_var_k == 0 -> ch_ch?0;
-	fi;
 	stop_process: skip;
 	child!0
 }

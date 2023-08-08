@@ -1,0 +1,10 @@
+c = [2]
+go {
+  c!;
+  if b {
+    c?
+  } else {
+    return
+  };
+  c!;
+}
