@@ -9,23 +9,23 @@ data ℐ = ℐ
   { -- Process
     iP :: P,
     -- If guard
-    iGuardExp :: Exp,
+    iGuard :: Exp,
     -- Guard program point
-    iGuard :: P𝑛,
+    i𝑛 :: 𝑁,
     -- Else program point
-    iElse :: P𝑛,
+    iElse :: 𝑁,
     -- Exit program point
-    iExit :: P𝑛
+    iExit :: 𝑁
   }
 
 instance Show ℐ where
-  show ℐ {iP = p, iGuardExp = g, iGuard = n1, iElse = n2, iExit = n3} =
+  show ℐ {iP = p, iGuard = g, i𝑛 = 𝑛₁, iElse = 𝑛₂, iExit = 𝑛₃} =
     multiline
       -- PID: for x (lo .. hi) <n₁ --> n₂>
       [ unwords
           [ show p ++ ":",
-            "if",
-            "(" ++ prettyPrint 0 g,
-            "<" ++ show n1 ++ "-->" ++ show n2 ++ "-->" ++ show n3 ++ ">"
+            show 𝑛₁ ++ ": if",
+            "(" ++ prettyPrint 0 g ++ ")",
+            "<" ++ "-->" ++ show 𝑛₂ ++ "; -->" ++ show 𝑛₃ ++ ">"
           ]
       ]

@@ -1,12 +1,12 @@
 module Pipeline.IRTranslation.Meta.Channel where
 
 import Backend.Ast
-import Backend.Utilities
 import Control.Monad (unless)
 import Data.Map qualified as M
 import Data.Maybe
 import IR.Utilities
 import Pipeline.IRTranslation.Utilities
+import Utilities.Collection
 
 -- An alias for the type of channel names, denoted as strings.
 -- Its purpose is to shorten type definitions involving channel names.
@@ -28,9 +28,7 @@ data 𝒪 = 𝒪
     -- Channel operation
     oDir :: OpDir,
     -- Program point
-    o𝑛 :: P𝑛,
-    -- Path conditions guarding the operation
-    oPathexp :: Exp
+    o𝑛 :: 𝑁
   }
   deriving (Eq, Read)
 
@@ -223,7 +221,7 @@ Depends on: π, 𝜙, 𝑛
 Produces:
 𝒪 {π, c, d, 𝑛}, where cd = 𝜙(𝑛)
 -}
-insnToChMetadata :: P -> P𝑛 -> Stmt -> Maybe 𝒪
+insnToChMetadata :: P -> 𝑁 -> Stmt -> Maybe 𝒪
 insnToChMetadata p 𝑛 s = do
   op <- backendChannelOp s
   let (c, d) = either (,S) (,R) op
@@ -232,15 +230,12 @@ insnToChMetadata p 𝑛 s = do
       { oP = p,
         o𝐶 = c,
         oDir = d,
-        o𝑛 = 𝑛,
-        oPathexp = (True ?)
+        o𝑛 = 𝑛
       }
 
 {- Aggregate all channel operation points from all processes, indexed.
 Produces a map of channel operation metadata indexed by the channel name.
 Depends on: π, 𝜙
-
-! Metadata does not include path conditions.
 
 Produces:
 [ c ↦ 𝒪 {π, c, d, 𝑛} | (𝑛, cd) ∈ 𝜙 . d ∈ {!, ?} ]
@@ -252,25 +247,20 @@ chanOpsMap = M.mapWithKey processChanOpsMap
 Produces a map of channel operation metadata indexed by the channel name.
 Depends on: π, 𝜙
 
-! Metadata does not include path conditions.
-
 Produces:
 [ c ↦ 𝒪 {π, c, d, 𝑛} | (𝑛, cd) ∈ 𝜙 . d ∈ {!, ?} ]
 -}
 processChanOpsMap :: P -> 𝛷 -> 𝐶 ↦ [𝒪]
 processChanOpsMap p =
-  let addChanOp 𝑛 i cos =
+  let addChanOp 𝑛 i cops =
         case insnToChMetadata p 𝑛 i of
-          Just o@(𝒪 {o𝐶 = c}) -> M.insertWith (++) c [o] cos
-          Nothing -> cos
+          Just o@(𝒪 {o𝐶 = c}) -> M.insertWith (++) c [o] cops
+          Nothing -> cops
    in M.foldrWithKey addChanOp M.empty
 
 {- Aggregate all channel operation points from a given map of program points.
 Produces a list of channel operation metadata, including the channel name,
 process id, operation direction, program point.
-
-! Metadata does not include path conditions.
-
 Depends on: π, 𝜙
 
 Produces:

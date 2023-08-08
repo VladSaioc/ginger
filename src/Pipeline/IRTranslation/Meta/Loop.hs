@@ -5,6 +5,7 @@ import Data.List (intercalate)
 import Data.Map qualified as M
 import Pipeline.IRTranslation.Meta.Channel
 import Pipeline.IRTranslation.Utilities
+import Utilities.Collection
 import Utilities.PrettyPrint
 
 -- (Meta)data about loops found in the program.
@@ -14,27 +15,25 @@ data ℒ = ℒ
     -- Index variable
     l𝑋 :: String,
     -- Guard program point
-    lGuard :: P𝑛,
+    l𝑛 :: 𝑁,
     -- Exit program point
-    lExit :: P𝑛,
+    lExit :: 𝑁,
     -- Lower bound
     lower :: Exp,
     -- Upper bound
     upper :: Exp,
     -- Channel operations in the loop (indexed by channel name)
-    l𝒪s :: 𝐶 ↦ 𝒪s,
-    -- Path conditions guarding the loop
-    lPathexp :: Exp
+    l𝒪s :: 𝐶 ↦ 𝒪s
   }
 
 instance Show ℒ where
-  show ℒ {lP = p, l𝑋 = x, lGuard = n1, lExit = n2, lower, upper, l𝒪s} =
+  show ℒ {lP = p, l𝑋 = x, l𝑛 = 𝑛₁, lExit = 𝑛₂, lower, upper, l𝒪s} =
     multiline
-      -- PID: for x (lo .. hi) <n₁ --> n₂>
+      -- PID: for x (lo .. hi) <𝑛₁ --> 𝑛₂>
       [ unwords
           [ show p ++ ":",
             unwords ["for ", x, " (" ++ prettyPrint 0 lower ++ ".." ++ prettyPrint 0 upper ++ ")"],
-            "<" ++ show n1 ++ "-->" ++ show n2 ++ ">"
+            "<" ++ show 𝑛₁ ++ "-->" ++ show 𝑛₂ ++ ">"
           ],
         intercalate ", " (M.elems (M.map show l𝒪s))
       ]
