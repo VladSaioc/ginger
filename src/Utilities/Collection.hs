@@ -20,7 +20,7 @@ class Collection a where
 (∩) :: Collection a => a -> a -> a
 (∩) = intersect
 
-instance (Ord a, Collection b) => Collection (a ↦ b) where
+instance (Ord a, Collection b) => Collection (M.Map a b) where
   zero = M.empty
   union = M.unionWith (∪)
   intersect = M.intersectionWith (∩)
