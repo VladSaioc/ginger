@@ -133,6 +133,7 @@ stmtFVs ctx@(Ctx {datum = s}) =
         done ctx2
    in case s of
         Skip -> done ctx
+        Return -> done ctx
         Atomic _ -> done ctx
         Seq s1 s2 -> do
           ctx' <- stmtFVs $ s1 >: ctx
