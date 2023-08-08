@@ -7,8 +7,12 @@ import Data.Set qualified as S
 type a ↦ b = M.Map a b
 
 class Collection a where
+  zero :: a
   union :: a -> a -> a
   intersect :: a -> a -> a
+
+(∅) :: Collection a => a
+(∅) = zero
 
 (∪) :: Collection a => a -> a -> a
 (∪) = union
@@ -16,15 +20,18 @@ class Collection a where
 (∩) :: Collection a => a -> a -> a
 (∩) = intersect
 
-instance (Ord b, Collection a) => Collection (M.Map b a) where
+instance (Ord a, Collection b) => Collection (a ↦ b) where
+  zero = M.empty
   union = M.unionWith (∪)
   intersect = M.intersectionWith (∩)
 
 instance Ord a => Collection (S.Set a) where
+  zero = S.empty
   union = S.union
   intersect = S.intersection
 
 instance Eq a => Collection [a] where
+  zero = []
   union = (++)
   intersect a1 a2 =
     case (a1, a2) of
