@@ -1,6 +1,5 @@
 module Main where
 
-import Backend.Simplifier (simplify)
 import Control.Monad (unless)
 import Data.Text (pack, replace, unpack)
 import IR.GetAst qualified as I
@@ -27,8 +26,7 @@ main = do
         let result =
               ( do
                   ir' <- ir
-                  prog <- irToBackend ir'
-                  return $ simplify prog
+                  irToBackend ir'
               )
          in do
               _ <- case ir of
