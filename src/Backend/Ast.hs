@@ -272,9 +272,9 @@ instance PrettyPrint Stmt where
           VarDef g xs ->
             let def (x, mt, e) =
                   let t = case mt of
-                        Just t' -> [":", prettyPrint 0 t']
+                        Just t' -> [":", prettyPrint (i + 1) t']
                         Nothing -> []
-                   in (unwords $ x : t, prettyPrint 0 e)
+                   in (unwords $ x : t, prettyPrint (i + 1) e)
                 defs = map def xs
                 (xs', es') = (intercalate ", " (map fst defs), intercalate ", " (map snd defs))
                 g' = (["ghost" | g])
@@ -287,17 +287,17 @@ instance PrettyPrint Stmt where
                   ++ s2
           Assert e -> unwords ["assert", prettyPrint 0 e] ++ ";"
           MatchStmt e cs ->
-            let def (p, s'') = "\n" ++ ind ++ unwords ["case", prettyPrint 0 p, "=>", prettyPrint (i + 1) s'']
+            let def (p, s'') = "\n" ++ ind ++ unwords ["case", prettyPrint i p, "=>", prettyPrint (i + 1) s'']
                 cs' = map def cs
-             in unwords ["match", prettyPrint 0 e, "{"]
+             in unwords ["match", prettyPrint (i + 1) e, "{"]
                   ++ concat cs'
                   ++ ("\n" ++ ind ++ "}")
           While e es1 es2 s'' ->
             let e' = prettyPrint 0 e
-                cons kw e'' = "\n" ++ indent (i + 1) ++ unwords [kw, prettyPrint 0 e'']
+                cons kw e'' = "\n" ++ indent (i + 1) ++ unwords [kw, prettyPrint (i + 1) e'']
                 es' = concat (map (cons "invariant") es1 ++ map (cons "decreases") es2) ++ " "
              in unwords ["while", e'] ++ es' ++ prettyPrint i s''
-          Return es -> unwords ["return", intercalate ", " (map (prettyPrint 0) es)]
+          Return es -> unwords ["return", intercalate ", " (map (prettyPrint i) es)]
      in s'
 
 instance PrettyPrint Const where
@@ -308,11 +308,11 @@ instance PrettyPrint Const where
 
 instance PrettyPrint Exp where
   prettyPrint i e =
-    let pp = prettyPrint 0
+    let pp = prettyPrint i
         quantifier q xs e' =
           let def (x, mt) =
                 let t' = case mt of
-                      Just t -> " " ++ prettyPrint 0 t
+                      Just t -> " " ++ prettyPrint i t
                       Nothing -> ""
                  in x ++ t'
               xs' = intercalate ", " $ map def xs
@@ -347,7 +347,7 @@ instance PrettyPrint Exp where
           e1 :% e2 -> bin e1 "%" e2
           IfElse e1 e2 e3 -> unwords ["if", pp e1, "then", pp e2, "else", pp e3]
           Match e' cs ->
-            let def (p, e'') = unwords ["case", prettyPrint 0 p, "=>", pp e'']
+            let def (p, e'') = unwords [indent i ++ "case", prettyPrint i p, "=>", pp e'']
                 cs' = map def cs
              in unwords ["match", pp e', "{\n"]
                   ++ intercalate ("\n" ++ indent i) cs'
@@ -355,8 +355,8 @@ instance PrettyPrint Exp where
           Call f es -> f ++ "(" ++ intercalate ", " (map pp es) ++ ")"
 
 instance PrettyPrint Cons where
-  prettyPrint _ (Cons n fs) =
-    let fdef (f, t) = unwords [f, ":", prettyPrint 0 t]
+  prettyPrint i (Cons n fs) =
+    let fdef (f, t) = unwords [f, ":", prettyPrint i t]
      in n ++ "(" ++ intercalate ", " (map fdef fs) ++ ")"
 
 instance PrettyPrint Function where
