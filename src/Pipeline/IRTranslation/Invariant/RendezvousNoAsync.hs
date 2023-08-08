@@ -9,6 +9,7 @@ import IR.Utilities
 import Pipeline.IRTranslation.Meta.Channel
 import Pipeline.IRTranslation.Meta.Loop
 import Pipeline.IRTranslation.Utilities
+import Utilities.Collection
 
 {- For every channel send operation of every process, adds
 an invariant clause stipulating that the process never reaches
