@@ -59,7 +59,7 @@ pStm = \case
     e2' <- pExp e2
     os' <- composeSyntax pOp os
     return (For (x &) e1' e2' os')
-  R'.SIf _ e _ s1 _ s2 -> do
+  R'.SIf _ e s1 _ s2 -> do
     e' <- pExp e
     s1' <- pStms s1
     s2' <- pStms s2
@@ -83,7 +83,7 @@ pExp =
         R'.Le e1 _ e2 -> bin (:<=) e1 e2
         R'.Lt e1 _ e2 -> bin (:<) e1 e2
         R'.Ge e1 _ e2 -> bin (:>=) e1 e2
-        R'.Gt e1 _ e2 -> bin (:<) e1 e2
+        R'.Gt e1 _ e2 -> bin (:>) e1 e2
         R'.Plus e1 _ e2 -> bin (:+) e1 e2
         R'.Minus e1 _ e2 -> bin (:-) e1 e2
         R'.Mult e1 _ e2 -> bin (:*) e1 e2

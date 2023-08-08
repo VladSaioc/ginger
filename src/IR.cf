@@ -6,7 +6,6 @@ position token GO {"go"};
 position token FOR {"for"};
 position token RETURN {"return"};
 position token IF {"if"};
-position token THEN {"then"};
 position token ELSE {"else"};
 position token SKIP {"skip"};
 
@@ -53,7 +52,7 @@ separator Stm ";";
 Skip. Stm ::= SKIP;
 Return. Stm ::= RETURN;
 SOp. Stm ::= Op;
-SIf. Stm ::= IF Exp THEN [Stm] ELSE [Stm];
+SIf. Stm ::= IF Exp "{" [Stm] "}" ELSE "{" [Stm] "}";
 For. Stm ::= FOR ID ":" Exp ".." Exp "{" [Op] "}";
 
 -- Atomic channel operations
