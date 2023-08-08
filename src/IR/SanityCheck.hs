@@ -45,11 +45,12 @@ sanityCheckChan ctx (Chan c e) = do
 -- Perform sanity checks on IR statements.
 sanityCheckStm :: Ctx -> 𝑆 -> Err Ctx
 sanityCheckStm ctx = \case
+  Skip -> return ctx
+  Return -> return ctx
   If e s1 s2 -> do
     ctx' <- sanityCheckExp ctx e
     ctx'' <- sanityCheckStm ctx' s1
     sanityCheckStm ctx'' s2
-  Skip -> return ctx
   Seq s1 s2 -> do
     ctx' <- sanityCheckStm ctx s1
     sanityCheckStm ctx' s2
