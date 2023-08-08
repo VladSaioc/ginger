@@ -9,6 +9,7 @@ import IR.Utilities
 import Pipeline.IRTranslation.Meta.Channel
 import Pipeline.IRTranslation.Meta.Loop
 import Pipeline.IRTranslation.Utilities
+import Utilities.Collection
 
 {- Retrieves all synchronous channel monitor expressions by analyzing
 all loop and non-loop channel oeprations. The produced expressions
@@ -16,21 +17,23 @@ represent a relationship between process progress and the number of
 synchronization that should have already occurred.
 
 Depends on:
-1. All program loops: [ℓ]
-2. All non-loop operations:
-    O = {(π, 𝑛, o) | (𝑛, o) ∉ op(ℓ), ℓ ∈ [ℓ], (𝑛, o) ∈ 𝜙, (π, 𝜙) ∈ Π }
+1. Reachability conditions for all processes:
+    𝜓 = [π ↦ [𝑛 ↦ e | 𝑛 ∈ dom(𝛱(π))] | π ∈ dom(𝛱)]𝛱)]
+2. All program loops: [ℓ]
+3. All non-loop operations:
+    O = {(π, 𝑛, o) | (𝑛, o) ∉ op(ℓ), ℓ ∈ [ℓ], (𝑛, o) ∈ 𝜙, (π, 𝜙) ∈ 𝛱 }
 
 Produces:
-[ c ↦ e1 - e2 | ∀ c. (𝑛, cd) ∈ 𝜙, (π, 𝜙) ∈ Π,
+[ c ↦ e1 - e2 | ∀ c. (𝑛, cd) ∈ 𝜙, (π, 𝜙) ∈ 𝛱,
     e1 =  Σ ∀ ℓ, (c, [! ↦ e']) ∈ loopMonitor(ℓ). e'
         + Σ (π, 𝑛, !) ∈ O, e' = noloopMonitor(π, 𝑛). e',
     e2 =  Σ ∀ ℓ, (c, [? ↦ e']) ∈ loopMonitor(ℓ). e'
         + Σ (π, 𝑛, ?) ∈ O, e' = noloopMonitor(π, 𝑛). e' ]
 -}
-syncChannelMonitors :: P ↦ (𝐶 ↦ 𝒪s) -> [ℒ] -> 𝐶 ↦ Exp
-syncChannelMonitors noloopOps ls =
-  let noloopSubexps = L.map snd (M.toList (M.map noloopMonitors noloopOps))
-      loopSubexps = L.map loopMonitor ls
+syncChannelMonitors :: 𝛹 -> P ↦ (𝐶 ↦ 𝒪s) -> [ℒ] -> 𝐶 ↦ Exp
+syncChannelMonitors 𝜓 noloopOps ls =
+  let noloopSubexps = L.map snd (M.toList (M.map (noloopMonitors 𝝍) noloopOps))
+      loopSubexps = L.map (loopMonitor 𝜓) ls
       subexps = M.unionsWith (M.unionWith (:+)) (noloopSubexps ++ loopSubexps)
       chanMonitor dir =
         let sendops = Mb.fromMaybe (0 #) (M.lookup S dir)
@@ -41,39 +44,45 @@ syncChannelMonitors noloopOps ls =
 {- Monitor synchronous channel progress by analyzing the operations in a loop.
 It returns an expression representing the resource contribution of each channel
 operated on in a loop.
-Depends on: ℓ, with the following properties:
-1. π(ℓ) is the process id counter variable of the loop
-2. op(ℓ) = {(𝑛₁, c₁{!,?}), ..., (𝑛ₘ, cₘ{!,?})} are loop channel operations.
-3. lo(ℓ) is the lower bound expression
-4. x(ℓ) is the loop index variable
-5. exit(ℓ) is the exit point
-6. b(ℓ) is the loop reachability condition
+Depends on:
+I. Reachability conditions for all processes:
+    𝜓 = [π ↦ [𝑛 ↦ e | 𝑛 ∈ dom(𝛱(π))] | π ∈ dom(𝛱)]
+
+II. ℓ = (π, O, x, e₁, e₂, 𝑛₀, 𝑛'), with the following properties:
+1. π is the process id of the loop
+2. O = {(𝑛₁, c₁{!,?}), ..., (𝑛ₘ, cₘ{!,?})} are loop channel operations.
+3. x is the loop index variable
+4. e₁ is the lower bound expression
+5. e₂ is the upper bound expression
+6. 𝑛 is the guard point
+7. 𝑛' is the exit point
 
 Produces:
 [ c ↦ [
-  ! ↦ if b(ℓ) then
-          2(x(ℓ) - lo(ℓ)) * |{ c! | (𝑛, c!) ∈ op(ℓ) }|
-        + (Σ ∀(𝑛, c!) ∈ op(ℓ).
-            if 𝑛 < π(ℓ) < exit(ℓ) then 1 else 0
-          + if 𝑛 + 1 < π(ℓ) < exit(ℓ) then 1 else 0)
+  ! ↦ if 𝜓(π)(𝑛₀) then
+          2(x - e₁) * |{ c! | (𝑛, c!) ∈ O }|
+        + (𝛴 ∀(𝑛, c!) ∈ O.
+            if 𝑛 < pc(π) < 𝑛' then 1 else 0
+          + if 𝑛 + 1 < pc(π) < 𝑛' then 1 else 0)
       else 0,
-  ? ↦ if b(ℓ) then
-          2(x(ℓ) - lo(ℓ)) * |{ c? | (𝑛, c?) ∈ op(ℓ) }|
-        + (Σ ∀(𝑛, c?) ∈ op(ℓ).
-            if 𝑛 < π(ℓ) < exit(ℓ) then 2 else 0)
+  ? ↦ if 𝜓(π)(𝑛₀) then
+          2(x - e₁) * |{ c? | (𝑛, c?) ∈ O }|
+        + (𝛴 ∀(𝑛, c?) ∈ O.
+            if 𝑛 < pc(π) < 𝑛' then 2 else 0)
       else 0 ]
-  | ∀ c, (𝑛, cd) ∈ op(ℓ) ]
+  | ∀ c, (𝑛, cd) ∈ O ]
 -}
-loopMonitor :: ℒ -> 𝐶 ↦ (OpDir ↦ Exp)
-loopMonitor (ℒ {lP = p, l𝑋 = var, lower, lExit = 𝑛', l𝒪s = chans, lPathexp = b}) =
-  let x = (var @)
+loopMonitor :: 𝛹 -> ℒ -> 𝐶 ↦ (OpDir ↦ Exp)
+loopMonitor 𝜓 (ℒ {lP = p, l𝑋 = var, lower, l𝑛 = 𝑛, lExit = 𝑛', l𝒪s = chans}) =
+  let b = 𝜓 M.! p M.! 𝑛
+      x = (var @)
       pc = π p
       ext = (𝑛' #)
-      singleOp 𝒪 {oDir = d, o𝑛 = 𝑛} =
-        let synced = ((𝑛 #) :< pc) :&& (pc :< ext)
+      singleOp 𝒪 {oDir = d, o𝑛 = 𝑛ᵢ} =
+        let synced = ((𝑛ᵢ #) :< pc) :&& (pc :< ext)
          in case d of
               S ->
-                let rendezvous = (((𝑛 + 1) #) :< pc) :&& (pc :< ext)
+                let rendezvous = (((𝑛ᵢ + 1) #) :< pc) :&& (pc :< ext)
                  in IfElse synced (1 #) (0 #) :+ IfElse rendezvous (1 #) (0 #)
               R -> IfElse synced (2 #) (0 #)
       chanSubexp ops =
@@ -86,17 +95,18 @@ loopMonitor (ℒ {lP = p, l𝑋 = var, lower, lExit = 𝑛', l𝒪s = chans, lPa
 {- Organize and compose under addition all non-loop monitor
 sub-expressions for every synchronous channel for a given process.
 Depends on: π, 𝜙
+Reachability conditions for all processes:
+  𝜓 = [π ↦ [𝑛 ↦ e | 𝑛 ∈ dom(𝛱(π))] | π ∈ dom(𝛱)]
 
 Produces:
 [c ↦ [
-  ! ↦ {if b(𝑛) then
-          if 𝑛 < pc(π) then 1 else 0) + (if 𝑛 + 1 < pc(π) then 1 else 0)
-        else 0 | ∀(𝑛, c!) ∈ 𝜙 },
-  ? ↦ {if 𝑛 < pc(π) then 2 else 0 | ∀(𝑛, c?) ∈ 𝜙 }]
+  ! ↦ { (if 𝜓(π)(𝑛) && 𝑛 < pc(π) then 1 else 0)
+      + (if 𝑛 + 1 < pc(π) then 1 else 0) | ∀(𝑛, c!) ∈ 𝜙 },
+  ? ↦ {if 𝜓(π)(𝑛) && 𝑛 < pc(π) then 2 else 0 | ∀(𝑛, c?) ∈ 𝜙 }]
   | ∀ c, (𝑛, cd) ∈ 𝜙 ]
 -}
-noloopMonitors :: 𝐶 ↦ 𝒪s -> 𝐶 ↦ (OpDir ↦ Exp)
-noloopMonitors = M.map (M.map ((...+) . map noloopMonitor))
+noloopMonitors :: 𝛹 -> 𝐶 ↦ 𝒪s -> 𝐶 ↦ (OpDir ↦ Exp)
+noloopMonitors 𝜓 = M.map (M.map ((...+) . map (noloopMonitor 𝜓)))
 
 {- Monitor sub-expression for a non-loop single synchronous channel operation.
 
@@ -106,21 +116,20 @@ its resource contribution is 1 more.
 For receive operations:
 After synchronization, its resource contribution is 2.
 
-Depends on: π, 𝑛, where 𝑛 ∈ dom(Π(π))
+Depends on: π, 𝑛, where 𝑛 ∈ dom(𝛱(π))
+Reachability conditions for all processes:
+  𝜓 = [π ↦ [𝑛 ↦ e | 𝑛 ∈ dom(𝛱(π))] | π ∈ dom(𝛱)]
 
 Depnding on the operation direction, it produces:
-  ! ↦ if b then
-          if 𝑛 < pc(π) then 1 else 0
-        + if 𝑛 + 1 < pc(π) then 1 else 0
-      else 0
+  ! ↦   if 𝜓(π)(𝑛) && 𝑛 < pc(π) then 1 else 0
+      + if 𝜓(π)(𝑛) && 𝑛 + 1 < pc(π) then 1 else 0
 
-  ? ↦ if b then
-          if 𝑛 < pc(π) then 2 else 0 else
-      else 0
+  ? ↦ if 𝜓(π)(𝑛) && 𝑛 < pc(π) then 2 else 0
 -}
-noloopMonitor :: 𝒪 -> Exp
-noloopMonitor 𝒪 {oP = pid, oDir = d, o𝑛 = 𝑛, oPathexp = b} =
-  let pc = π pid
+noloopMonitor :: 𝛹 -> 𝒪 -> Exp
+noloopMonitor 𝜓 𝒪 {oP = p, oDir = d, o𝑛 = 𝑛} =
+  let b = 𝜓 M.! p M.! 𝑛
+      pc = π p
       synced = (𝑛 #) :< pc
       rendezvous = ((𝑛 + 1) #) :< pc
       monitor = case d of
