@@ -2,37 +2,51 @@ module Pipeline.IRTranslation.Invariant.Loop (loopMonitors) where
 
 import Backend.Ast
 import Backend.Utilities
+import Data.Map qualified as M
 import Pipeline.IRTranslation.Meta.Loop
 import Pipeline.IRTranslation.Utilities
+import Utilities.Collection
 
-{- Get all loop monitor expressions.
+{- Get all loop monitors for every loop.
 -}
-loopMonitors :: [ℒ] -> [Exp]
-loopMonitors = map loopMonitor
+loopMonitors :: P ↦ (𝑁 ↦ Exp) -> [ℒ] -> [Exp]
+loopMonitors 𝜓 = map (loopMonitor 𝜓)
 
 {- Constructs a loop monitor invariant.
-Depends on: ℓ = (π, x, n, n', lo, hi, b)
+Depends on:
+I. Reachability conditions for all processes:
+    𝜓 = [π ↦ [𝑛 ↦ e | 𝑛 ∈ dom(𝛱(π))] | π ∈ dom(𝛱)]
+
+II. ℓ = (π, x, 𝑛, 𝑛', e₁, e₂) with the following properties:
+
+1. π is the process id of the loop
+2. x is the loop index variable
+3. e₁ is the lower bound expression
+4. e₂ is the upper bound expression
+5. 𝑛 is the guard point
+6. 𝑛' is the exit point
 
 Produces:
-if b && lo ≤ hi then
-  lo ≤ x ≤ hi
-  pc(π) < n => x = lo ∧
-  n < pc(π) < n' => x < hi ∧
-  n' ≤ pc(π) => x = hi
-else x = e ∧ ¬(n < pc(π) < n')
+if 𝜓(π)(𝑛) && e₁ ≤ e₂ then
+  e₁ ≤ x ≤ e₂
+  pc(π) < 𝑛 => x = e₁ ∧
+  𝑛 < pc(π) < 𝑛' => x < e₂ ∧
+  𝑛' ≤ pc(π) => x = e₂
+else x = e₁ ∧ ¬(𝑛 < pc(π) < 𝑛')
 -}
-loopMonitor :: ℒ -> Exp
-loopMonitor (ℒ {l𝑋 = var, lP = p, lGuard = g, lExit = ex, lower, upper, lPathexp = b}) =
-  let lo = lower -- Short-hand for lower bound
+loopMonitor :: P ↦ (𝑁 ↦ Exp) -> ℒ -> Exp
+loopMonitor 𝜓 (ℒ {l𝑋 = var, lP = p, l𝑛 = 𝑛, lExit = 𝑛', lower, upper}) =
+  let b = 𝜓 M.! p M.! 𝑛
+      lo = lower -- Short-hand for lower bound
       hi = upper -- Short-hand for upper bound
       -- Loop variable as a back-end variable
       x = (var @)
       -- Program counter as a back-end variable
       pc = π p
       -- Loop guard point as a fixed program point
-      guard = (g #)
+      guard = (𝑛 #)
       -- Loop exit point as a fixed program point
-      exit = (ex #)
+      exit = (𝑛' #)
       counterInLoop = (guard :< pc) :&& (pc :< exit)
       -- Initial guard checks whether the loop will be entered at all.
       -- If the lower bound is already strictly higher than the upper bound,
