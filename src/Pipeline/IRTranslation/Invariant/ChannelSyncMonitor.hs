@@ -25,14 +25,14 @@ Depends on:
 
 Produces:
 [ c ↦ e1 - e2 | ∀ c. (𝑛, cd) ∈ 𝜙, (π, 𝜙) ∈ 𝛱,
-    e1 =  Σ ∀ ℓ, (c, [! ↦ e']) ∈ loopMonitor(ℓ). e'
-        + Σ (π, 𝑛, !) ∈ O, e' = noloopMonitor(π, 𝑛). e',
-    e2 =  Σ ∀ ℓ, (c, [? ↦ e']) ∈ loopMonitor(ℓ). e'
-        + Σ (π, 𝑛, ?) ∈ O, e' = noloopMonitor(π, 𝑛). e' ]
+    e1 =  𝛴 ∀ ℓ, (c, [! ↦ e']) ∈ loopMonitor(ℓ). e'
+        + 𝛴 (π, 𝑛, !) ∈ O, e' = noloopMonitor(π, 𝑛). e',
+    e2 =  𝛴 ∀ ℓ, (c, [? ↦ e']) ∈ loopMonitor(ℓ). e'
+        + 𝛴 (π, 𝑛, ?) ∈ O, e' = noloopMonitor(π, 𝑛). e' ]
 -}
 syncChannelMonitors :: 𝛹 -> P ↦ (𝐶 ↦ 𝒪s) -> [ℒ] -> 𝐶 ↦ Exp
 syncChannelMonitors 𝜓 noloopOps ls =
-  let noloopSubexps = L.map snd (M.toList (M.map (noloopMonitors 𝝍) noloopOps))
+  let noloopSubexps = L.map snd (M.toList (M.map (noloopMonitors 𝜓) noloopOps))
       loopSubexps = L.map (loopMonitor 𝜓) ls
       subexps = M.unionsWith (M.unionWith (:+)) (noloopSubexps ++ loopSubexps)
       chanMonitor dir =

@@ -25,10 +25,10 @@ Depends on:
 
 Produces:
 [ c ↦ e1 - e2 | ∀ c. (𝑛, cd) ∈ 𝜙, (π, 𝜙) ∈ 𝛱,
-    e1 =  Σ ∀ ℓ, (c, [! ↦ e']) ∈ loopMonitor(ℓ). e'
-        + Σ (π, 𝑛, !) ∈ O, e' = noloopMonitor(π, 𝑛). e',
-    e2 =  Σ ∀ ℓ, (c, [? ↦ e']) ∈ loopMonitor(ℓ). e'
-        + Σ (π, 𝑛, ?) ∈ O, e' = noloopMonitor(π, 𝑛). e' ]
+    e1 =  𝛴 ∀ ℓ, (c, [! ↦ e']) ∈ loopMonitor(ℓ). e'
+        + 𝛴 (π, 𝑛, !) ∈ O, e' = noloopMonitor(π, 𝑛). e',
+    e2 =  𝛴 ∀ ℓ, (c, [? ↦ e']) ∈ loopMonitor(ℓ). e'
+        + 𝛴 (π, 𝑛, ?) ∈ O, e' = noloopMonitor(π, 𝑛). e' ]
 -}
 asyncChannelMonitors :: 𝛹 -> P ↦ (𝐶 ↦ 𝒪s) -> [ℒ] -> 𝐶 ↦ Exp
 asyncChannelMonitors 𝜓 noloopOps ls =
@@ -66,7 +66,7 @@ Produces:
       else 0,
   ? ↦ if 𝜓(π)(𝑛₀) then
           (x - e₁) * |{ c? | (𝑛, c?) ∈ O }|
-        + (Σ ∀(𝑛, c?) ∈ O.
+        + (𝛴 ∀(𝑛, c?) ∈ O.
             if 𝑛 < pc(π) < 𝑛' then 1 else 0)
       else 0 ]
   | ∀ c, (𝑛, c{!,?}) ∈ O ]

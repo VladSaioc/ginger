@@ -9,14 +9,15 @@ import IR.Utilities
 import Pipeline.IRTranslation.Meta.Channel
 import Pipeline.IRTranslation.Meta.Loop
 import Pipeline.IRTranslation.Utilities
+import Utilities.Collection
 
 iterations :: Exp -> Exp -> Exp
 iterations lo hi = Call "iter" [lo, hi]
 
-preconditions :: K -> P ↦ (𝐶 ↦ 𝒪s) -> [ℒ] -> [Exp]
-preconditions κ noloops loops =
-  let lR = M.unionsWith (M.unionWith (:+)) (L.map loopToPre loops)
-      nR = noloopOpToPre noloops
+preconditions :: 𝛹 -> K -> P ↦ (𝐶 ↦ 𝒪s) -> [ℒ] -> [Exp]
+preconditions 𝜓 κ noloops loops =
+  let lR = M.unionsWith (M.unionWith (:+)) (L.map (loopToPre 𝜓) loops)
+      nR = noloopOpToPre 𝜓 noloops
       cs = L.union (M.keys lR) (M.keys nR)
       prc c =
         let k = Mb.fromJust (M.lookup c κ)
@@ -34,16 +35,21 @@ preconditions κ noloops loops =
 
 {- Constructs the resource contribution resulting from
 loop channel operations.
-Depends on: ℓ = (x, e, e', o!, o?)
+Depends on: ℓ = (x, e₁, e₂, O)
+Reachability conditions for all processes:
+  𝜓 = [π ↦ [𝑛 ↦ e | 𝑛 ∈ dom(𝛱(π))] | π ∈ dom(𝛱)]
 
 Produces:
-∀ c. |o!(c)| * iterations(e, e')
-∀ c. |o?(c)| * iterations(e, e')
+[ c ↦ [
+  ! ↦ |O! ⊆ O| * iterations(e₁, e₂)
+  ? ↦ |O? ⊆ O| * iterations(e₁, e₂)
+] | c ∈ chans(O)]
 -}
-loopToPre :: ℒ -> 𝐶 ↦ (OpDir ↦ Exp)
-loopToPre (ℒ {lower, upper, l𝒪s = os, lPathexp = b}) =
+loopToPre :: 𝛹 -> ℒ -> 𝐶 ↦ (OpDir ↦ Exp)
+loopToPre 𝜓 (ℒ {lP = p, l𝑛 = 𝑛, lower, upper, l𝒪s = os}) =
   let iter ops =
-        let e = case length ops of
+        let b = 𝜓 M.! p M.! 𝑛
+            e = case length ops of
               0 -> (0 #)
               1 -> iterations lower upper
               n -> (n #) :* iterations lower upper
@@ -52,13 +58,20 @@ loopToPre (ℒ {lower, upper, l𝒪s = os, lPathexp = b}) =
 
 {- Constructs the resource contribution resulting from
 non-loop channel operations.
-Depends on: c
+Depends on: O
+Reachability conditions for all processes:
+  𝜓 = [π ↦ [𝑛 ↦ e | 𝑛 ∈ dom(𝛱(π))] | π ∈ dom(𝛱)]
 
 Produces:
-∀ c. 𝚺 π ∈ Π. |o!(c, π)|, |o?(c, π)|
+[ c ↦ [
+  ! ↦ (𝛴 (π, 𝜙) ∈ dom(𝛱). ∀ 𝑛, (𝑛, c!) ∈ 𝜙. if 𝜓(π)(𝑛) then 1 else 0)
+  ? ↦ (𝛴 (π, 𝜙) ∈ dom(𝛱). ∀ 𝑛, (𝑛, c?) ∈ 𝜙. if 𝜓(π)(𝑛) then 1 else 0)
+] | c ∈ chans(O)]
 -}
-noloopOpToPre :: P ↦ (𝐶 ↦ 𝒪s) -> 𝐶 ↦ (OpDir ↦ Exp)
-noloopOpToPre pis =
-  let chOp 𝒪 {oPathexp = b} = IfElse b (1 #) (0 #)
+noloopOpToPre :: 𝛹 -> P ↦ (𝐶 ↦ 𝒪s) -> 𝐶 ↦ (OpDir ↦ Exp)
+noloopOpToPre 𝜓 pis =
+  let chOp 𝒪 {oP = p, o𝑛 = 𝑛} =
+        let b = 𝜓 M.! p M.! 𝑛
+         in IfElse b (1 #) (0 #)
       pis' = (M.elems . M.map (M.map (M.map ((...+) . map chOp)))) pis
    in M.unionsWith (M.unionWith (:+)) pis'
