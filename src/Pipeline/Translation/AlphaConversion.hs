@@ -215,7 +215,7 @@ alphaLVal env = \case
   Var x ->
     let -- The variable is guaranteed to have been
         -- declared in an earlier statement, or passed
-        -- as a parameter. I
+        -- as a parameter.
         -- Its absence from the name environment
         -- warrants a fatal exception.
         x' = Data.Maybe.fromJust (M.lookup x env)
