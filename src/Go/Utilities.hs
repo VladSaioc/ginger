@@ -1,5 +1,6 @@
 module Go.Utilities where
 
+import Data.Bifunctor
 import Go.Ast
 import Utilities.Position
 
@@ -27,3 +28,25 @@ flipIfs s =
         ps' -> ps'
       branches = collectBranches s
    in foldl (\(Pos p els) (Pos p' (e, s')) -> Pos p' $ If e s' [Pos p els]) (getElse s) branches
+
+-- Reverses all the statements in a Go program.
+reverseProg :: Prog -> Prog
+reverseProg (Prog ss) = Prog $ reverseStmts ss
+
+reverseStmts :: [Pos Stmt] -> [Pos Stmt]
+reverseStmts = reverse . map reverseStmt
+
+reverseStmt :: Pos Stmt -> Pos Stmt
+reverseStmt (Pos p s) =
+  let bin c ss1 ss2 = c (reverseStmts ss1) (reverseStmts ss2)
+   in Pos p $ case s of
+        If e ss1 ss2 -> bin (If e) ss1 ss2
+        While e ss' -> While e (reverseStmts ss')
+        For x e1 e2 d ss' -> For x e1 e2 d (reverseStmts ss')
+        Select cs d ->
+          let d' = fmap reverseStmts d
+              cs' = map (second reverseStmts) cs
+           in Select cs' d'
+        Go ss' -> Go (reverseStmts ss')
+        Block ss' -> Block (reverseStmts ss')
+        _ -> s
