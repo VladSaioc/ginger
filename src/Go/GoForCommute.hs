@@ -1,5 +1,6 @@
 module Go.GoForCommute where
 
+import Data.Bifunctor
 import Go.Ast
 import Go.Cyclomatic
 import Utilities.Position
@@ -56,6 +57,10 @@ goForCommuteSpine = \case
                       let g = Go $ decls ++ [Pos p $ For x e1 e2 d body]
                        in Pos pos g
                  in Block $ map makeGo gs'
+          Select cs def ->
+            let cs' = map (second goForCommuteSpine) cs
+                def' = fmap goForCommuteSpine def
+             in Select cs' def'
           s' -> s'
      in Pos p s'' : goForCommuteSpine ss
 

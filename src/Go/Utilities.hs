@@ -50,3 +50,10 @@ reverseStmt (Pos p s) =
         Go ss' -> Go (reverseStmts ss')
         Block ss' -> Block (reverseStmts ss')
         _ -> s
+
+relevantSelect :: Stmt -> Bool
+relevantSelect = \case
+  Select cs _ ->
+    let starCase (Pos _ o) = case o of { Star -> True; _ -> False }
+     in not (all (starCase . fst) cs)
+  _ -> True

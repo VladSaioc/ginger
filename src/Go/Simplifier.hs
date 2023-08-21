@@ -2,6 +2,7 @@ module Go.Simplifier where
 
 import Data.Bifunctor
 import Go.Ast
+import Go.Utilities
 import Utilities.Position
 
 simplify :: Prog -> Prog
@@ -35,9 +36,12 @@ simplifyStatements = \case
           Select [] Nothing -> [Pos p $ Select [] Nothing]
           Select [] (Just ss') -> simplifyStatements $ ss' ++ ss
           Select cs ds ->
-            let cs' = map (second simplifyStatements) cs
-                ds' = fmap simplifyStatements ds
-             in pos (Select cs' ds') : simplifyStatements ss
+            if not (relevantSelect s) && all (null . snd) cs && maybe True null ds
+            then []
+            else
+                let cs' = map (second simplifyStatements) cs
+                    ds' = fmap simplifyStatements ds
+                in pos (Select cs' ds') : simplifyStatements ss
           Go [] -> simplifyStatements ss
           Go ss' -> pos (un Go ss') : simplifyStatements ss
           For _ _ _ _ [] -> simplifyStatements ss
