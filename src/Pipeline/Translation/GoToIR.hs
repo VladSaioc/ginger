@@ -1,6 +1,8 @@
 module Pipeline.Translation.GoToIR (getIR) where
 
+import Data.Data (typeOf)
 import Data.Map qualified as M
+import Debug.Trace (trace)
 import Go.Ast qualified as P
 import IR.Ast
 import Utilities.Err
@@ -31,7 +33,7 @@ instance TransformCtx Ctxt where
 
 getIR :: P.Prog -> Err 𝑃
 getIR (P.Prog ss) =
-  let ctx =
+  let ρ =
         Ctxt
           { syntax = ss,
             pid = 0,
@@ -45,9 +47,9 @@ getIR (P.Prog ss) =
             curr = Skip
           }
    in do
-        ctx' <- translateStatements ctx
-        let chs = M.elems $ M.mapWithKey Chan (chans ctx')
-        let ps = M.elems $ procs ctx'
+        ρ' <- translateStatements ρ
+        let chs = M.elems $ M.mapWithKey Chan (chans ρ')
+        let ps = M.elems $ procs ρ'
         return $ 𝑃 chs ps
 
 translateStatements :: Ctxt [Pos P.Stmt] 𝑆 -> Err (Ctxt () 𝑆)
@@ -99,9 +101,10 @@ translateStatements ρ = case syntax ρ of
             }
       let ρ₂ =
             ρ
-              { nextpid = nextpid ρ₁,
+              { procs = procs ρ₁,
+                nextpid = nextpid ρ₁,
+                casecounter = casecounter ρ₁,
                 loopcounter = loopcounter ρ₁,
-                procs = procs ρ₁,
                 chans = chans ρ₁,
                 chenv = chenv ρ₁
               }
@@ -115,7 +118,7 @@ translateStatements ρ = case syntax ρ of
             P.Dec -> For (x ++ "'" ++ show (loopcounter ρ')) e2' e1' $ curr ρ'
       let ρ'' = (ρ <: Seq (curr ρ) for) {loopcounter = loopcounter ρ' + 1}
       translateStatements $ ss >: ρ''
-    P.Block ss' -> translateStatements $ (ss ++ ss') >: ρ
+    P.Block ss' -> translateStatements $ (ss' ++ ss) >: ρ
     P.Select cs Nothing -> do
       let -- Get channel operation case
           getChannelCase r cas@(Pos p o, _) = do
@@ -145,7 +148,8 @@ translateStatements ρ = case syntax ρ of
       ρ₂ <- Prelude.foldl translateSelect (return ρ') cs
       let ρ₃ = ρ₂ <: Seq (curr ρ) (curr ρ₂)
       translateStatements $ ss >: ρ₃
-    _ -> translateStatements $ ss >: ρ
+
+-- _ -> translateStatements $ ss >: ρ
 
 translateFor :: Ctxt [Pos P.Stmt] [Op] -> Err (Ctxt () [Op])
 translateFor ρ = case syntax ρ of
@@ -156,7 +160,7 @@ translateFor ρ = case syntax ρ of
       let ρ₂ = ρ₁ <: (curr ρ₁ : curr ρ)
       translateFor $ ss >: ρ₂
     P.Skip -> translateFor $ ss >: ρ
-    _ -> posErr p $ "Unexpected statement: " ++ prettyPrint 0 s
+    _ -> posErr p $ "Go-to-IR: Unexpected statement: " ++ prettyPrint 0 s
 
 translateExp :: M.Map String 𝐸 -> P.Exp -> Err 𝐸
 translateExp venv =

@@ -217,7 +217,7 @@ getElse =
           case e of
             Just _ -> Bad "Branch list has more than one else."
             Nothing -> return (Just els)
-   in foldr f (return Nothing)
+   in fmap (fmap reverse) . foldr f (return Nothing)
 
 pOptions :: [Raw.Option] -> Err [(Pos Stmt, [Pos Stmt])]
 pOptions os =

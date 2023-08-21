@@ -4,13 +4,14 @@ import Control.Monad
 import Data.List qualified as L
 import Data.Map qualified as M
 import Data.Maybe qualified as Mb
+import Debug.Trace (trace)
 import Go.Ast qualified as P'
 import Go.Utilities (flipIfs)
 import Pipeline.Callgraph (getCG)
 import Promela.Ast qualified as P
 import Promela.Utilities
 import Utilities.Err
-import Utilities.General
+import Utilities.General (binaryCons, foldMonad, unaryCons)
 import Utilities.Position
 import Utilities.TransformationCtx
 
@@ -163,7 +164,7 @@ translateStatements ρ = case syntax ρ of
             let oss' = Pos p P'.Return : oss
             let obj = (curr ρ) {stmts = oss'}
             translateStatements ([] >: ρ <: obj)
-          P.Goto l -> err $ "Unexpected statement: goto " ++ l
+          P.Goto l -> err $ "Promela-to-Go: Unexpected statement: goto " ++ l
           -- Reduce Gomela for statements non-determinstic wrapping
           -- to underlying for statement:
           --
@@ -174,7 +175,7 @@ translateStatements ρ = case syntax ρ of
             ((_, for@((Pos _ (P.For _ _)) : _)) : _)
             (Just _) -> translateStatements ((for ++ ss) >: ρ)
           -- General if statement translation
-          P.If os mels ->
+          P.If os mels' ->
             let notSelectMessage = "if is not select"
                 -- First try to check whether the 'if' statement models a Go select statement
                 makeSelect ρ' = case curr ρ' of
@@ -242,22 +243,23 @@ translateStatements ρ = case syntax ρ of
                   _ -> Bad "[INVALID IF BRANCH]: If statement has unrecognizable branch."
              in case foldM makeSelect (() >: ρ <: ([], [], Nothing)) os of
                   Bad msg -> do
+                    let mels = trace (show mels') mels'
                     -- If constructing a select failed because the if statement does
                     -- not model one, attempt to build a regular if statement.
                     _ <- if msg == notSelectMessage then return () else err msg
                     -- Translate the 'else' case, if present.
-                    ctx1 <- maybe (done $ ρ <: freshObj) (translateStatements . (>: (ρ <: freshObj))) mels
-                    let Obj {decls = ods', stmts = els} = curr ctx1
+                    ρ₁ <- maybe (done $ ρ <: freshObj) (translateStatements . (>: (ρ <: freshObj))) mels
+                    let Obj {decls = ods', stmts = els} = curr ρ₁
                     let body = P'.Block els
                     -- Construct massive 'if-else' statement out of all if
                     -- cases.
-                    ctx2 <- foldM makeIf (() >: ctx1 <: (ods', body)) os
+                    ρ₂ <- foldM makeIf (() >: ρ₁ <: (ods', body)) os
                     -- Flip cases, such that the first syntactical Promela case is executed first.
-                    let (ods, os') = curr ctx2
+                    let (ods, os') = curr ρ₂
                     let ifStmt = flipIfs $ Pos p os'
                     let obj = curr ρ
                     let obj' = obj {decls = ods ++ decls obj, stmts = ifStmt : stmts obj}
-                    translateStatements $ ss >: ctx2 <: obj'
+                    translateStatements $ ss >: ρ₂ <: obj'
                   Ok ρ' -> do
                     let (ods', cs, def) = curr ρ'
                     let select' = P'.Select (reverse cs) def
@@ -471,7 +473,7 @@ translateOp ρ =
         Pos p (P.Send (P.Var c) _) -> translate p P'.Send c
         -- Translate receive statement
         Pos p (P.Recv (P.Var c) _) -> translate p P'.Recv c
-        Pos p s -> Bad (":" ++ show p ++ ": Unexpected statement: " ++ show s)
+        Pos p s -> Bad (":" ++ show p ++ ": Promela-to-Go Translation: Unexpected statement: " ++ show s)
 
 -- Partial translation from Promela constants to Go constant expressions
 translateVal :: P.Val -> Maybe P'.Exp

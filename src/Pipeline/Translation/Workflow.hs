@@ -2,8 +2,10 @@ module Pipeline.Translation.Workflow where
 
 import Debug.Trace (trace)
 import Go.GoForCommute (goForCommute)
+import Go.Simplifier qualified as S (simplify)
+import Go.ZipCases (zipCases)
 import IR.Ast (𝑃)
-import IR.Simplifier (simplify)
+import IR.Simplifier qualified as S' (simplify)
 import Pipeline.Sanity.CallgraphOk (noRecursion)
 import Pipeline.Sanity.GoAllowed (allowed)
 import Pipeline.Translation.AlphaConversion (alphaConvert)
@@ -17,8 +19,12 @@ promelaToIR p = do
   let p' = alphaConvert p
   _ <- noRecursion p'
   g <- getGo p'
-  let g1 = goForCommute g
-  _ <- allowed g1
+  let g1 = zipCases g
+  _ <- trace (unlines ["", "Go represention of program:", "", show g]) (return ())
   _ <- trace (unlines ["", "Go represention of program:", "", show g1]) (return ())
-  ir <- getIR g1
-  return $ simplify ir
+  let g2 = S.simplify g1
+  let g' = goForCommute g2
+  -- _ <- trace (unlines ["", "Go represention of program:", "", show g']) (return ())
+  _ <- allowed g'
+  ir <- getIR g'
+  return $ S'.simplify ir
