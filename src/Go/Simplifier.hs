@@ -37,7 +37,7 @@ simplifyStatements = \case
           Select [] (Just ss') -> simplifyStatements $ ss' ++ ss
           Select cs ds ->
             if not (relevantSelect s) && all (null . snd) cs && maybe True null ds
-            then []
+            then simplifyStatements ss
             else
                 let cs' = map (second simplifyStatements) cs
                     ds' = fmap simplifyStatements ds
