@@ -11,20 +11,20 @@ import Utilities.Position
 zipCases :: Prog -> Prog
 zipCases (Prog s) =
   let s' = zipCasesStmts $ s ++ [Pos NoPos Return]
-   in Prog s'
+   in if s' == s then Prog s'
+      else zipCases (Prog s')
 
 zipCasesStmts :: [Pos Stmt] -> [Pos Stmt]
 zipCasesStmts = \case
   [] -> []
   s0@(Pos p s) : ss ->
     let ss' = zipCasesStmts ss
-        twoBranches ss10 ss20 =
-          let (ss1, ss2) = trace (show (show ss10) ++ "\n" ++ show (show ss20)) (ss10, ss20)
-              (ss1', ss2', cont) = case (terminal ss1, terminal ss2) of
+        twoBranches ss1 ss2 =
+            let (ss1', ss2', cont) = case (terminal ss1, terminal ss2) of
                 (True, True) -> (zipCasesStmts ss1, zipCasesStmts ss2, [])
                 (True, False) -> (zipCasesStmts ss1, zipCasesStmts (ss2 ++ ss), [])
                 (False, True) -> (zipCasesStmts (ss1 ++ ss), zipCasesStmts ss2, [])
-                (False, False) -> (zipCasesStmts ss2, zipCasesStmts ss2, ss')
+                (False, False) -> (zipCasesStmts ss1, zipCasesStmts ss2, ss')
               hoist c1 c2 = case (c1, c2) of
                 ([], _) -> (c1, c2, [])
                 (_, []) -> (c1, c2, [])
@@ -61,10 +61,8 @@ zipCasesStmts = \case
           If e ss1 ss2 ->
             let (thn, els, pref, cont) = twoBranches ss1 ss2
              in pref ++ Pos p (If e thn els) : cont
-          Select [cs1, cs2] Nothing ->
-            let (o1, ss1) = cs1
-                (o2, ss2) = cs2
-                (thn, els, pref, cont) = twoBranches ss1 ss2
+          Select [(o1, ss1), (o2, ss2)] Nothing ->
+            let (thn, els, pref, cont) = twoBranches ss1 ss2
              in pref ++ Pos p (Select [(o1, thn), (o2, els)] Nothing) : cont
           Select cs def ->
             let cs' = map (second zipCasesStmts) cs
