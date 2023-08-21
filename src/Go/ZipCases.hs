@@ -21,18 +21,18 @@ zipCasesStmts = \case
     let ss' = zipCasesStmts ss
         twoBranches ss1 ss2 =
             let (ss1', ss2', cont) = case (terminal ss1, terminal ss2) of
-                (True, True) -> (zipCasesStmts ss1, zipCasesStmts ss2, [])
-                (True, False) -> (zipCasesStmts ss1, zipCasesStmts (ss2 ++ ss), [])
-                (False, True) -> (zipCasesStmts (ss1 ++ ss), zipCasesStmts ss2, [])
-                (False, False) -> (zipCasesStmts ss1, zipCasesStmts ss2, ss')
-              hoist c1 c2 = case (c1, c2) of
-                ([], _) -> (c1, c2, [])
-                (_, []) -> (c1, c2, [])
-                (Pos p1 s1 : thn, Pos _ s2 : els) ->
-                  let (thn', els', shd) = hoist thn els
-                   in if s1 == s2
-                        then (thn', els', Pos p1 s1 : shd)
-                        else (c1, c2, [])
+                  (True, True) -> (zipCasesStmts ss1, zipCasesStmts ss2, [])
+                  (True, False) -> (zipCasesStmts ss1, zipCasesStmts (ss2 ++ ss), [])
+                  (False, True) -> (zipCasesStmts (ss1 ++ ss), zipCasesStmts ss2, [])
+                  (False, False) -> (zipCasesStmts ss1, zipCasesStmts ss2, ss')
+                hoist c1 c2 = case (c1, c2) of
+                  ([], _) -> (c1, c2, [])
+                  (_, []) -> (c1, c2, [])
+                  (Pos p1 s1 : thn, Pos _ s2 : els) ->
+                    let (thn', els', shd) = hoist thn els
+                     in if s1 == s2
+                          then (thn', els', Pos p1 s1 : shd)
+                          else (c1, c2, [])
            in let (thn, els, pref) = hoist ss1' ss2'
                   (thn', els') =
                     if null pref
