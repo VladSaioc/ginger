@@ -4,7 +4,6 @@ import Control.Monad
 import Data.List qualified as L
 import Data.Map qualified as M
 import Data.Maybe qualified as Mb
-import Debug.Trace (trace)
 import Go.Ast qualified as P'
 import Go.Utilities (flipIfs)
 import Pipeline.Callgraph (getCG)
@@ -175,7 +174,7 @@ translateStatements ρ = case syntax ρ of
             ((_, for@((Pos _ (P.For _ _)) : _)) : _)
             (Just _) -> translateStatements ((for ++ ss) >: ρ)
           -- General if statement translation
-          P.If os mels' ->
+          P.If os mels ->
             let notSelectMessage = "if is not select"
                 -- First try to check whether the 'if' statement models a Go select statement
                 makeSelect ρ' = case curr ρ' of
@@ -226,14 +225,14 @@ translateStatements ρ = case syntax ρ of
                           _ -> Bad notSelectMessage
                 -- If the 'if' is not considered viable to model a select statement,
                 -- produce a regular 'if' statement instead.
-                makeIf ρ1@Ctxt {curr = (ods, ifSoFar), varenv} = \case
+                makeIf ρ₁@Ctxt {curr = (ods, ifSoFar), varenv} = \case
                   (Pos p' (P.ExpS e), ss') -> do
                     e' <- translateExpPos p' varenv e
-                    ρ2 <- translateStatements (ss' >: ρ1 <: freshObj)
-                    let Obj {stmts = ss'', decls = ods'} = curr ρ2
+                    ρ₂ <- translateStatements (ss' >: ρ₁ <: freshObj)
+                    let Obj {stmts = ss'', decls = ods'} = curr ρ₂
                     let body = P'.If e' ss'' [Pos p' ifSoFar]
                     let obj' = (ods ++ ods', body)
-                    done $ ρ2 <: obj'
+                    done $ ρ₂ <: obj'
                   -- Cases of the form 'c[_]!_ -> ...' or 'x.c!_ -> ...' are not
                   -- covered features.
                   (Pos _ (P.Send _ _), _) -> Bad "[INVALID SEND]: Operations on channel in perceived 'if'-statement"
@@ -243,7 +242,6 @@ translateStatements ρ = case syntax ρ of
                   _ -> Bad "[INVALID IF BRANCH]: If statement has unrecognizable branch."
              in case foldM makeSelect (() >: ρ <: ([], [], Nothing)) os of
                   Bad msg -> do
-                    let mels = trace (show mels') mels'
                     -- If constructing a select failed because the if statement does
                     -- not model one, attempt to build a regular if statement.
                     _ <- if msg == notSelectMessage then return () else err msg
@@ -342,7 +340,9 @@ translateStatements ρ = case syntax ρ of
                 -- actual parameter name.
                 addCh ce ((a, t), e) =
                   case (t, e) of
-                    (P.TChan, P.EVar (P.Var c)) -> M.insert a c ce
+                    (P.TChan, P.EVar (P.Var c)) ->
+                      let c' = Mb.fromMaybe c $ M.lookup c (chenv ρ)
+                       in M.insert a c' ce
                     _ -> ce
             -- Construct all formal parameter declarations.
             initializers <- foldMonad addVarInit [] (++) pes

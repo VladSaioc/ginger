@@ -2,7 +2,6 @@ module Pipeline.Translation.GoToIR (getIR) where
 
 import Data.Data (typeOf)
 import Data.Map qualified as M
-import Debug.Trace (trace)
 import Go.Ast qualified as P
 import IR.Ast
 import Utilities.Err
