@@ -20,11 +20,9 @@ promelaToIR p = do
   _ <- noRecursion p'
   g <- getGo p'
   let g1 = zipCases g
-  _ <- trace (unlines ["", "Go represention of program:", "", show g]) (return ())
-  _ <- trace (unlines ["", "Go represention of program:", "", show g1]) (return ())
   let g2 = S.simplify g1
   let g' = goForCommute g2
-  -- _ <- trace (unlines ["", "Go represention of program:", "", show g']) (return ())
+  _ <- trace (unlines ["", "Go represention of program:", "", show g']) (return ())
   _ <- allowed g'
   ir <- getIR g'
   return $ S'.simplify ir
