@@ -37,3 +37,6 @@ instance Show a => Show (Pos a) where
 
 posErr :: Int -> String -> Err a
 posErr p msg = Bad (":" ++ show p ++ ": " ++ msg)
+
+(@^) :: Pos a -> a
+(@^) (Pos _ a) = a
