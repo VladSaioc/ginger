@@ -208,15 +208,17 @@ pStmt =
 
 getElse :: [Raw.Option] -> Err (Maybe [Pos Stmt])
 getElse =
-  let f = \case
-        Raw.OptionSt {} -> id
-        Raw.OptionSt2 {} -> id
-        Raw.OptionEls _ ss -> \e' -> do
+  let processElse ss e' = do
           e <- e'
           els <- results (map pStep (listSteps ss))
           case e of
             Just _ -> Bad "Branch list has more than one else."
             Nothing -> return (Just els)
+      f = \case
+        Raw.OptionSt {} -> id
+        Raw.OptionSt2 {} -> id
+        Raw.OptionEls _ ss -> processElse ss
+        Raw.OptionEls2 _ ss -> processElse ss
    in fmap (fmap reverse) . foldr f (return Nothing)
 
 pOptions :: [Raw.Option] -> Err [(Pos Stmt, [Pos Stmt])]
@@ -230,11 +232,13 @@ pOptions os =
               Raw.OptionSt s ss -> processBranch s ss
               Raw.OptionSt2 s ss -> processBranch s ss
               Raw.OptionEls {} -> return (return Skip, [])
+              Raw.OptionEls2 {} -> return (return Skip, [])
    in do
         let os'' =
               filter
                 ( \case
                     Raw.OptionEls {} -> False
+                    Raw.OptionEls2 {} -> False
                     _ -> True
                 )
                 os
