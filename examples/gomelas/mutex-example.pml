@@ -2,7 +2,6 @@
 // num_mand_comm_params=0
 // num_opt_comm_params=0
 
-// git_link=https://github.com//blob///home/au/PhD_Materials/RHUL/benchmarks/cockroach/pkg/ccl/backupccl/create_scheduled_backup_test.go#L988
 typedef Mutexdef {
 	chan Lock = [0] of {bool};
 	chan Unlock = [0] of {bool};
@@ -12,7 +11,7 @@ typedef Mutexdef {
 #define default true
 
 
-init { 
+init {
 	chan child_TestCreateBackupScheduleCollectionOverwrite9880 = [1] of {int};
 	run TestCreateBackupScheduleCollectionOverwrite988(child_TestCreateBackupScheduleCollectionOverwrite9880);
 	child_TestCreateBackupScheduleCollectionOverwrite9880?0;
@@ -20,8 +19,8 @@ stop_process:skip
 }
 
 proctype TestCreateBackupScheduleCollectionOverwrite988(chan child) {
-	bool closed; 
-	bool ok; 
+	bool closed;
+	bool ok;
 	int i;
 	bool state = true;
 	int num_msgs;
@@ -33,7 +32,7 @@ proctype TestCreateBackupScheduleCollectionOverwrite988(chan child) {
 
  /* ================================================================================== */
  /* ================================================================================== */
- /* ================================================================================== */ 
+ /* ================================================================================== */
 
 proctype mutex_monitor(Mutexdef m) {
 	bool locked = false;

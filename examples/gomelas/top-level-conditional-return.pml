@@ -2,7 +2,6 @@
 // num_mand_comm_params=1
 // num_opt_comm_params=0
 
-// git_link=https://github.com//blob///home/au/PhD_Materials/RHUL/benchmarks/dgraph/worker/task.go#L66
 #define default true
 #define def_var_addrs83 ?? // mand addrs line 83
 typedef Chandef {
@@ -19,7 +18,7 @@ typedef Chandef {
 
 
 
-init { 
+init {
 	chan child_processWithBackupRequest660 = [1] of {int};
 	run processWithBackupRequest66(child_processWithBackupRequest660);
 	child_processWithBackupRequest660?0;
@@ -27,8 +26,8 @@ stop_process:skip
 }
 
 proctype processWithBackupRequest66(chan child) {
-	bool closed; 
-	bool ok; 
+	bool closed;
+	bool ok;
 	int i;
 	bool state = true;
 	int num_msgs;
@@ -36,45 +35,39 @@ proctype processWithBackupRequest66(chan child) {
 	chan child_AnonymousprocessWithBackupRequest87830 = [1] of {int};
 	int var_addrs = def_var_addrs83; // opt var_addrs
 	chan chResults_ch = [var_addrs] of {int};
-	
 
-	if /* 	/home/au/PhD_Materials/RHUL/benchmarks/dgraph/worker/task.go:71:2 */
-	:: true -> 
+
+	if 	:: true ->
 		goto stop_process
 	:: true;
 	fi;
-	
 
-	if /* 	/home/au/PhD_Materials/RHUL/benchmarks/dgraph/worker/task.go:74:2 */
-	:: true -> 
+
+	if 	:: true ->
 		goto stop_process;
 	:: true;
 	fi;
 	run AnonymousprocessWithBackupRequest8783(chResults_ch,child_AnonymousprocessWithBackupRequest87830);
 	run receiver(child_AnonymousprocessWithBackupRequest87830);
-	if /* 	/home/au/PhD_Materials/RHUL/benchmarks/dgraph/worker/task.go:95:2 */
-	:: true -> 
+	if 	:: true ->
 		goto stop_process
-	:: true -> 
+	:: true ->
 		run AnonymousprocessWithBackupRequest9983(chResults_ch,child_AnonymousprocessWithBackupRequest99831);
 		run receiver(child_AnonymousprocessWithBackupRequest99831);
-		if /* 	/home/au/PhD_Materials/RHUL/benchmarks/dgraph/worker/task.go:103:3 */
-		:: true -> 
+		if 		:: true ->
 			goto stop_process;
 		chResults_ch?0;
-		
 
-		if /* 	/home/au/PhD_Materials/RHUL/benchmarks/dgraph/worker/task.go:107:4 */
-		:: true -> 
-			if /* 	/home/au/PhD_Materials/RHUL/benchmarks/dgraph/worker/task.go:108:5 */
-			:: true -> 
+
+		if 		:: true ->
+			if 			:: true ->
 				goto stop_process;
 			chResults_ch?0;
 			goto stop_process;
 			fi;
 			for30_exit: skip;
 			for30_end: skip
-		:: true -> 
+		:: true ->
 			goto stop_process;
 		fi;
 		break;
@@ -83,10 +76,9 @@ proctype processWithBackupRequest66(chan child) {
 		for20_end: skip;
 		break;
 	chResults_ch?0;
-	
 
-	if /* 	/home/au/PhD_Materials/RHUL/benchmarks/dgraph/worker/task.go:119:3 */
-	:: true -> 
+
+	if 	:: true ->
 		goto stop_process
 	:: true;
 	fi;
@@ -98,8 +90,8 @@ proctype processWithBackupRequest66(chan child) {
 	child!0
 }
 proctype AnonymousprocessWithBackupRequest8783(chan chResults_ch;chan child) {
-	bool closed; 
-	bool ok; 
+	bool closed;
+	bool ok;
 	int i;
 	bool state = true;
 	int num_msgs;
@@ -108,8 +100,8 @@ proctype AnonymousprocessWithBackupRequest8783(chan chResults_ch;chan child) {
 	child!0
 }
 proctype AnonymousprocessWithBackupRequest9983(chan chResults_ch;chan child) {
-	bool closed; 
-	bool ok; 
+	bool closed;
+	bool ok;
 	int i;
 	bool state = true;
 	int num_msgs;
@@ -120,7 +112,7 @@ proctype AnonymousprocessWithBackupRequest9983(chan chResults_ch;chan child) {
 
  /* ================================================================================== */
  /* ================================================================================== */
- /* ================================================================================== */ 
+ /* ================================================================================== */
 
 proctype receiver(chan c) {
 	c?0

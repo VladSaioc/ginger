@@ -2,7 +2,6 @@
 // num_mand_comm_params=0
 // num_opt_comm_params=0
 
-// git_link=https://github.com//blob///home/au/PhD_Materials/RHUL/benchmarks/dgraph/contrib/embargo/main.go#L40
 #define default true
 #define ub_for53_2  ??
 typedef Chandef {
@@ -19,7 +18,7 @@ typedef Chandef {
 
 
 
-init { 
+init {
 	chan child_increment400 = [1] of {int};
 	run increment40(child_increment400);
 	child_increment400?0;
@@ -27,8 +26,8 @@ stop_process:skip
 }
 
 proctype increment40(chan child) {
-	bool closed; 
-	bool ok; 
+	bool closed;
+	bool ok;
 	int i;
 	bool state = true;
 	int num_msgs;
@@ -42,31 +41,31 @@ proctype increment40(chan child) {
 		for10_end: skip
 	};
 	for10_exit: skip;
-	
+
 
 	if
-	:: 0 != -2 && ub_for53_2-1 != -3 -> 
+	:: 0 != -2 && ub_for53_2-1 != -3 ->
 				for(i : 0.. ub_for53_2-1) {
 			for21: skip;
 						errCh_ch?0;
 			for21_end: skip
 		};
 		for21_exit: skip
-	:: else -> 
+	:: else ->
 		do
-		:: true -> 
+		:: true ->
 			for20: skip;
 						errCh_ch?0;
 			for20_end: skip
-		:: true -> 
+		:: true ->
 			break
 		od;
 		for20_exit: skip
 	fi;
-	
 
-	if /* 	/home/au/PhD_Materials/RHUL/benchmarks/dgraph/contrib/embargo/main.go:60:2 */
-	:: true -> 
+
+	if
+	:: true ->
 		goto stop_process
 	:: true;
 	fi;
@@ -75,8 +74,8 @@ proctype increment40(chan child) {
 	child!0
 }
 proctype Anonymousincrement4747(chan errCh_ch;chan child) {
-	bool closed; 
-	bool ok; 
+	bool closed;
+	bool ok;
 	int i;
 	bool state = true;
 	int num_msgs;
@@ -87,7 +86,7 @@ proctype Anonymousincrement4747(chan errCh_ch;chan child) {
 
  /* ================================================================================== */
  /* ================================================================================== */
- /* ================================================================================== */ 
+ /* ================================================================================== */
 
 proctype receiver(chan c) {
 	c?0

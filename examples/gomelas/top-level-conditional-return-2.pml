@@ -2,7 +2,7 @@
 // num_mand_comm_params=1
 // num_opt_comm_params=0
 
-// git_link=https://github.com//blob///home/au/PhD_Materials/RHUL/benchmarks/dgraph/worker/export.go#L968
+
 #define default true
 #define def_var_gids991  ?? // mand gids line 991
 typedef Chandef {
@@ -19,7 +19,7 @@ typedef Chandef {
 
 
 
-init { 
+init {
 	chan child_ExportOverNetwork9680 = [1] of {int};
 	run ExportOverNetwork968(child_ExportOverNetwork9680);
 	child_ExportOverNetwork9680?0;
@@ -27,25 +27,25 @@ stop_process:skip
 }
 
 proctype ExportOverNetwork968(chan child) {
-	bool closed; 
-	bool ok; 
+	bool closed;
+	bool ok;
 	int i;
 	bool state = true;
 	int num_msgs;
 	chan child_AnonymousExportOverNetwork9939930 = [1] of {int};
 	int var_gids = def_var_gids991; // opt var_gids
 	chan ch_ch = [var_gids] of {int};
-	
 
-	if /* 	/home/au/PhD_Materials/RHUL/benchmarks/dgraph/worker/export.go:970:2 */
-	:: true -> 
+
+	if
+	:: true ->
 		goto stop_process
 	:: true;
 	fi;
-	
 
-	if /* 	/home/au/PhD_Materials/RHUL/benchmarks/dgraph/worker/export.go:976:2 */
-	:: true -> 
+
+	if
+	:: true ->
 		goto stop_process
 	:: true;
 	fi;
@@ -56,37 +56,37 @@ proctype ExportOverNetwork968(chan child) {
 		for10_end: skip
 	};
 	for10_exit: skip;
-	
+
 
 	if
-	:: 0 != -2 && var_gids-1 != -3 -> 
+	:: 0 != -2 && var_gids-1 != -3 ->
 				for(i : 0.. var_gids-1) {
 			for21: skip;
 						ch_ch?0;
-			
 
-			if /* 	/home/au/PhD_Materials/RHUL/benchmarks/dgraph/worker/export.go:1015:3 */
-			:: true -> 
+
+			if
+			:: true ->
 				goto stop_process
 			:: true;
 			fi;
 			for21_end: skip
 		};
 		for21_exit: skip
-	:: else -> 
+	:: else ->
 		do
-		:: true -> 
+		:: true ->
 			for20: skip;
 						ch_ch?0;
-			
 
-			if /* 	/home/au/PhD_Materials/RHUL/benchmarks/dgraph/worker/export.go:1015:3 */
-			:: true -> 
+
+			if
+			:: true ->
 				goto stop_process
 			:: true;
 			fi;
 			for20_end: skip
-		:: true -> 
+		:: true ->
 			break
 		od;
 		for20_exit: skip
@@ -96,8 +96,8 @@ proctype ExportOverNetwork968(chan child) {
 	child!0
 }
 proctype AnonymousExportOverNetwork993993(chan ch_ch;chan child) {
-	bool closed; 
-	bool ok; 
+	bool closed;
+	bool ok;
 	int i;
 	bool state = true;
 	int num_msgs;
@@ -108,7 +108,7 @@ proctype AnonymousExportOverNetwork993993(chan ch_ch;chan child) {
 
  /* ================================================================================== */
  /* ================================================================================== */
- /* ================================================================================== */ 
+ /* ================================================================================== */
 
 proctype receiver(chan c) {
 	c?0

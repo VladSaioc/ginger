@@ -2,7 +2,6 @@
 // num_mand_comm_params=1
 // num_opt_comm_params=0
 
-// git_link=https://github.com//blob///home/au/PhD_Materials/RHUL/benchmarks/fzf/src/util/eventbox_test.go#L14
 #define default true
 #define def_var_events41  ?? // mand events line 41
 #define ub_for38_2  ??
@@ -20,7 +19,7 @@ typedef Chandef {
 
 
 
-init { 
+init {
 	chan child_TestEventBox140 = [1] of {int};
 	run TestEventBox14(child_TestEventBox140);
 	child_TestEventBox140?0;
@@ -28,8 +27,8 @@ stop_process:skip
 }
 
 proctype TestEventBox14(chan child) {
-	bool closed; 
-	bool ok; 
+	bool closed;
+	bool ok;
 	int i;
 	bool state = true;
 	int num_msgs;
@@ -38,10 +37,10 @@ proctype TestEventBox14(chan child) {
 	chan ch_ch = [0] of {int};
 	run AnonymousTestEventBox2018(ch_ch,child_AnonymousTestEventBox20180);
 	run receiver(child_AnonymousTestEventBox20180);
-	
+
 
 	if
-	:: 0 != -2 && ub_for38_2-1 != -3 -> 
+	:: 0 != -2 && ub_for38_2-1 != -3 ->
 		for(i : 0.. ub_for38_2-1) {
 			for11: skip;
 						ch_ch?0;
@@ -49,14 +48,14 @@ proctype TestEventBox14(chan child) {
 			for11_end: skip
 		};
 		for11_exit: skip
-	:: else -> 
+	:: else ->
 		do
-		:: true -> 
+		:: true ->
 			for10: skip;
 						ch_ch?0;
 						ch_ch!0;
 			for10_end: skip
-		:: true -> 
+		:: true ->
 			break
 		od;
 		for10_exit: skip
@@ -65,8 +64,8 @@ proctype TestEventBox14(chan child) {
 	child!0
 }
 proctype AnonymousTestEventBox2018(chan ch_ch;chan child) {
-	bool closed; 
-	bool ok; 
+	bool closed;
+	bool ok;
 	int i;
 	bool state = true;
 	int num_msgs;
@@ -82,7 +81,7 @@ proctype AnonymousTestEventBox2018(chan ch_ch;chan child) {
 
  /* ================================================================================== */
  /* ================================================================================== */
- /* ================================================================================== */ 
+ /* ================================================================================== */
 
 proctype receiver(chan c) {
 	c?0

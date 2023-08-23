@@ -2,7 +2,6 @@
 // num_mand_comm_params=2
 // num_opt_comm_params=0
 
-// git_link=https://github.com//blob///home/au/PhD_Materials/RHUL/benchmarks/perkeep/pkg/blobserver/shard/shard.go#L86
 #define default true
 #define def_var_blobs  ?? // mand blobs line 86
 #define def_var_m92  ?? // mand m line 92
@@ -20,7 +19,7 @@ typedef Chandef {
 
 
 
-init { 
+init {
 	chan child_batchedShards860 = [1] of {int};
 	run batchedShards86(def_var_blobs,child_batchedShards860);
 	child_batchedShards860?0;
@@ -28,8 +27,8 @@ stop_process:skip
 }
 
 proctype batchedShards86(int var_blobs;chan child) {
-	bool closed; 
-	bool ok; 
+	bool closed;
+	bool ok;
 	int i;
 	bool state = true;
 	int num_msgs;
@@ -43,23 +42,22 @@ proctype batchedShards86(int var_blobs;chan child) {
 		for20_end: skip
 	};
 	for20_exit: skip;
-	
 
-	if /* 	/home/au/PhD_Materials/RHUL/benchmarks/perkeep/pkg/blobserver/shard/shard.go:101:2 */
-	:: var_m-1 != -3 -> 
+
+	if 	:: var_m-1 != -3 ->
 				for(i : 0.. var_m-1) {
 			for30: skip;
 						ch_ch?0;
 			for30_end: skip
 		};
 		for30_exit: skip
-	:: else -> 
+	:: else ->
 		do
-		:: true -> 
+		:: true ->
 			for31: skip;
 						ch_ch?0;
 			for31_end: skip
-		:: true -> 
+		:: true ->
 			break
 		od;
 		for31_exit: skip
@@ -69,8 +67,8 @@ proctype batchedShards86(int var_blobs;chan child) {
 	child!0
 }
 proctype AnonymousbatchedShards9692(chan ch_ch;chan child) {
-	bool closed; 
-	bool ok; 
+	bool closed;
+	bool ok;
 	int i;
 	bool state = true;
 	int num_msgs;
@@ -81,7 +79,7 @@ proctype AnonymousbatchedShards9692(chan ch_ch;chan child) {
 
  /* ================================================================================== */
  /* ================================================================================== */
- /* ================================================================================== */ 
+ /* ================================================================================== */
 
 proctype receiver(chan c) {
 	c?0
