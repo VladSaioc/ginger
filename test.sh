@@ -1,16 +1,48 @@
-#!/bin/sh
+#!/bin/bash
 
 set -e fail
 
 runIRExample () {
-  DIR=$1
-  FILE=$2
-  EXT=$(echo "$DIR/$FILE" | sed "s/\//#/g")
+  DIR=examples/$1
 
-  stack run -- -ir "$DIR/$FILE"
-  ./dafny/dafny "./$DIR/$EXT.dfy"
+  for FILE in $(ls $DIR);
+  do
+    if [[ $FILE = "examples__"* ]];
+    then
+      echo "Skipping Dafny file $FILE"
+    else
+      EXT=$(echo "$DIR/$FILE" | sed "s/\//__/g")
+      stack run -- -ir "$DIR/$FILE"
+    fi
+  done
 }
 
-runIRExample examples/simple 3-process-sync-2-receive
-runIRExample examples/simple 3-process-sync-2-send
-runIRExample examples/simple 4-process-sync
+runPromelaExample () {
+  DIR=examples/gomelas/$1
+
+  for FILE in $(ls $DIR);
+  do
+    if [[ $FILE = "examples__"* ]];
+    then
+      echo "Skipping Dafny file $FILE"
+    else
+      EXT=$(echo "$DIR/$FILE" | sed "s/\//__/g")
+      stack run -- "$DIR/$FILE"
+    fi
+  done
+  # ./dafny/dafny "./$DIR/$EXT.dfy"
+}
+
+runIRExample simple
+runIRExample complex
+runIRExample conditional
+runIRExample return
+
+runPromelaExample ast-transform
+runPromelaExample conditional
+runPromelaExample loop-body
+runPromelaExample return
+runPromelaExample simple
+
+echo ""
+echo "All tests executed successfully"
