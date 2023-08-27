@@ -39,12 +39,12 @@ proctype TestEventBox14(chan child) {
 	run receiver(child_AnonymousTestEventBox20180);
 
 
+	for i := 0; i < x; i++ {
 		ch_ch?0;
+	}
+	for i := 0; i < x; i++ {
 		ch_ch!0;
-		ch_ch?0;
-		ch_ch!0;
-		ch_ch?0;
-		ch_ch!0;
+	}
 	stop_process: skip;
 	child!0
 }
@@ -54,12 +54,13 @@ proctype AnonymousTestEventBox2018(chan ch_ch;chan child) {
 	int i;
 	bool state = true;
 	int num_msgs;
+
+	for i := 0; i < y; i++ {
 		ch_ch!0;
+	}
+	for i := 0; i < y; i++ {
 		ch_ch?0;
-		ch_ch!0;
-		ch_ch?0;
-		ch_ch!0;
-		ch_ch?0;
+	}
 	stop_process: skip;
 	child!0
 }

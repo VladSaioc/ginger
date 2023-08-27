@@ -6,7 +6,7 @@
 #define def_var_l1  ?? // opt l1 line 16
 #define def_var_l2  ?? // opt l2 line 16
 
-init { 
+init {
 	chan child_f16 = [1] of {int};
 	run f16(def_var_k,def_var_l1,def_var_l2,child_f16);
 	child_f16?0;
@@ -26,7 +26,7 @@ proctype f16(int var_k;int var_l1;int var_l2;chan child) {
 }
 proctype sender3(chan ch_ch;int var_x;chan child) {
 	int i;
-	
+
 	for(i : 0.. var_x-1) {
 			for11: skip;
 
@@ -38,11 +38,11 @@ proctype sender3(chan ch_ch;int var_x;chan child) {
 	child!0
 }
 
-proctype receiver9(chan ch_ch;int var_y;chan child) { 
+proctype receiver9(chan ch_ch;int var_y;chan child) {
 	int i;
 	int q1;
 	int q2;
-	
+
 	for(i : 0.. var_y-1) {
 		for21: skip;
 		ch_ch?q1;
@@ -52,7 +52,8 @@ proctype receiver9(chan ch_ch;int var_y;chan child) {
 	for21_exit: skip;
 
 	if
-	:: ch_ch?0 -> ch_ch?0;
+	:: ch_ch?0 ->
+		ch_ch?0;
 	:: true;
 	fi;
 	ch_ch?0;

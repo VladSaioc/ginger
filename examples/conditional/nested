@@ -1,22 +1,24 @@
 c = [k];
 go {
-  if b1 then
-    if b2 then
+  if b1 {
+    if b2 {
       for i : 0 .. x {
         c!
       }
-    else
+    } else {
       for k : 0 .. z {
         c!
       }
-  else skip
+    }
+  } else {}
 }
 go {
-  if b3 then
-    if b4 then skip
-    else
+  if b3 {
+    if b4 {
+    } else {
       for j : 0 .. y {
         c?
       }
-  else skip
+    }
+  } else {}
 }
