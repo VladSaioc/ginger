@@ -19,9 +19,12 @@ promelaToIR p = do
   let p' = alphaConvert p
   _ <- noRecursion p'
   g <- getGo p'
-  let g1 = zipCases g
-  let g2 = S.simplify g1
-  let g' = goForCommute g2
+  let zimplify g1 =
+         let g' = (zipCases . S.simplify) g1
+          in if g1 == g' then g' else zimplify g'
+  let g1 = zimplify g
+  let g' = goForCommute g1
+  _ <- trace (unlines ["", "Go represention of program:", "", show g1]) (return ())
   _ <- trace (unlines ["", "Go represention of program:", "", show g']) (return ())
   _ <- allowed g'
   ir <- getIR g'

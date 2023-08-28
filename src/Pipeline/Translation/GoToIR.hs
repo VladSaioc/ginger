@@ -1,6 +1,6 @@
 module Pipeline.Translation.GoToIR (getIR) where
 
-import Data.Data (typeOf)
+import Control.Monad (foldM_)
 import Data.Map qualified as M
 import Go.Ast qualified as P
 import IR.Ast
@@ -54,10 +54,11 @@ getIR (P.Prog ss) =
 translateStatements :: Ctxt [Pos P.Stmt] 𝑆 -> Err (Ctxt () 𝑆)
 translateStatements ρ = case syntax ρ of
   [] -> done (ρ {procs = M.insert (pid ρ) (curr ρ) (procs ρ)})
-  Pos _ s : ss -> case s of
+  Pos p s : ss -> case s of
     P.Skip -> translateStatements (ss >: ρ)
     P.Return -> translateStatements ([] >: ρ <: Seq (curr ρ) Return)
     P.Break -> translateStatements ([] >: ρ)
+    P.Continue -> translateStatements (ss >: ρ)
     P.Decl x e -> do
       let venv = varenv ρ
       e' <- translateExp venv e
@@ -120,12 +121,12 @@ translateStatements ρ = case syntax ρ of
     P.Block ss' -> translateStatements $ (ss' ++ ss) >: ρ
     P.Select cs Nothing -> do
       let -- Get channel operation case
-          getChannelCase r cas@(Pos p o, _) = do
+          getChannelCase r cas@(Pos p' o, _) = do
             c <- r
             case o of
               P.Star -> return c
-              P.Send _ -> maybe (return $ return cas) (const $ posErr p "Multiple channel operations in 'select") c
-              P.Recv _ -> maybe (return $ return cas) (const $ posErr p "Multiple channel operations in 'select") c
+              P.Send _ -> maybe (return $ return cas) (const $ posErr p' "Multiple channel operations in 'select") c
+              P.Recv _ -> maybe (return $ return cas) (const $ posErr p' "Multiple channel operations in 'select") c
       c <- Prelude.foldl getChannelCase (return Nothing) cs
       ρ' <- case c of
         Just (Pos _ o, ss') -> do
@@ -147,9 +148,26 @@ translateStatements ρ = case syntax ρ of
       ρ₂ <- Prelude.foldl translateSelect (return ρ') cs
       let ρ₃ = ρ₂ <: Seq (curr ρ) (curr ρ₂)
       translateStatements $ ss >: ρ₃
+    _ -> posErr p ("Unexpected statement: " ++ show s)
 
--- _ -> translateStatements $ ss >: ρ
-
+-- Translation of the 'for' body converts it to an IR
+-- sequence of channel operations. Conditions are assumed
+-- to not have any communicating operations underneath them.
+--
+-- Rules:
+--  [DONE]:       [] ===> ϵ
+--  [SKIP]:       skip; s ===> s'
+--                |- s ===> s'
+--  [CONTINUE]:   continue; s ===> s'
+--                |- s ===> s'
+--  [SEND]:       c!; s ===> c!; s'
+--                |- s ===> s'
+--  [RECV]:       c?; s ===> c?; s'
+--                |- s ===> s'
+--  [IF]:         if _ ; s ===> s'
+--                |- s ===> s'
+--  [SELECT]:     select _ ; s ===> s
+--                |- s ===> s'
 translateFor :: Ctxt [Pos P.Stmt] [Op] -> Err (Ctxt () [Op])
 translateFor ρ = case syntax ρ of
   [] -> done $ ρ <: reverse (curr ρ)
@@ -159,8 +177,19 @@ translateFor ρ = case syntax ρ of
       let ρ₂ = ρ₁ <: (curr ρ₁ : curr ρ)
       translateFor $ ss >: ρ₂
     P.Skip -> translateFor $ ss >: ρ
+    P.Continue -> translateFor $ ss >: ρ
+    P.If _ s1 s2 -> do
+      _ <- translateFor $ s1 >: ρ
+      _ <- translateFor $ s2 >: ρ
+      translateFor $ ss >: ρ
+    P.Select cs def -> do
+      foldM_ (\_ s1 -> translateFor (s1 >: ρ)) (() >: ρ) $ map snd cs
+      foldM_ (\_ s1 -> translateFor (s1 >: ρ)) (() >: ρ) def
+      translateFor $ ss >: ρ
     _ -> posErr p $ "Go-to-IR: Unexpected statement: " ++ prettyPrint 0 s
 
+-- Expression translation is a straightforward translation from Go expressions
+-- to IR translations.
 translateExp :: M.Map String 𝐸 -> P.Exp -> Err 𝐸
 translateExp venv =
   let bin = binaryCons (translateExp venv)
@@ -170,6 +199,7 @@ translateExp venv =
         P.And e1 e2 -> bin (:&) e1 e2
         P.Or e1 e2 -> bin (:|) e1 e2
         P.Not e -> unaryCons (translateExp venv) Not e
+        -- -e ===> 0 - e
         P.Neg e -> do
           e' <- translateExp venv e
           return $ Const 0 :- e'
@@ -189,6 +219,7 @@ translateExp venv =
             Just e' -> return e'
             Nothing -> return $ Var x
 
+-- Communication operation translation is straightfoward.
 translateOp :: Ctxt P.CommOp a -> Err (Ctxt () Op)
 translateOp ρ =
   let translate cons c =

@@ -59,8 +59,7 @@ goForCommuteSpine = \case
                  in Block $ map makeGo gs'
           Select cs def ->
             let cs' = map (second goForCommuteSpine) cs
-                def' = fmap goForCommuteSpine def
-             in Select cs' def'
+             in Select cs' $ fmap goForCommuteSpine def
           s' -> s'
      in Pos p s'' : goForCommuteSpine ss
 
@@ -73,6 +72,7 @@ processForBody = \case
   [] -> Just []
   Pos p s : ss -> case s of
     Skip -> processForBody ss
+    Continue -> processForBody ss
     Break -> Nothing
     Return -> Nothing
     Decl {} -> Nothing

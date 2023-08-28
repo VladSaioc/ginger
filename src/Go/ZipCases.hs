@@ -1,7 +1,6 @@
 module Go.ZipCases where
 
 import Data.Bifunctor
-import Debug.Trace (trace)
 import Go.Ast
 import Go.Cyclomatic
 import Utilities.Position
@@ -17,8 +16,10 @@ zipCases (Prog s) =
 zipCasesStmts :: [Pos Stmt] -> [Pos Stmt]
 zipCasesStmts = \case
   [] -> []
-  s0@(Pos p s) : ss ->
-    let ss' = zipCasesStmts ss
+  s0@(Pos p _) : ss ->
+    let pos = Pos p
+        ss' = zipCasesStmts ss
+        un c ss1 = c $ zipCasesStmts ss1
         twoBranches ss1 ss2 =
             let (ss1', ss2', cont) = case (terminal ss1, terminal ss2) of
                   (True, True) -> (zipCasesStmts ss1, zipCasesStmts ss2, [])
@@ -39,35 +40,30 @@ zipCasesStmts = \case
                       then (thn, els)
                       else (stripReturns thn, stripReturns els)
                in (thn', els', stripReturns pref, cont)
-     in case s of
+     in case (s0 @^) of
           Skip -> ss'
           As {} -> s0 : ss'
           Chan {} -> s0 : ss'
-          For x e1 e2 inc ss1 ->
-            let s' = For x e1 e2 inc (zipCasesStmts ss1)
-             in Pos p s' : ss'
           Decl {} -> s0 : ss'
           Atomic {} -> s0 : ss'
           Close {} -> s0 : ss'
           Break -> [s0]
           Return -> [s0]
+          Continue -> [s0]
           Block ss1 -> zipCasesStmts ss1 ++ ss'
-          Go ss1 ->
-            let s' = Go (zipCasesStmts ss1)
-             in Pos p s' : ss'
-          While e ss1 ->
-            let s' = While e $ zipCasesStmts ss1
-             in Pos p s' : ss'
+          Go ss1 -> pos (un Go ss1) : ss'
+          For x e1 e2 inc ss1 -> pos (un (For x e1 e2 inc) ss1) : ss'
+          While e ss1 -> pos (un (While e) ss1) : ss'
           If e ss1 ss2 ->
             let (thn, els, pref, cont) = twoBranches ss1 ss2
-             in pref ++ Pos p (If e thn els) : cont
+             in pref ++ pos (If e thn els) : cont
           Select [(o1, ss1), (o2, ss2)] Nothing ->
             let (thn, els, pref, cont) = twoBranches ss1 ss2
-             in pref ++ Pos p (Select [(o1, thn), (o2, els)] Nothing) : cont
+             in pref ++ pos (Select [(o1, thn), (o2, els)] Nothing) : cont
           Select cs def ->
             let cs' = map (second zipCasesStmts) cs
                 def' = fmap zipCasesStmts def
-             in Pos p (Select cs' def') : ss'
+             in pos (Select cs' def') : ss'
 
 -- let caseBodies = map snd cs
 --     hoistStmts = fmap def

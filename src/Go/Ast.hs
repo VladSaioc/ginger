@@ -10,6 +10,7 @@ data Stmt
   | Return
   | Chan String Exp
   | Break
+  | Continue
   | Atomic CommOp
   | Decl String Exp
   | As String Exp
@@ -64,6 +65,7 @@ instance PrettyPrint Stmt where
      in case s of
           Skip -> tab "skip"
           Break -> tab "break"
+          Continue -> tab "continue"
           Return -> tab "return"
           Decl x e -> tab x ++ " := " ++ show e
           As x e -> tab x ++ " = " ++ show e

@@ -119,6 +119,11 @@ translateStatements ρ = case syntax ρ of
     let freshObj = Obj {decls = [], stmts = []}
         translateExp = translateExpPos p
         err = posErr p
+        addKeywordStmt c = do
+          let oss = stmts $ curr ρ
+          let oss' = Pos p c : oss
+          let obj = (curr ρ) {stmts = oss'}
+          translateStatements ([] >: ρ <: obj)
         addOp op = do
           -- Translate channel operation
           ρ' <- translateOp (Pos p op >: ρ)
@@ -152,18 +157,18 @@ translateStatements ρ = case syntax ρ of
           -- 'label:' statements are irrelevant
           P.Label _ -> translateStatements (ss >: ρ)
           -- Can discard the continuation of 'break', since it is unreachable.
-          P.Break -> do
-            let oss = stmts $ curr ρ
-            let oss' = Pos p P'.Break : oss
-            let obj = (curr ρ) {stmts = oss'}
-            translateStatements ([] >: ρ <: obj)
+          P.Break -> addKeywordStmt P'.Break
           -- Can discard the continuation of 'goto stop_process', since it is unreachable.
-          P.Goto "stop_process" -> do
-            let oss = stmts $ curr ρ
-            let oss' = Pos p P'.Return : oss
-            let obj = (curr ρ) {stmts = oss'}
-            translateStatements ([] >: ρ <: obj)
-          P.Goto l -> err $ "Promela-to-Go: Unexpected statement: goto " ++ l
+          P.Goto "stop_process" -> addKeywordStmt P'.Return
+          P.Goto l ->
+            -- goto for* models Go short-circuit control flow
+            if "for" `L.isPrefixOf` l
+              -- goto for*_exit models a Go break statement
+              then if "_exit" `L.isSuffixOf` l
+                then addKeywordStmt P'.Break
+                -- goto for* models a Go continue statement
+                else addKeywordStmt P'.Continue
+              else err $ "Promela-to-Go: Unexpected statement: goto " ++ l
           -- Reduce Gomela for statements non-determinstic wrapping
           -- to underlying for statement:
           --

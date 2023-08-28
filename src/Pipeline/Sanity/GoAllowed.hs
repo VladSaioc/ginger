@@ -1,5 +1,7 @@
 module Pipeline.Sanity.GoAllowed (allowed) where
 
+import Control.Monad (foldM)
+import Data.Maybe
 import Data.Set qualified as S
 import Go.Ast
 import Utilities.Err
@@ -10,7 +12,8 @@ type Ident = String
 
 -- Context for checking whether a Go program
 -- conforms to the restrictions imposed by Ginger
-data Ctxt a = Ctxt
+type Ctxt a = ICtxt a ()
+data ICtxt a b = Ctxt
   { -- Set of channel names
     chans :: S.Set String,
     -- Set of loop variables
@@ -21,10 +24,15 @@ data Ctxt a = Ctxt
     mutableVars :: S.Set String,
     -- Current loop depth
     loopDepth :: Int,
+    -- Is true if the current statement is preceded by a continue
+    continue :: Bool,
+    -- Is true if the current statement is conditionally executed in a loop
+    conditional :: Bool,
     -- Syntax of source language
     syntax :: a
   }
   deriving (Eq, Ord, Read, Show)
+
 
 -- A program is allowed if all of its processes are allowed,
 -- and they follow the pattern:
@@ -40,6 +48,8 @@ allowed (Prog ss) =
             commParams = S.empty,
             mutableVars = S.empty,
             loopDepth = 0,
+            continue = False,
+            conditional = False,
             syntax = ss
           }
    in allowedDeclarations newCtxt
@@ -106,30 +116,73 @@ allowedStmts ρ =
                 Close {} -> err "Unexpected channel close"
                 -- Irregular loops are not supported
                 While {} -> err "Unexpected 'while' loop"
-                -- Select statements are not supported (yet)
-                Select {} -> allowedStmts (ρ {syntax = ss})
-                -- Block statements are reduced to their contents
+                -- Select statements with a single passive case are reduced to the branch
+                Select [(Pos _ Star, ss')] Nothing -> do
+                  ρ₁ <- allowedStmts (ρ { syntax = ss' })
+                  allowedStmts (ρ₁ { syntax = ss })
+                -- Select statements with a single active case are reduced to the branch
+                -- preceded by the case operation.
+                Select [(Pos p' o, ss')] Nothing -> do
+                  ρ₁ <- allowedStmts (ρ { syntax = Pos p' (Atomic o) : ss' })
+                  allowedStmts (ρ₁ { syntax = ss })
+                -- Select statements with multiple cases.
+                Select cs def -> do
+                  -- Check whether all the select cases are on irrelevant channels.
+                  let allStars = all ((==) Star . (@^) . fst) cs
+                  -- Active 'select' statements inside loops are not allowed
+                  (loopDepth ρ == 0 || allStars) ! "Found active 'select' inside loop"
+                  -- Counts the number of active (non-*) cases in the select statement.
+                  let activeCases = length $ filter ((/=) Star . (@^) . fst ) cs
+                  -- 'select' statements outside loops must have a single active branch and no default case.
+                  ((activeCases /= 1) || isNothing def) ! "Found 1 active 'select' case with default branch. Non-blocking active 'select' statements are not supported (yet)."
+                  -- Passive 'select' statements may have a 'default' case.
+                  (activeCases <= 1) ! "Found more than one active 'select' case"
+                  -- Check that every case branch is allowed.
+                  let checkOneCase (ρᵢ, hasCont) ss' = do
+                        ρₖ <- allowedStmts ρᵢ {syntax = ss', conditional = loopDepth ρ /= 0, continue = continue ρ}
+                        return (ρₖ, hasCont || continue ρₖ)
+                  (ρ₁, hasCont) <- foldM checkOneCase (ρ { syntax = () }, continue ρ) $ map snd cs
+                  -- Check that the default case branch is allowed
+                  (ρ₂, hasCont') <- foldM checkOneCase (ρ₁, hasCont) def
+                  -- Check that the continuation is allowed.
+                  -- The 'conditional' flag is inherited from the parent context.
+                  -- The 'continue' flag is a disjunction between the current 'continue' flag and
+                  -- every 'continue' flag produced by the case branches.
+                  allowedStmts (ρ₂ { syntax = ss, continue = hasCont', conditional = conditional ρ })
+                -- Block statements are reduced to their contents.
                 Block ss' -> do
-                  ctx'' <- allowedStmts (ρ {syntax = ss'})
-                  allowedStmts (ctx'' {syntax = ss})
+                  ρ₁ <- allowedStmts (ρ {syntax = ss'})
+                  allowedStmts (ρ₁ {syntax = ss})
                 -- Goroutine spawns are not allowed after the spawning
                 -- phase is over.
                 Go {} -> err "Unexpected 'go' statement."
-                Atomic _ -> ok
-                -- If statements are not supported (yet)
+                -- Atomic operations are always allowed at the top level.
+                -- Inside loops, they are only allowed if they may not be skipped
+                -- due to preceding 'continue' statements or loop body path conditions.
+                Atomic _ -> do
+                  not (continue ρ) ! "Communication operation might be skipped due to continue."
+                  (loopDepth ρ == 0 || not (conditional ρ)) ! "Communication operation is conditional in loop."
+                  ok
+                -- If statements check both cases for legal operations.
                 If _ s1 s2 -> do
-                  (loopDepth ρ == 0) ! "Found 'if' in loop"
-                  ρ₁ <- allowedStmts (ρ {syntax = s1})
-                  ρ₂ <- allowedStmts (ρ₁ {syntax = s2})
-                  allowedStmts (ρ₂ {syntax = ss})
+                  -- Either branch is checked as conditional if inside a loop.
+                  ρ₁ <- allowedStmts (ρ {syntax = s1, conditional = loopDepth ρ /= 0})
+                  -- The 'else' branch inherits the continue flag from the parent context.
+                  ρ₂ <- allowedStmts (ρ₁ {syntax = s2, conditional = loopDepth ρ /= 0, continue = continue ρ})
+                  -- The continuation of the if statement joins the current 'continue' flag with
+                  -- those produced by the case branches
+                  allowedStmts (ρ₂ {syntax = ss, continue = continue ρ || continue ρ₁ || continue ρ₂})
                 -- Return statements are only supported outside loops.
                 Return -> do
                   (loopDepth ρ == 0) ! "Found 'return' in loop"
                   ok
-                -- Break statements are only supported outside loops.
+                -- Break statements are only supported outside loops, in which case they are no-ops.
                 Break -> do
                   (loopDepth ρ == 0) ! "Found 'break' in loop"
                   ok
+                -- Continue statements switch the continue flag to true (if inside a loop)
+                -- for the in-scope continuation of the continue statement.
+                Continue -> allowedStmts (ρ' { continue = loopDepth ρ /= 0 })
                 For x e1 e2 _ body -> do
                   -- Do not allow nested loops.
                   (loopDepth ρ == 0) ! "Found nested loops"
@@ -137,7 +190,7 @@ allowedStmts ρ =
                   -- in loop bound expressions, and the loop index variable).
                   xs' <- binaryCons expVars S.union e1 e2
                   let xs = S.insert x xs'
-                  let ρ'' =
+                  let ρ₂ =
                         ρ
                           { loopVars = S.union xs $ loopVars ρ,
                             loopDepth = 1,
@@ -145,9 +198,9 @@ allowedStmts ρ =
                           }
                   -- Make sure that concurrency variables are not mutable
                   -- (except loop index variables in the context of their own loop).
-                  S.disjoint xs (mutableVars ρ'') ! "Assignment to loop-relevant variable."
-                  _ <- allowedStmts ρ''
-                  allowedStmts (ρ'' {syntax = ss})
+                  S.disjoint xs (mutableVars ρ₂) ! "Assignment to loop-relevant variable."
+                  ρ₃ <- allowedStmts ρ₂
+                  allowedStmts (ρ₃ {syntax = ss, continue = continue ρ, loopDepth = loopDepth ρ})
                 -- Assignments are only allowed if they do not affect concurrency variables.
                 As x e -> do
                   let x' = S.singleton x

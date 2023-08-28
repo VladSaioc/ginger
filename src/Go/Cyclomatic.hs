@@ -8,7 +8,7 @@ import Utilities.Position
 --
 -- A process is deemed simple if:
 -- 1. It is linear
--- 2. It has no decision, TODO: or topologically equivalent communication branches
+-- 2. It has no decision points, or topologically equivalent branches
 -- 3. Does not spawn additional processes
 -- 4. Does not create additional channels
 simpleProcess :: [Pos Stmt] -> Maybe ()
@@ -21,13 +21,12 @@ simpleProcess = \case
       As {} -> return ()
       Chan {} -> Nothing
       Break -> Nothing
+      Continue -> return ()
       Atomic _ -> return ()
       Close {} -> return ()
       Decl {} -> return ()
       Block ss' -> simpleProcess ss'
-      -- TODO: Compare branch topology here OR write some simplification
       If {} -> Nothing
-      -- TODO: Compare branch topology here OR write some simplification
       Select {} -> Nothing
       For {} -> Nothing
       Go {} -> Nothing
@@ -45,6 +44,9 @@ simpleProcess = \case
 --  [SKIP]:     <skip : ss>
 --              |- <ss>
 --  [DECL]:     <x := e : ss>
+--              |- <ss>
+--  FIXME: This will probably play better with scope continuations
+--  [BREAK]:    <break : ss, _>
 --              |- <ss>
 --  [ASSIGN]:   <x = e : ss>
 --              |- <ss>
@@ -78,6 +80,7 @@ terminal = \case
     Return -> True
     Skip -> terminal ss
     Break {} -> terminal ss
+    Continue {} -> terminal ss
     Chan {} -> terminal ss
     Decl {} -> terminal ss
     As {} -> terminal ss

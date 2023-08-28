@@ -39,21 +39,22 @@ reverseStmts = reverse . map reverseStmt
 reverseStmt :: Pos Stmt -> Pos Stmt
 reverseStmt (Pos p s) =
   let bin c ss1 ss2 = c (reverseStmts ss1) (reverseStmts ss2)
+      un c ss1 = c (reverseStmts ss1)
    in Pos p $ case s of
         If e ss1 ss2 -> bin (If e) ss1 ss2
-        While e ss' -> While e (reverseStmts ss')
-        For x e1 e2 d ss' -> For x e1 e2 d (reverseStmts ss')
+        While e ss' -> un (While e) ss'
+        For x e1 e2 d ss' -> un (For x e1 e2 d) ss'
         Select cs d ->
           let d' = fmap reverseStmts d
               cs' = map (second reverseStmts) cs
            in Select cs' d'
-        Go ss' -> Go (reverseStmts ss')
-        Block ss' -> Block (reverseStmts ss')
+        Go ss' -> un Go ss'
+        Block ss' -> un Block ss'
         _ -> s
 
 relevantSelect :: Stmt -> Bool
 relevantSelect = \case
   Select cs _ ->
-    let starCase (Pos _ o) = case o of { Star -> True; _ -> False }
+    let starCase o = case (o @^) of { Star -> True; _ -> False }
      in not (all (starCase . fst) cs)
   _ -> True

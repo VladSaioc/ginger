@@ -21,32 +21,32 @@ mkdir dir = do
 main :: IO ()
 main = do
   args <- getArgs
-  let parseFileName = unpack . replace (pack "/") (pack "#") . pack
-  let workflow out file ir =
-        let result =
-              ( do
-                  ir' <- ir
-                  irToBackend ir'
-              )
-         in do
-              _ <- case ir of
-                Ok ir' -> do
-                  putStrLn "\n"
-                  putStrLn "Intermediate representation:"
-                  print ir'
-                  putStrLn "\n"
-                _ -> return ()
-              case result of
-                Ok prog ->
-                  ( do
-                      putStrLn "Succesfully generated and simplified back-end."
-                      mkdir out
-                      writeFile (out ++ "/" ++ file) (prettyPrint 0 prog)
-                      return ()
-                  )
-                Bad err -> putStrLn ("ERROR: " ++ err)
+  let parseFileName = unpack . replace (pack "/") (pack "__") . pack
   case getFilePath args of
     Ok filePath -> do
+      let workflow out file ir =
+            let result =
+                  ( do
+                      ir' <- ir
+                      irToBackend ir'
+                  )
+             in do
+                  _ <- case ir of
+                    Ok ir' -> do
+                      putStrLn "\n"
+                      putStrLn "Intermediate representation:"
+                      print ir'
+                      putStrLn "\n"
+                    _ -> return ()
+                  case result of
+                    Ok prog ->
+                      ( do
+                          putStrLn "Succesfully generated and simplified back-end."
+                          mkdir out
+                          writeFile (out ++ "/" ++ file) (prettyPrint 0 prog)
+                          return ()
+                      )
+                    Bad err -> ioError $ userError ("ERROR: " ++ filePath ++ err)
       let outputFileName = parseFileName filePath ++ ".dfy"
       let outputDir = getResultDir args
       source <- readFile filePath
@@ -60,4 +60,4 @@ main = do
                 )
       _ <- workflow outputDir outputFileName ir
       putStrLn $ "Output found at: " ++ outputDir ++ "/" ++ outputFileName
-    Bad _ -> putStrLn "Give me a Promela file."
+    Bad _ -> ioError $ userError "Give me a Promela/Go IR file."

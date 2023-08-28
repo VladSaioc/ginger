@@ -11,18 +11,19 @@ streamlineReturn (Prog ss) = Prog $ streamlineReturnSs $ ss ++ [Pos NoPos Return
 streamlineReturnSs :: [Pos Stmt] -> [Pos Stmt]
 streamlineReturnSs = \case
   [] -> []
-  Pos p s : ss ->
+  s@(Pos p _) : ss ->
     let pos = Pos p
         un c s1 = pos $ c (streamlineReturnSs s1)
-     in case s of
+     in case (s @^) of
           Skip -> streamlineReturnSs ss
-          Return -> [pos s]
-          Chan {} -> pos s : streamlineReturnSs ss
-          Break -> [pos s]
-          Atomic {} -> pos s : streamlineReturnSs ss
-          Decl {} -> pos s : streamlineReturnSs ss
-          As {} -> pos s : streamlineReturnSs ss
-          Close {} -> pos s : streamlineReturnSs ss
+          Return -> [s]
+          Chan {} -> s : streamlineReturnSs ss
+          Break -> [s]
+          Continue -> []
+          Atomic {} -> s : streamlineReturnSs ss
+          Decl {} -> s : streamlineReturnSs ss
+          As {} -> s : streamlineReturnSs ss
+          Close {} -> s : streamlineReturnSs ss
           Block ss' ->
             streamlineReturnSs ss'
               ++ if terminal ss'

@@ -28,6 +28,7 @@ simplifyStatements = \case
           Skip -> simplifyStatements ss
           Return -> [Pos p Return]
           Break -> [Pos p Break]
+          Continue -> [Pos p Continue]
           Block ss' -> simplifyStatements $ ss' ++ ss
           If _ [] [] -> simplifyStatements ss
           If CTrue ss' _ -> simplifyStatements $ ss' ++ ss
