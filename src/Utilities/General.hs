@@ -1,8 +1,10 @@
 module Utilities.General (results, foldMonad, binaryCons, unaryCons) where
 
 import Control.Monad
-import Data.Functor
+import Data.Functor ( (<&>) )
 
+-- | Converts a list of monad values, into a monad wrapping a list.
+-- If any value is
 results :: Monad m => [m a] -> m [a]
 results [] = return []
 results (r : rs) = do
@@ -10,8 +12,9 @@ results (r : rs) = do
   rs' <- results rs
   return (rv : rs')
 
+-- |
 foldMonad :: (Foldable t1, Monad m) => (t2 -> m t3) -> t4 -> (t4 -> t3 -> t4) -> t1 t2 -> m t4
-foldMonad f start combine = Control.Monad.foldM (\b -> (Data.Functor.<&> combine b) . f) start
+foldMonad f start combine = Control.Monad.foldM (\b -> (<&> combine b) . f) start
 
 binaryCons :: Monad m => (a -> m b) -> (b -> b -> c) -> a -> a -> m c
 binaryCons p cons e1 e2 = do

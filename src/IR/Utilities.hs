@@ -1,6 +1,6 @@
 module IR.Utilities where
 
-import IR.Ast (Op (..))
+import IR.Ast
 
 data OpDir = S | R deriving (Eq, Ord, Read)
 
@@ -18,3 +18,15 @@ instance Show OpDir where
   show = \case
     S -> "!"
     R -> "?"
+
+interesting :: 𝑃 -> Bool
+interesting (𝑃 _ ps) =
+  let
+    bin s1 s2 = interestingStmt s1 || interestingStmt s2
+    interestingStmt = \case
+        Atomic _ -> True
+        Seq s1 s2 -> bin s1 s2
+        If _ s1 s2 -> bin s1 s2
+        For _ _ _ os -> not (null os)
+        _ -> False
+  in any interestingStmt ps

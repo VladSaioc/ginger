@@ -102,13 +102,15 @@ showParam :: Show a => (String, a) -> String
 showParam (x, t) = unwords [show t, x]
 
 instance PrettyPrint Stmt where
+  prettyPrint :: Int -> Stmt -> String
   prettyPrint n =
-    let makeElse =
+    let tab = indent n
+        makeElse =
           maybe
             ""
             ( \ss ->
                 multiline
-                  [ indent n ++ "else  ->",
+                  [ tab "else  ->",
                     block (n + 1) ss
                   ]
             )
@@ -116,33 +118,33 @@ instance PrettyPrint Stmt where
           Decl x t me -> prettyPrintField n (x, t, me)
           If os els ->
             multiline
-              [ indent n ++ "if",
+              [ tab "if",
                 multiline $ map (prettyPrintCase n) os,
                 makeElse els,
-                indent n ++ "fi"
+                tab "fi"
               ]
           Do os els ->
             multiline
-              [ indent n ++ "do",
+              [ tab "do",
                 multiline $ map (prettyPrintCase n) os,
                 makeElse els,
-                indent n ++ "od"
+                tab "od"
               ]
           For r ss ->
             multiline
-              [ indent n ++ "for(" ++ show r ++ ") {",
+              [ tab "for(" ++ show r ++ ") {",
                 multiline $ map (prettyPrint $ n + 1) ss,
-                indent n ++ "}"
+                tab "}"
               ]
-          As x e -> unwords [indent n ++ show x, "=", show e]
+          As x e -> unwords [tab (show x), "=", show e]
           Goto l -> unwords ["goto", l]
-          Break -> indent n ++ "break"
-          Skip -> indent n ++ "skip"
-          Assert e -> unwords [indent n ++ "assert", show e]
-          Recv c es -> indent n ++ show c ++ "?" ++ intercalate ", " (map show es)
-          Send c es -> indent n ++ show c ++ "!" ++ intercalate ", " (map show es)
-          ExpS e -> indent n ++ show e
-          Label l -> unwords [indent n ++ l ++ ":", "skip"]
+          Break -> tab "break"
+          Skip -> tab "skip"
+          Assert e -> unwords [tab "assert", show e]
+          Recv c es -> tab $ show c ++ "?" ++ intercalate ", " (map show es)
+          Send c es -> tab $ show c ++ "!" ++ intercalate ", " (map show es)
+          ExpS e -> tab $ show e
+          Label l -> unwords [tab l ++ ":", "skip"]
 
 instance Show Range where
   show = \case
@@ -152,7 +154,7 @@ instance Show Range where
 prettyPrintCase :: (Show a1, PrettyPrint a2) => Int -> (a1, [a2]) -> String
 prettyPrintCase n (c, ss) =
   multiline
-    [ unwords [indent n ++ "::", show c, "->"],
+    [ unwords [indent n "::", show c, "->"],
       block (n + 1) ss
     ]
 
@@ -173,7 +175,7 @@ instance Show Type where
 prettyPrintField :: (Show a1, Show a2) => Int -> (String, a1, Maybe a2) -> String
 prettyPrintField n (f, t, me) =
   let e = maybe "" show me
-   in unwords [indent n ++ show t, f, "=", e]
+   in unwords [indent n (show t), f, "=", e]
 
 instance Show Exp where
   show =

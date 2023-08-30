@@ -61,7 +61,7 @@ instance Show Stmt where
 instance PrettyPrint Stmt where
   prettyPrint n s =
     let block n' = multiline . map (prettyPrint $ n + n')
-        tab = (++) $ indent n
+        tab = indent n
      in case s of
           Skip -> tab "skip"
           Break -> tab "break"

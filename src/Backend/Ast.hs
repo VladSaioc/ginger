@@ -255,7 +255,8 @@ instance PrettyPrint Pattern where
 instance PrettyPrint Stmt where
   prettyPrint i s =
     let pp = prettyPrint i
-        ind = indent i
+        ind = indent i ""
+        ind1 = indent (i + 1) ""
         s' = case s of
           Assign xes ->
             unwords [intercalate ", " (map fst xes), ":=", intercalate ", " (map (prettyPrint 0 . snd) xes) ++ ";"]
@@ -264,8 +265,8 @@ instance PrettyPrint Stmt where
               then ""
               else
                 "{\n"
-                  ++ indent (i + 1)
-                  ++ intercalate ("\n" ++ indent (i + 1)) (map (prettyPrint $ i + 1) ss)
+                  ++ ind1
+                  ++ intercalate ("\n" ++ ind1) (map (prettyPrint $ i + 1) ss)
                   ++ "\n"
                   ++ ind
                   ++ "}"
@@ -294,7 +295,7 @@ instance PrettyPrint Stmt where
                   ++ ("\n" ++ ind ++ "}")
           While e es1 es2 s'' ->
             let e' = prettyPrint 0 e
-                cons kw e'' = "\n" ++ indent (i + 1) ++ unwords [kw, prettyPrint (i + 1) e'']
+                cons kw e'' = "\n" ++ ind1 ++ unwords [kw, prettyPrint (i + 1) e'']
                 es' = concat (map (cons "invariant") es1 ++ map (cons "decreases") es2) ++ " "
              in unwords ["while", e'] ++ es' ++ prettyPrint i s''
           Return es -> unwords ["return", intercalate ", " (map (prettyPrint i) es)]
@@ -309,6 +310,7 @@ instance PrettyPrint Const where
 instance PrettyPrint Exp where
   prettyPrint i e =
     let pp = prettyPrint i
+        (tab, ind) = (indent i, indent i "")
         quantifier q xs e' =
           let def (x, mt) =
                 let t' = case mt of
@@ -347,11 +349,11 @@ instance PrettyPrint Exp where
           e1 :% e2 -> bin e1 "%" e2
           IfElse e1 e2 e3 -> unwords ["if", pp e1, "then", pp e2, "else", pp e3]
           Match e' cs ->
-            let def (p, e'') = unwords [indent i ++ "case", prettyPrint i p, "=>", pp e'']
+            let def (p, e'') = unwords [tab "case", prettyPrint i p, "=>", pp e'']
                 cs' = map def cs
              in unwords ["match", pp e', "{\n"]
-                  ++ intercalate ("\n" ++ indent i) cs'
-                  ++ ("\n" ++ indent i ++ "}")
+                  ++ intercalate ("\n" ++ ind) cs'
+                  ++ ("\n" ++ tab "}")
           Call f es -> f ++ "(" ++ intercalate ", " (map pp es) ++ ")"
 
 instance PrettyPrint Cons where
@@ -380,7 +382,7 @@ instance PrettyPrint Function where
           dec = prop "decreases" decreases
           props = intercalate "\n" (pre ++ post ++ dec)
           body = prettyPrint 1 funcBody
-          prop kw = map (((indent 1 ++ kw) ++) . prettyPrint 2)
+          prop kw = map (((indent 1 kw) ++) . prettyPrint 2)
        in intercalate "\n" [header, props ++ "{", body, "}"]
 
 instance PrettyPrint Method where
@@ -399,7 +401,7 @@ instance PrettyPrint Method where
           dec = prop "decreases" decreases
           props = intercalate "\n" (pre ++ post ++ dec)
           body = prettyPrint 0 methodBody
-          prop kw = map (\e -> indent 1 ++ unwords [kw, prettyPrint 2 e])
+          prop kw = map (\e -> indent 1 $ unwords [kw, prettyPrint 2 e])
        in intercalate "\n" [header, props, body]
 
 instance PrettyPrint Decl where
