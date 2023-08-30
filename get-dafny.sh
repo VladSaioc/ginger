@@ -25,7 +25,7 @@ esac
 DAFNY_V="4.0.0"
 
 URL="https://github.com/dafny-lang/dafny/releases/download/v$DAFNY_V/dafny-$DAFNY_V-$ARCH-$OS.zip"
-DAFZIP="$DAFNY_V-$ARCH-$OS.zip"
+DAFZIP="dafny-$DAFNY_V-$ARCH-$OS.zip"
 
 [ ! -f "./$DAFZIP" ] && wget $URL
 
