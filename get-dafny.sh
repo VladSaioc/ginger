@@ -20,9 +20,10 @@ case $(arch) in
     ;;
 esac
 
+DAFNY_V="4.2.0"
 
-URL="https://github.com/dafny-lang/dafny/releases/download/v4.2.0/dafny-4.2.0-$ARCH-$OS.zip"
-DAFZIP="dafny-4.2.0-$ARCH-$OS.zip"
+URL="https://github.com/dafny-lang/dafny/releases/download/v$DAFNY_V/dafny-$DAFNY_V-$ARCH-$OS.zip"
+DAFZIP="$DAFNY_V-$ARCH-$OS.zip"
 
 [ ! -f "./$DAFZIP" ] && wget $URL
 
