@@ -18,9 +18,11 @@ case $(arch) in
   "x86_64")
     ARCH="x64"
     ;;
+  "arm64")
+    ARCH="arm64"
 esac
 
-DAFNY_V="4.2.0"
+DAFNY_V="4.0.0"
 
 URL="https://github.com/dafny-lang/dafny/releases/download/v$DAFNY_V/dafny-$DAFNY_V-$ARCH-$OS.zip"
 DAFZIP="$DAFNY_V-$ARCH-$OS.zip"
