@@ -4,17 +4,17 @@ import Backend.Ast
 import Pipeline.IRTranslation.Utilities
 import Utilities.PrettyPrint
 
--- (Meta)data about conditional statements found in the program.
+-- | (Meta)data about conditional statements found in the program.
 data ℐ = ℐ
-  { -- Process
+  { -- | Process of if statement
     iP :: P,
-    -- If guard
+    -- | If guard
     iGuard :: Exp,
-    -- Guard program point
+    -- | Guard program point
     i𝑛 :: 𝑁,
-    -- Else program point
+    -- | Else program point
     iElse :: 𝑁,
-    -- Exit program point
+    -- | Exit program point
     iExit :: 𝑁
   }
 

@@ -11,39 +11,67 @@ import Pipeline.IRTranslation.Meta.Loop
 import Pipeline.IRTranslation.Utilities
 import Utilities.Collection
 
+-- | Creates a call to the "iter" function on loop bounds.
+--
+-- Produces: 
+--
+-- > iter(lo,hi)
 iterations :: Exp -> Exp -> Exp
 iterations lo hi = Call "iter" [lo, hi]
 
+-- | Create all channel preconditions.
 preconditions :: 𝛹 -> K -> P ↦ (𝐶 ↦ 𝒪s) -> [ℒ] -> [Exp]
 preconditions 𝜓 κ noloops loops =
-  let lR = M.unionsWith (M.unionWith (:+)) (L.map (loopToPre 𝜓) loops)
+  let -- Gather precondition contributions for every channel for
+      -- operations in loop statements.
+      lR = M.unionsWith (M.unionWith (:+)) (L.map (loopToPre 𝜓) loops)
+      -- Gather precondition contributions for every channel for
+      -- operations outside loops.
       nR = noloopOpToPre 𝜓 noloops
+      -- Combine the sets of channel names.
       cs = L.union (M.keys lR) (M.keys nR)
+      -- Construct a precondition for channel c.
       prc c =
-        let k = Mb.fromJust (M.lookup c κ)
+        let -- Get channel capacity expression.
+            k = Mb.fromJust (M.lookup c κ)
+            -- Get channel precondition sub-expressions from map.
             cR r = Mb.fromMaybe M.empty (M.lookup c r)
+            -- Get precondition sub-expressions for channel operation direction.
             cdR d r = Mb.fromMaybe (0 #) (M.lookup d r)
+            -- Get loop and non-loop precondition sub-expressions.
             (clR, cnR) = (cR lR, cR nR)
 
+            -- Get send sub-expressions.
             sends = cdR S clR :+ cdR S cnR
+            -- Get receive sub-expressions.
             rcvs = cdR R clR :+ cdR R cnR
 
+            -- Construct receive unblock precondition.
+            -- Receives unblock if there are more sends.
             rcvsUnblock = rcvs :<= sends
+            -- Construct send unblock precondition.
+            -- Sends unblock if there are more receive operations and
+            -- capacity combined.
             sndsUnblock = sends :<= (rcvs :+ k)
-         in rcvsUnblock :&& sndsUnblock
+         in -- The final precondition requires that both the receives and
+            -- sends unblock. 
+            rcvsUnblock :&& sndsUnblock
    in L.map prc cs
 
-{- Constructs the resource contribution resulting from
+{- | Constructs the resource contribution resulting from
 loop channel operations.
 Depends on: ℓ = (x, e₁, e₂, O)
+
 Reachability conditions for all processes:
-  𝜓 = [π ↦ [𝑛 ↦ e | 𝑛 ∈ dom(𝛱(π))] | π ∈ dom(𝛱)]
+
+>  𝜓 = [π ↦ [𝑛 ↦ e | 𝑛 ∈ dom(𝛱(π))] | π ∈ dom(𝛱)]
 
 Produces:
-[ c ↦ [
-  ! ↦ |O! ⊆ O| * iterations(e₁, e₂)
-  ? ↦ |O? ⊆ O| * iterations(e₁, e₂)
-] | c ∈ chans(O)]
+
+> [ c ↦ [
+>   ! ↦ |O! ⊆ O| * iterations(e₁, e₂)
+>   ? ↦ |O? ⊆ O| * iterations(e₁, e₂)
+> ] | c ∈ chans(O)]
 -}
 loopToPre :: 𝛹 -> ℒ -> 𝐶 ↦ (OpDir ↦ Exp)
 loopToPre 𝜓 (ℒ {lP = p, l𝑛 = 𝑛, lower, upper, l𝒪s = os}) =
@@ -56,17 +84,20 @@ loopToPre 𝜓 (ℒ {lP = p, l𝑛 = 𝑛, lower, upper, l𝒪s = os}) =
          in IfElse b e (0 #)
    in M.map (M.map iter) os
 
-{- Constructs the resource contribution resulting from
+{- | Constructs the resource contribution resulting from
 non-loop channel operations.
 Depends on: O
+
 Reachability conditions for all processes:
-  𝜓 = [π ↦ [𝑛 ↦ e | 𝑛 ∈ dom(𝛱(π))] | π ∈ dom(𝛱)]
+
+>  𝜓 = [π ↦ [𝑛 ↦ e | 𝑛 ∈ dom(𝛱(π))] | π ∈ dom(𝛱)]
 
 Produces:
-[ c ↦ [
-  ! ↦ (𝛴 (π, 𝜙) ∈ dom(𝛱). ∀ 𝑛, (𝑛, c!) ∈ 𝜙. if 𝜓(π)(𝑛) then 1 else 0)
-  ? ↦ (𝛴 (π, 𝜙) ∈ dom(𝛱). ∀ 𝑛, (𝑛, c?) ∈ 𝜙. if 𝜓(π)(𝑛) then 1 else 0)
-] | c ∈ chans(O)]
+
+> [ c ↦ [
+>   ! ↦ (𝛴 (π, 𝜙) ∈ dom(𝛱). ∀ 𝑛, (𝑛, c!) ∈ 𝜙. if 𝜓(π)(𝑛) then 1 else 0)
+>   ? ↦ (𝛴 (π, 𝜙) ∈ dom(𝛱). ∀ 𝑛, (𝑛, c?) ∈ 𝜙. if 𝜓(π)(𝑛) then 1 else 0)
+> ] | c ∈ chans(O)]
 -}
 noloopOpToPre :: 𝛹 -> P ↦ (𝐶 ↦ 𝒪s) -> 𝐶 ↦ (OpDir ↦ Exp)
 noloopOpToPre 𝜓 pis =

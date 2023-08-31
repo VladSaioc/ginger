@@ -43,6 +43,7 @@ updateCtxVisited :: Ctxt a -> Ctxt b -> Ctxt a
 updateCtxVisited ctx ctx' =
   ctx {visited = S.union (visited ctx) (visited ctx')}
 
+-- | Check that there is no recursion within the call graph.
 noRecursion :: Spec -> Err ()
 noRecursion (Spec ms) =
   let ss = getInit (Spec ms)

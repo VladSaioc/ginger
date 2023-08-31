@@ -3,6 +3,9 @@ module Backend.Ast where
 import Data.List (intercalate)
 import Utilities.PrettyPrint
 
+-- | Back-end type syntax:
+--
+-- > T ::= int | nat | bool | x | T -> T | ({T, ...}*)
 data Type
   = TBad
   | -- int
@@ -19,118 +22,153 @@ data Type
     Tuple [Type]
   deriving (Eq, Ord, Read)
 
+-- | Back-end pattern matching syntax:
+--
+-- > P ::= _ | c | x | C(p, ...) | (p, ...)
 data Pattern
-  = -- _
+  = -- | >  _
     Wildcard
-  | -- Constant
+  | -- | > c
     PCon Const
-  | -- Variable
+  | -- | > x
     PVar String
-  | -- cons(p, ...)
+  | -- | > C(p, ...)
     PAdt String [Pattern]
-  | -- (p, ...)
+  | -- | > (p, ...)
     PTuple [Pattern]
   deriving (Eq, Ord, Show, Read)
 
--- Statement
+-- | Back-end statement syntax:
+--
+-- > S ::= {x, ...}* := {e, ...}*
+-- >    | { S; ... }
+-- >    | [ghost] var {x [: T], ...}* := {e, ...}*
+-- >    | if e { S } else { S }
+-- >    | assert e
+-- >    | match e { {case p => S ...}* }
+-- >    | while e {invariant e ...}* {decreases e}* { S }
+-- >    | return {e, ...}*
 data Stmt
-  = -- {x, ...}* := {e, ...}*
+  = -- | > {x, ...}* := {e, ...}*
     Assign [(String, Exp)]
-  | -- { S; ... }
+  | -- | > { S; ... }
     Block [Stmt]
-  | -- [ghost] var {x [: T], ...}* := {e, ...}*
+  | -- | > [ghost] var {x [: T], ...}* := {e, ...}*
     VarDef Bool [(String, Maybe Type, Exp)]
-  | -- if e { S } else { S }
+  | -- | > if e { S } else { S }
     If Exp Stmt (Maybe Stmt)
-  | -- assert e
+  | -- | > assert e
     Assert Exp
-  | -- match e { {case p => S ...}* }
+  | -- | > match e { {case p => S ...}* }
     MatchStmt Exp [(Pattern, Stmt)]
-  | -- while e {invariant e ...}* {decreases e}* { S }
+  | -- | > while e {invariant e ...}* {decreases e}* { S }
     While Exp [Exp] [Exp] Stmt
-  | -- return {e, ...}*
+  | -- | > return {e, ...}*
     Return [Exp]
   deriving (Eq, Ord, Show, Read)
 
+-- | Back-end constants:
+-- > c ::= true | false | n
 data Const
-  = -- -- true
+  = -- | > true
     CTrue
-  | -- -- false
+  | -- | > false
     CFalse
-  | -- -- n ∈ ℤ
+  | -- | > n ∈ ℤ
     CNum Int
   deriving (Eq, Ord, Show, Read)
 
--- Expressions
+-- | Back-end expressions:
+--
+-- > e ::= match e1 { {case p => e ...}* }
+-- >    | if e1 then e2 else e3
+-- >    | exists {x [: T], ...}* :: e
+-- >    | forall {x [: T], ...}* :: e
+-- >    | e1 in e2
+-- >    | {{e, ...} *}
+-- >    | e1 <==> e2 | e1 ==> e2
+-- >    | e1 && e2 | e1 || e2
+-- >    | e1 == e2 | e1 != e2
+-- >    | e1 >= e2 | e1 > e2
+-- >    | e1 <= e2 | e1 < e2
+-- >    | exists {x [: T], ...}* :: e
 data Exp
   = -- COMPOUND EXPRESSIONS
-    -- -- match e1 { {case p => e ...}* }
+    -- | > match e1 { {case p => e ...}* }
     Match Exp [(Pattern, Exp)]
-  | -- -- if e1 then e2 else e3
+  | -- | > if e1 then e2 else e3
     IfElse Exp Exp Exp
   | -- PROPOSITIONAL QUANTIFIERS
-    -- exists {x [: T], ...}* :: e
+    -- | > exists {x [: T], ...}* :: e
     Exists [(String, Maybe Type)] Exp
-  | -- forall {x [: T], ...}* :: e
+  | -- | > forall {x [: T], ...}* :: e
     Forall [(String, Maybe Type)] Exp
-  | -- e1 in e2
+  | -- | > e1 in e2
     In Exp Exp
-  | -- {{e, ...} *}
+  | -- | > {{e, ...} *}
     ESet [Exp]
   | -- BINARY OPERATORS
     -- Propositional logic
-    -- -- e1 <==> e2
+    -- | > e1 <==> e2
     Exp :<==> Exp
-  | -- -- e1 ==> e2
+  | -- | > e1 ==> e2
     Exp :==> Exp
   | -- Boolean arithmetic
-    -- -- e1 && e2
+    -- | > e1 && e2
     Exp :&& Exp
-  | -- -- e1 || e2
+  | -- | > e1 || e2
     Exp :|| Exp
   | -- Comparison
-    -- -- e1 == e2
+    -- | > e1 == e2
     Exp :== Exp
-  | -- -- e1 != e2
+  | -- | > e1 != e2
     Exp :!= Exp
-  | -- -- e1 >= e2
+  | -- | > e1 >= e2
     Exp :>= Exp
-  | -- -- e1 > e2
+  | -- | > e1 > e2
     Exp :> Exp
-  | -- -- e1 <= e2
+  | -- | > e1 <= e2
     Exp :<= Exp
-  | -- -- e1 < e2
+  | -- | > e1 < e2
     Exp :< Exp
   | -- Arithmetic
-    -- -- e1 + e2
+    -- | > e1 + e2
     Exp :+ Exp
-  | -- -- e1 - e2
+  | -- | > e1 - e2
     Exp :- Exp
-  | -- -- e1 * e2
+  | -- | > e1 * e2
     Exp :* Exp
-  | -- -- e1 / e2
+  | -- | > e1 / e2
     Exp :/ Exp
-  | -- -- e1 % e2
+  | -- | > e1 % e2
     Exp :% Exp
   | -- UNARY OPERATORS
-    -- -- !e
+    -- | > !e
     Not Exp
-  | -- -- (e1, ... en)
+  | -- | > (e1, ... en)
     ETuple [Exp]
   | -- TERMINAL EXPRESSIONS
-    -- -- *
+    -- | > *
     Any
-  | -- -- x
+  | -- | > x
     EVar String
-  | -- -- const
+  | -- | > c
     ECon Const
-  | -- -- f({e, ...}*)
+  | -- | > f({e, ...}*)
     Call String [Exp]
   deriving (Eq, Ord, Show, Read)
 
--- Cons({field : type, ...})
+-- | Back-end record type definition:
+--
+-- > T({field : type, ...}*)
 data Cons = Cons String [(String, Type)] deriving (Eq, Ord, Read)
 
+-- | Back-end Hoare triple syntax. Uses holes for keyword and return type:
+--
+-- > H<_, _> ::= _ x[\<{T, ...}>]({x : T, ...}*) _
+-- >      {requires e\n...}*
+-- >      {ensures e\n...}*
+-- >      {decreases e\n...}*
 data HoareWrap = HoareWrap
   { ghost :: Bool,
     name :: String,
@@ -142,6 +180,9 @@ data HoareWrap = HoareWrap
   }
   deriving (Eq, Ord, Read)
 
+-- | Back-end function declaration syntax:
+--
+-- > F ::= H<[ghost] function, : T> E
 data Function = Function
   { yields :: Type,
     funcHoare :: HoareWrap,
@@ -149,6 +190,9 @@ data Function = Function
   }
   deriving (Eq, Ord, Read)
 
+-- | Method declaration syntax:
+--
+-- > M ::= H<lemma | method, returns ({ x : T, ...}*)> { {S; ...}* }
 data Method = Method
   { returns :: [(String, Type)],
     methodHoare :: HoareWrap,
@@ -156,60 +200,65 @@ data Method = Method
   }
   deriving (Eq, Ord, Read)
 
+-- | Back-end top-level declaration:
+--
+-- > D ::= datatype x<{T, ...}> = {Cons | ...}
+-- >    | type x = T
 data Decl
-  = -- datatype x<{Type, ...}> = {Cons | ...}
+  = -- | > datatype x<{Type, ...}> = {Cons | ...}
     Datatype String [Type] [Cons]
-  | -- type x = Type
+  | -- | > type x = Type
     TypeDecl String Type
   | -- [ghost] function f({x : T, ...}*) : T {requires e}* {ensures e}* { e }
     FDecl Function
-  | -- If not ghost:
-    -- method f({x : T, ...}*) returns ({x : T, ...}*)  {requires e ...}* {ensures e ...}* {decreases e ...}* S
-    -- If ghost:
-    -- lemma f({x : T, ...}*) returns ({x : T, ...}*)  {requires e ...}* {ensures e ...}* {decreases e ...}* S
+  | -- (lemma | method) f({x : T, ...}*) returns ({x : T, ...}*)  {requires e ...}* {ensures e ...}* {decreases e ...}* { {S; ...}* }
     MDecl Method
   deriving (Eq, Ord, Read)
 
--- Back-end program
+-- | Back-end program syntax:
+--
+-- > P ::= {D \n D}*
 newtype Program = Program [Decl] deriving (Eq, Ord, Read)
 
+-- | Unparser precedence order helper for binary operations. 
+-- Does not wrap sub-tree expressions operations
 (<.|.>) :: Exp -> Either Exp Exp -> String
 (<.|.>) e1 lre2 =
   let needParens =
         ( case (e1, lre2) of
             (_ :<==> _, Right (_ :<==> _)) -> False
             (_ :<==> _, Left (_ :<==> _)) -> False
-            (_ :==> _, Left (_ :==> _)) -> True
+            (_ :==> _, Left (_ :==> _)) -> True    -- Need parentheses if left is implication
             (_ :==> _, Right (_ :==> _)) -> False
-            (_ :&& _, Right (_ :&& _)) -> False
+            (_ :&& _, Right (_ :&& _)) -> False    -- No need for parentheses for AND
             (_ :&& _, Left (_ :&& _)) -> False
-            (_ :|| _, Right (_ :|| _)) -> False
+            (_ :|| _, Right (_ :|| _)) -> False    -- No need for parentheses for OR
             (_ :|| _, Left (_ :|| _)) -> False
-            (_ :&& _, Right (_ :|| _)) -> True
+            (_ :&& _, Right (_ :|| _)) -> True     -- Need parentheses if mixed AND and OR
             (_ :&& _, Left (_ :|| _)) -> True
             (_ :|| _, Right (_ :&& _)) -> True
             (_ :|| _, Left (_ :&& _)) -> True
-            (_ :== _, Right (_ :== _)) -> True
+            (_ :== _, Right (_ :== _)) -> True     -- Need parentheses for equality and inequality
             (_ :== _, Left (_ :== _)) -> True
             (_ :== _, Right (_ :!= _)) -> True
             (_ :== _, Left (_ :!= _)) -> True
-            (_ :+ _, Right (_ :+ _)) -> False
+            (_ :+ _, Right (_ :+ _)) -> False      -- No need for parentheses for addition
             (_ :+ _, Left (_ :+ _)) -> False
-            (_ :+ _, Right (_ :- _)) -> False
+            (_ :+ _, Right (_ :- _)) -> False      -- No need for parentheses for addition and subtraction mix
             (_ :+ _, Left (_ :- _)) -> False
-            (_ :- _, Right (_ :- _)) -> True
+            (_ :- _, Right (_ :- _)) -> True       -- Need parentheses if left is subtraction
             (_ :- _, Left (_ :- _)) -> False
             (_ :- _, Left (_ :+ _)) -> False
             (_ :- _, Right (_ :+ _)) -> True
-            (_ :* _, Right (_ :* _)) -> False
+            (_ :* _, Right (_ :* _)) -> False      -- No need for parentheses for multiplication
             (_ :* _, Left (_ :* _)) -> False
-            (_ :* _, Right (_ :/ _)) -> False
+            (_ :* _, Right (_ :/ _)) -> False      -- No need for parentheses for multiplication and division mix
             (_ :* _, Left (_ :/ _)) -> False
-            (_ :/ _, Right (_ :/ _)) -> True
+            (_ :/ _, Right (_ :/ _)) -> True       -- Need parentheses if left is division
             (_ :/ _, Left (_ :/ _)) -> False
             (_ :/ _, Left (_ :* _)) -> False
             (_ :/ _, Right (_ :* _)) -> True
-            (_ :% _, Left (_ :% _)) -> True
+            (_ :% _, Left (_ :% _)) -> True        -- Need parentheses for modulo
             (_ :% _, Right (_ :% _)) -> True
             _ -> e1 > either id id lre2
         )
@@ -255,7 +304,8 @@ instance PrettyPrint Pattern where
 instance PrettyPrint Stmt where
   prettyPrint i s =
     let pp = prettyPrint i
-        ind = indent i
+        ind = indent i ""
+        ind1 = indent (i + 1) ""
         s' = case s of
           Assign xes ->
             unwords [intercalate ", " (map fst xes), ":=", intercalate ", " (map (prettyPrint 0 . snd) xes) ++ ";"]
@@ -264,8 +314,8 @@ instance PrettyPrint Stmt where
               then ""
               else
                 "{\n"
-                  ++ indent (i + 1)
-                  ++ intercalate ("\n" ++ indent (i + 1)) (map (prettyPrint $ i + 1) ss)
+                  ++ ind1
+                  ++ intercalate ("\n" ++ ind1) (map (prettyPrint $ i + 1) ss)
                   ++ "\n"
                   ++ ind
                   ++ "}"
@@ -294,7 +344,7 @@ instance PrettyPrint Stmt where
                   ++ ("\n" ++ ind ++ "}")
           While e es1 es2 s'' ->
             let e' = prettyPrint 0 e
-                cons kw e'' = "\n" ++ indent (i + 1) ++ unwords [kw, prettyPrint (i + 1) e'']
+                cons kw e'' = "\n" ++ ind1 ++ unwords [kw, prettyPrint (i + 1) e'']
                 es' = concat (map (cons "invariant") es1 ++ map (cons "decreases") es2) ++ " "
              in unwords ["while", e'] ++ es' ++ prettyPrint i s''
           Return es -> unwords ["return", intercalate ", " (map (prettyPrint i) es)]
@@ -309,6 +359,7 @@ instance PrettyPrint Const where
 instance PrettyPrint Exp where
   prettyPrint i e =
     let pp = prettyPrint i
+        (tab, ind) = (indent i, indent i "")
         quantifier q xs e' =
           let def (x, mt) =
                 let t' = case mt of
@@ -347,11 +398,11 @@ instance PrettyPrint Exp where
           e1 :% e2 -> bin e1 "%" e2
           IfElse e1 e2 e3 -> unwords ["if", pp e1, "then", pp e2, "else", pp e3]
           Match e' cs ->
-            let def (p, e'') = unwords [indent i ++ "case", prettyPrint i p, "=>", pp e'']
+            let def (p, e'') = unwords [tab "case", prettyPrint i p, "=>", pp e'']
                 cs' = map def cs
              in unwords ["match", pp e', "{\n"]
-                  ++ intercalate ("\n" ++ indent i) cs'
-                  ++ ("\n" ++ indent i ++ "}")
+                  ++ intercalate ("\n" ++ ind) cs'
+                  ++ ("\n" ++ tab "}")
           Call f es -> f ++ "(" ++ intercalate ", " (map pp es) ++ ")"
 
 instance PrettyPrint Cons where
@@ -380,7 +431,7 @@ instance PrettyPrint Function where
           dec = prop "decreases" decreases
           props = intercalate "\n" (pre ++ post ++ dec)
           body = prettyPrint 1 funcBody
-          prop kw = map (((indent 1 ++ kw) ++) . prettyPrint 2)
+          prop kw = map (((indent 1 kw) ++) . prettyPrint 2)
        in intercalate "\n" [header, props ++ "{", body, "}"]
 
 instance PrettyPrint Method where
@@ -399,7 +450,7 @@ instance PrettyPrint Method where
           dec = prop "decreases" decreases
           props = intercalate "\n" (pre ++ post ++ dec)
           body = prettyPrint 0 methodBody
-          prop kw = map (\e -> indent 1 ++ unwords [kw, prettyPrint 2 e])
+          prop kw = map (\e -> indent 1 $ unwords [kw, prettyPrint 2 e])
        in intercalate "\n" [header, props, body]
 
 instance PrettyPrint Decl where

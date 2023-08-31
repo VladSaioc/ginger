@@ -5,20 +5,22 @@ import Backend.Utilities
 import Data.Map qualified as M
 import Pipeline.IRTranslation.Meta.Channel
 
-{- Composes all channel bound invariants.
+{- | Composes all channel bound invariants.
 Depends on: κ
 
 Produces:
-∀ c ∈ dom(κ). channelBound(c, κ(c))
+
+> ∀ c ∈ dom(κ). channelBound(c, κ(c))
 -}
 channelBounds :: K -> [Exp]
 channelBounds = map (uncurry channelBound) . M.toList
 
-{- Constructs a channel bound invariant.
+{- | Constructs a channel bound invariant.
 Depends on: c, κ(c)
 
 Produces:
-(κ(c) > 0 ⇒ 0 ≤ c ∧ c ≤ κ(c)) ∧ (κ(c) = 0 ⇒ c ∈ {1, 0, -1})
+
+> (κ(c) > 0 ⇒ 0 ≤ c ∧ c ≤ κ(c)) ∧ (κ(c) = 0 ⇒ c ∈ {1, 0, -1})
 -}
 channelBound :: String -> Exp -> Exp
 channelBound c k =

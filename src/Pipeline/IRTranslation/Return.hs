@@ -4,15 +4,15 @@ import IR.Ast
 import Pipeline.IRTranslation.Meta.Return
 import Pipeline.IRTranslation.Utilities
 
--- Collect all loops found in the program.
--- Assume that all loops are initially guarded by true.
+-- | Collect all return statements in the program.
+-- Assume that all return statements are initially guarded by true.
 returns :: 𝑃 -> [ℛ]
 returns (𝑃 _ procs) =
   let zeros = 0 : zeros
       procs' = zip [0 ..] (zip zeros procs)
    in concatMap (fst . uncurry processReturns) procs'
 
--- Collect all loops found in a process.
+-- | Collect all return statements found in a process.
 processReturns :: P -> (𝑁, 𝑆) -> ([ℛ], 𝑁)
 processReturns p (𝑛, s) =
   let 𝑛' = 𝑛 + ppOffset s

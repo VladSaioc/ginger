@@ -14,27 +14,27 @@ import Utilities.General (binaryCons, foldMonad, unaryCons)
 import Utilities.Position
 import Utilities.TransformationCtx
 
--- Promela-to-Go translation context
+-- | Promela-to-Go translation context
 data Ctxt a b = Ctxt
-  { -- Syntax to be translated
+  { -- | Syntax to be translated
     syntax :: a,
-    -- Promela call graph
+    -- | Promela call graph
     cg :: M.Map String P.Module,
-    -- Prefix for local variables during intra-procedural translation
+    -- | Prefix for local variables during intra-procedural translation
     prefix :: String,
-    -- Variable environment.
+    -- | Variable environment.
     -- Binds Promela names to equivalently scoped Go names
     varenv :: M.Map String String,
-    -- Counter number of calls to differentiate expansions
+    -- | Counter number of calls to differentiate expansions
     -- of the same function at different call sites.
     calls :: Int,
-    -- Channel name environment.
+    -- | Channel name environment.
     -- Binds Promela channel names to equivalently scoped Go names
     chenv :: M.Map String String,
-    -- Channel capacity environment.
+    -- | Channel capacity environment.
     -- Binds Go channel names to Go capacity expressions.
     κ :: M.Map String P'.Exp,
-    -- Current object syntax translation tracker
+    -- | Current object syntax translation tracker
     curr :: b
   }
   deriving (Eq, Ord, Read, Show)
@@ -407,7 +407,7 @@ translateStatements ρ = case syntax ρ of
           -- 'do' statements are not supported
           P.Do _ _ -> err "Unexpected 'do' statement with non-deterministic branches."
 
--- Translate range statement in for loops
+-- | Translate range statement in for loops.
 translateRange :: Int -> M.Map String String -> P.Range -> Err (String, P'.Exp, P'.Exp)
 translateRange p venv = \case
   -- Only numeric bounds are considered viable
@@ -418,7 +418,7 @@ translateRange p venv = \case
     return (x, e1', e2')
   _ -> Bad "Unexpected range over array."
 
--- Translate expression, taking variable environment into consideration.
+-- | Translate expression, taking variable environment into consideration.
 -- Uses positional information for debugging and error reporting purposes.
 translateExpPos :: Int -> M.Map String String -> P.Exp -> Err P'.Exp
 translateExpPos p σ =
@@ -456,7 +456,7 @@ translateExpPos p σ =
           maybe errMsg (return . P'.Var) $ M.lookup x σ
         e -> err $ "Promela to Go: Unexpected expression translation: " ++ show e
 
--- Translate Promela channel operation to Go channel operation
+-- | Translate Promela channel operation to Go channel operation
 translateOp :: Ctxt (Pos P.Stmt) a -> Err (Ctxt () (Pos P'.Stmt))
 translateOp ρ =
   let translate p cons c =
@@ -480,7 +480,7 @@ translateOp ρ =
         Pos p (P.Recv (P.Var c) _) -> translate p P'.Recv c
         Pos p s -> Bad (":" ++ show p ++ ": Promela-to-Go Translation: Unexpected statement: " ++ show s)
 
--- Partial translation from Promela constants to Go constant expressions
+-- | Partial translation from Promela constants to Go constant expressions.
 translateVal :: P.Val -> Maybe P'.Exp
 translateVal v = case v of
   P.VInt n -> return $ P'.CNum n
@@ -488,8 +488,10 @@ translateVal v = case v of
   P.VBool False -> return P'.CFalse
   _ -> Nothing
 
--- Skips over a statement of the form:
---  run receiver(c)
+-- | Skips over a statement of the form:
+--
+-- > run receiver(c)
+--
 -- as it is an artificial construct introduced by Gomela.
 skipReceiverRun :: [Pos P.Stmt] -> [Pos P.Stmt]
 skipReceiverRun = \case
@@ -497,10 +499,11 @@ skipReceiverRun = \case
   Pos _ (P.ExpS (P.Run "receiver" [_])) : ss -> ss
   ss -> ss
 
--- Checks whether a method invocation is single-threaded or not,
+-- | Checks whether a method invocation is single-threaded or not,
 -- by inspecting whether the continuation of a method invocation
 -- is followed by a channel receive where the name is prefixed with "child":
---   child_<function>?0
+--
+-- >  child_<function>?0
 isSequential :: [Pos P.Stmt] -> Bool
 isSequential = \case
   (Pos _ (P.Recv (P.Var c) [P.Const (P.VInt 0)])) : _ -> "child" `L.isPrefixOf` c

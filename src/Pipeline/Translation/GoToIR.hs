@@ -10,16 +10,27 @@ import Utilities.Position
 import Utilities.PrettyPrint (PrettyPrint (prettyPrint))
 import Utilities.TransformationCtx
 
+-- | Go-to-IR translation context.
 data Ctxt a b = Ctxt
-  { syntax :: a,
+  { -- | Remaining syntax to translate.
+    syntax :: a,
+    -- | Current process ID.
     pid :: Int,
+    -- | Next available process ID.
     nextpid :: Int,
+    -- | Next available loop counter.
     loopcounter :: Int,
+    -- | Next available select decision point counter.
     casecounter :: Int,
+    -- | Environment from Go variables to IR expressions.
     varenv :: M.Map String 𝐸,
+    -- | Environment from channel names in the scope to their declaration names.
     chenv :: M.Map String String,
+    -- | Binding from process IDs to IR statements.
     procs :: M.Map Int 𝑆,
+    -- | Binding from IR channel names to capacity
     chans :: M.Map String 𝐸,
+    -- | Translation object so far.
     curr :: b
   }
   deriving (Eq, Ord, Read)
@@ -30,124 +41,234 @@ instance TransformCtx Ctxt where
   object = curr
   updateObject ctx a = ctx {curr = a}
 
+-- | Convert whole Go program to IR.
 getIR :: P.Prog -> Err 𝑃
 getIR (P.Prog ss) =
   let ρ =
         Ctxt
-          { syntax = ss,
+          { -- Begin translation with entry process statements.
+            syntax = ss,
+            -- Current process ID is 0
             pid = 0,
+            -- Next process ID is 1
             nextpid = 1,
+            -- Next loop counter is 0
             loopcounter = 0,
+            -- Next case counter is 0
             casecounter = 0,
+            -- All environments are empty
             varenv = M.empty,
+            chenv = M.empty,
             procs = M.empty,
             chans = M.empty,
-            chenv = M.empty,
+            -- First object statement is a skip
             curr = Skip
           }
    in do
+        -- Translate all Go statements and get an exit translation context.
         ρ' <- translateStatements ρ
+        -- Get binding from channels to capacity expressions.
         let chs = M.elems $ M.mapWithKey Chan (chans ρ')
+        -- Obtain binding from process IDs to syntax.
         let ps = M.elems $ procs ρ'
+        -- Construct IR program.
         return $ 𝑃 chs ps
 
+-- | Translate Go statements to IR.
+--
+-- > [SKIP]:    ⟨ρ, skip; S, S'⟩ ==> ⟨ρ', S''⟩
+-- >            |- ⟨ρ, S, S'⟩ ==> ⟨ρ', S''⟩
+-- > [RETURN]:  ⟨ρ, return; S, S'⟩ ==> ⟨ρ, S'; return⟩
+-- >            |- ⟨ρ, S⟩ ==> ⟨ρ, S'⟩
 translateStatements :: Ctxt [Pos P.Stmt] 𝑆 -> Err (Ctxt () 𝑆)
 translateStatements ρ = case syntax ρ of
   [] -> done (ρ {procs = M.insert (pid ρ) (curr ρ) (procs ρ)})
   Pos p s : ss -> case s of
+    -- Pass skip statements.
     P.Skip -> translateStatements (ss >: ρ)
+    -- Add a return statement and drop the continuation as unreachable.
     P.Return -> translateStatements ([] >: ρ <: Seq (curr ρ) Return)
+    -- Do not add a break statement, but drop the continuation as unreachable.
     P.Break -> translateStatements ([] >: ρ)
+    -- Pass continue statements.
     P.Continue -> translateStatements (ss >: ρ)
+    -- Value declaration.
     P.Decl x e -> do
+      -- Get variable environment.
       let venv = varenv ρ
+      -- Traslate right-hand side expression.
       e' <- translateExp venv e
-      let ρ₁ = ss >: ρ {varenv = M.insert x e' venv}
-      translateStatements ρ₁
+      -- Bind the variable next to the translated expression.
+      let ρ₁ = ρ {varenv = M.insert x e' venv}
+      -- Continue translation with the continuation.
+      translateStatements (ss >: ρ₁)
     P.If e ss1 ss2 -> do
-      let venv = varenv ρ
-      e' <- translateExp venv e
-      ρ₁ <- translateStatements (ss1 >: ρ <: Skip)
-      ρ₂ <- translateStatements (ss2 >: ρ₁ <: Skip)
-      let ρ₃ = ss >: ρ₂ <: Seq (curr ρ) (If e' (curr ρ₁) (curr ρ₂))
-      translateStatements ρ₃
-    P.Atomic op -> do
-      ρ' <- translateOp $ op >: ρ
-      let op' = Atomic $ curr ρ'
-      let stm = Seq (curr ρ) op'
-      translateStatements (ss >: ρ' <: stm)
-    P.Chan c e -> do
+      -- Translate guard expression.
       e' <- translateExp (varenv ρ) e
+      -- Translate true branch block
+      ρ₁ <- translateStatements (ss1 >: ρ <: Skip)
+      -- Translate false branch block
+      ρ₂ <- translateStatements (ss2 >: ρ₁ <: Skip)
+      -- The translation object becomes:
+      -- obj(ρ); if e' { obj(ρ₁) } else { obj(ρ₂) }
+      let ρ₃ = ρ₂ <: Seq (curr ρ) (If e' (curr ρ₁) (curr ρ₂))
+      -- Continue translation of continuation.
+      translateStatements (ss >: ρ₃)
+    -- Atomic communication operations outside loops are added
+    -- as wrapped in the 'Atomic' constructor before they go to the IR.
+    P.Atomic op -> do
+      -- Translate operation with current context.
+      ρ' <- translateOp $ op >: ρ
+      -- Wrap operation in the 'Atomic' constructor.
+      let op' = Atomic $ curr ρ'
+      -- Translation object becomes:
+      -- obj(ρ); op' 
+      -- Translate continuation.
+      translateStatements (ss >: ρ' <: Seq (curr ρ) op')
+    -- Translate channel declaration.
+    P.Chan c e -> do
+      -- Translate capacity expression.
+      e' <- translateExp (varenv ρ) e
+      -- Insert channel into capacity environment.
+      -- Insert channel name into the channel name environment
+      -- (bound to itself initially).
       let ρ₁ =
             ρ
               { chans = M.insert c e' (chans ρ),
                 chenv = M.insert c c (chenv ρ)
               }
+      -- Translate continuation.
       translateStatements (ss >: ρ₁)
+    -- Translate go statement
     P.Go ss' -> do
+      -- Translate go statement body with a fresh context.
       ρ₁ <-
         translateStatements
           Ctxt
-            { syntax = ss',
+            { -- Syntax is the body of the go statement.
+              syntax = ss',
+              -- Process map inherited from current context.
               procs = procs ρ,
+              -- Current process ID is the next fresh process ID.
               pid = nextpid ρ,
+              -- Next fresh process ID is incremented.
               nextpid = nextpid ρ + 1,
+              -- Case counter inherited from current context.
               casecounter = casecounter ρ,
+              -- Loop counter inherited from current context.
               loopcounter = loopcounter ρ,
+              -- Variable environment inherited from current context.
               varenv = varenv ρ,
+              -- Channel capacity environment inherited from current context.
               chenv = chenv ρ,
+              -- Channel name environment inherited from current context.
               chans = chans ρ,
+              -- Translation object is initially skip.
               curr = Skip
             }
+      -- Propagate persistent information from the resulting translation context
+      -- to the context of the continuation.
       let ρ₂ =
             ρ
-              { procs = procs ρ₁,
+              { -- Process environment is propagated because the child goroutine
+                -- could have created new processes.
+                procs = procs ρ₁,
+                -- Next process id is propagated because the child goroutine
+                -- could have created new processes.
                 nextpid = nextpid ρ₁,
+                -- Case counter is propagated because the child goroutine
+                -- could have had new branching paths.
                 casecounter = casecounter ρ₁,
+                -- Case counter is propagated because the child goroutine
+                -- could have had new loop.
                 loopcounter = loopcounter ρ₁,
+                -- Channel environments are propagated because the child goroutine
+                -- could have instantiated new channels.
                 chans = chans ρ₁,
                 chenv = chenv ρ₁
               }
+      -- Translate continuation.
       translateStatements (ss >: ρ₂)
     P.For x e1 e2 diff ss' -> do
+      -- Get variable environment.
       let venv = varenv ρ
+      -- Translate the bound expressions and place them in a pair.
       (e1', e2') <- binaryCons (translateExp venv) (,) e1 e2
+      -- Translate the body of the for loop.
       ρ' <- translateFor (ss' >: ρ <: [])
+      -- Change the order of the bounds depending on whether the loop uses ++ or --.
       let for = case diff of
+            -- Incrementing loops preserve the position of the bounds.
             P.Inc -> For (x ++ "'" ++ show (loopcounter ρ')) e1' e2' $ curr ρ'
+            -- Decrementing loops flip the position of the bounds.
             P.Dec -> For (x ++ "'" ++ show (loopcounter ρ')) e2' e1' $ curr ρ'
+      -- Translation object becomes:
+      -- obj(ρ); for x e1' e2' { s' }
+      -- Increment loop counter.
       let ρ'' = (ρ <: Seq (curr ρ) for) {loopcounter = loopcounter ρ' + 1}
-      translateStatements $ ss >: ρ''
+      --  Translate continuation.
+      translateStatements (ss >: ρ'')
+    -- Flatten block statements.
     P.Block ss' -> translateStatements $ (ss' ++ ss) >: ρ
     P.Select cs Nothing -> do
-      let -- Get channel operation case
+      let -- Get select cases operating on named channels.
+          -- Ensure only one such case exists.
           getChannelCase r cas@(Pos p' o, _) = do
             c <- r
             case o of
+              -- Unknown channel operations are not an issue.
               P.Star -> return c
+              -- Return send case, if found.
               P.Send _ -> maybe (return $ return cas) (const $ posErr p' "Multiple channel operations in 'select") c
+              -- Return receive case, if found.
               P.Recv _ -> maybe (return $ return cas) (const $ posErr p' "Multiple channel operations in 'select") c
+      -- Get channel case operation.
       c <- Prelude.foldl getChannelCase (return Nothing) cs
+      -- Translate channel case operation and case arm.
       ρ' <- case c of
+        -- If the channel operation was found.
         Just (Pos _ o, ss') -> do
+          -- Translating the channel operation in the case arm.
           ρ₁ <- translateOp $ o >: ρ
           let o' = curr ρ₁
+          -- Translate case body.
           ρ₂ <- translateStatements $ ss' >: ρ₁ <: Skip
+          -- Translation object is a sequence between the channel guard 
+          -- and the translated case body.
           return $ ρ₂ <: Seq (Atomic o') (curr ρ₂)
-        Nothing -> return $ () >: ρ <: Skip
+        -- If all cases are on unknown channels, do not do anything.
+        Nothing -> done (ρ <: Skip)
+      -- Translate a single case arm.
       let translateSelect mρ (Pos _ o, s'') = do
+            -- Get translation context so far.
             ρ₀ <- mρ
             case o of
+              -- If the case is an operation on an unknown channel.
               P.Star -> do
+                -- Translate case body.
                 ρ₁ <- translateStatements $ s'' >: ρ₀ <: Skip
+                -- Construct a symbolic guard for the select case statement.
                 let guard = Var ("S'" ++ show (casecounter ρ₁))
+                -- Construct an if statement simulating whether the select took
+                -- the case arm. Put the case body under the then branch.
+                -- Put the other translation object under the else branch.
                 let select = If guard (curr ρ₁) (curr ρ₀)
+                -- Increment case counter.
                 let ρ₂ = ρ₁ {casecounter = casecounter ρ₁ + 1}
+                -- Translation object becomes the new if statement.
                 return $ ρ₂ <: select
+              -- If the operation is a case on a known channel, do not anything,
+              -- because we have already handled this.
               _ -> return ρ₀
+      -- Fold all select cases, using the channel case arm (if present) as the 
+      -- starting point. 
       ρ₂ <- Prelude.foldl translateSelect (return ρ') cs
+      -- Translation object becomes:
+      -- obj(ρ); obj(ρ₂)
+      -- Where obj(ρ₂) is the translated select statement.
       let ρ₃ = ρ₂ <: Seq (curr ρ) (curr ρ₂)
-      translateStatements $ ss >: ρ₃
+      -- Translate continuation.
+      translateStatements (ss >: ρ₃)
     _ -> posErr p ("Unexpected statement: " ++ show s)
 
 -- Translation of the 'for' body converts it to an IR
@@ -188,8 +309,20 @@ translateFor ρ = case syntax ρ of
       translateFor $ ss >: ρ
     _ -> posErr p $ "Go-to-IR: Unexpected statement: " ++ prettyPrint 0 s
 
--- Expression translation is a straightforward translation from Go expressions
+-- | Expression translation is a straightforward translation from Go expressions
 -- to IR translations.
+--
+-- > [VAR]:     σ ⊢ x ==> σ(x)
+-- > [CONST]:   σ ⊢ c ==> c
+-- >            |- c ∈ {true, false} ∪ ℤ
+-- > [BINARY]:  σ ⊢ E₁ ⨁ E₂ ==> E₁' ⨁ E₂'
+-- >            |- E₁ ==> E₁'
+-- >            |- E₁ ==> E₂'
+-- >            |- ⨁ ∈ { &&, ||, ==, !=, >=, >, <, <=, +, -, *, /}
+-- > [NOT]:     σ ⊢ !E₁ ==> !E₁'
+-- >            |- E₁ ==> E₁'
+-- > [NEG]:     σ ⊢ -E₁ ==> 0 - E₁'
+-- >            |- E₁ ==> E₁'
 translateExp :: M.Map String 𝐸 -> P.Exp -> Err 𝐸
 translateExp venv =
   let bin = binaryCons (translateExp venv)
@@ -219,7 +352,10 @@ translateExp venv =
             Just e' -> return e'
             Nothing -> return $ Var x
 
--- Communication operation translation is straightfoward.
+-- | Communication operation translation is straightfoward.
+--
+-- > [SEND]:      c! ==> c!
+-- > [RECEICE]:   c? ==> c?
 translateOp :: Ctxt P.CommOp a -> Err (Ctxt () Op)
 translateOp ρ =
   let translate cons c =

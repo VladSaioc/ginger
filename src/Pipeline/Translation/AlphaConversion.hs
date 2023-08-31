@@ -5,16 +5,17 @@ import Data.Maybe
 import Promela.Ast
 import Utilities.Position
 
--- Environment from original source name to alpha-converted name
+-- | Environment from original source name to alpha-converted name
 type Env = M.Map String String
 
--- Alpha conversion context:
+-- | Alpha conversion context:
 -- 1. The bindings from unconverted to converted names
 --    in the current scope
 -- 2. The next available name index
+-- 3. The output of alpha conversion
 data Ctxt a = Ctxt Env Int a deriving (Eq, Ord, Read, Show)
 
--- Alpha conversion for whole Promela program.
+-- | Alpha conversion for whole Promela program.
 alphaConvert :: Spec -> Spec
 alphaConvert (Spec ms) =
   let -- In a first pass perform alpha conversion for top-level declarations.
@@ -24,17 +25,17 @@ alphaConvert (Spec ms) =
    in -- Return alpha converted program
       Spec (reverse ms')
 
--- Alpha conversion of a single variable declaration, based on an
+-- | Alpha conversion of a single variable declaration, based on an
 -- alpha conversion index.
 -- Produces an updated environment and the next available index.
 alphaDeclareVar :: (Env, Int) -> Ident -> (Env, Int)
 alphaDeclareVar (env, idx) x =
-  -- Append the index to the variable name and insert into
-  -- the variable declaration.
-  let x' = x ++ "'" ++ show idx
+  let -- | Append the index to the variable name and insert into
+      -- the variable declaration.
+      x' = x ++ "'" ++ show idx
    in (M.insert x x' env, idx + 1)
 
--- Alpha conversion of top-level declarations, performed in a first pass.
+-- | Alpha conversion of top-level declarations, performed in a first pass.
 alphaDefs :: Ctxt [Module] -> Module -> Ctxt [Module]
 alphaDefs ctx@(Ctxt env idx ms) = \case
   TopDecl x t v ->
@@ -46,7 +47,7 @@ alphaDefs ctx@(Ctxt env idx ms) = \case
         Ctxt env' idx' (TopDecl x' t v : ms)
   _ -> ctx
 
--- Alpha conversion of top-level modules, performed in a second pass
+-- | Alpha conversion of top-level modules, performed in a second pass
 alphaModules :: Ctxt [Module] -> Module -> Ctxt [Module]
 alphaModules ctx@(Ctxt env aenv ms) = \case
   -- Top-level declarations already converted on a first pass

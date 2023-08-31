@@ -5,7 +5,7 @@ import Backend.Utilities
 import Pipeline.IRTranslation.Meta.If
 import Pipeline.IRTranslation.Utilities
 
-{- Get all if monitor expressions.
+{- | Get all if monitor expressions.
 -}
 ifMonitors :: [ℐ] -> [Exp]
 ifMonitors = map ifMonitor
@@ -14,7 +14,8 @@ ifMonitors = map ifMonitor
 Depends on: 𝒾 = (π, e, 𝑛₁, 𝑛₂, 𝑛₃)
 
 Produces:
-if e then ¬(𝑛₂ ≤ pc(π) < 𝑛₃) else ¬(𝑛₁ < pc(π) < 𝑛₂)
+
+> if e then ¬(𝑛₂ ≤ pc(π) < 𝑛₃) else ¬(𝑛₁ < pc(π) < 𝑛₂)
 -}
 ifMonitor :: ℐ -> Exp
 ifMonitor (ℐ {iP = pid, iGuard = b, i𝑛 = 𝑛₁, iElse = 𝑛₂, iExit = 𝑛₃}) =

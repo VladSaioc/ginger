@@ -2,8 +2,26 @@ module IR.Ast where
 
 import Utilities.PrettyPrint (PrettyPrint (prettyPrint), indent, multiline)
 
--- Every syntactical construct that may be converted to program
--- points must implement program point offset.
+-- | Every syntactical construct that may be converted to program
+-- points must implement program point offset. Computes the offset required,
+-- in terms of program points, to reach the next instruction.
+--
+-- The offsets are:
+--
+-- * For Statements
+-- 1. skip: 0 (skip statements are ignored)
+-- 2. return: 1 for the return instruction point
+-- 3. 𝑆₁; 𝑆₂: |𝑆₁| + |𝑆₂|
+-- 4. for x : 𝐸₁ .. 𝐸₂ { 𝑠 }: 2 + |𝑠|
+--      1 for the guard
+--      1 for the index incrementing operation
+-- 5. if 𝐸 𝑆₁ 𝑆₂ -> 2 + |𝑆₁| + |𝑆₂|
+--      1 for the guard
+--      1 for the continuation of the 'then' path
+--
+-- * For channel operations:
+-- 1. 𝑐!: 2 (send + rendezvous)
+-- 2. 𝑐?: 1 (receive)
 class ProgramPointOffset a where
   ppOffset :: a -> Int
 
@@ -13,62 +31,85 @@ data 𝑃 = 𝑃 [Chan] [𝑆] deriving (Eq, Ord, Read)
 -- c = [e]
 data Chan = Chan String 𝐸 deriving (Eq, Ord, Read)
 
+-- | Production rule for IR statements:
+-- > 𝑆 ::= 𝑆₁; 𝑆₂
+-- >  | if 𝐸 then 𝑆₁ else 𝑆₂
+-- >  | skip
+-- >  | return
+-- >  | for (x : 𝐸₁ .. 𝐸₂) { 𝑠 }
+-- >  | 𝑐! | 𝑐?
 data 𝑆
-  = -- S1; S2
+  = -- | > 𝑆₁; 𝑆₂
     Seq 𝑆 𝑆
-  | -- if b then S1 else S2
+  | -- | > if 𝐸 then 𝑆₁ else 𝑆₂
     If 𝐸 𝑆 𝑆
-  | -- skip
+  | -- | > skip
     Skip
-  | -- return
+  | -- | > return
     Return
-  | -- for (x : e .. e) { s }
+  | -- | > for (x : 𝐸₁ .. 𝐸₂) { 𝑠 }
     For String 𝐸 𝐸 [Op]
-  | -- c! | c?
+  | -- | > 𝑐! | 𝑐?
     Atomic Op
   deriving (Eq, Ord, Read)
 
+-- | Production rules for loop IR operations
+--  > 𝑠 ::= 𝑠₁; 𝑠₂ | 𝑐! | 𝑐?
 data Op
-  = -- c!
+  = -- | 𝑐!
     Send String
-  | -- c?
+  | -- | 𝑐?
     Recv String
   deriving (Eq, Ord, Read)
 
+-- | Production rules for IR expressions
+-- > 𝐸 ::= 𝐸₁ && 𝐸₂
+-- >    | 𝐸₁ || 𝐸₂
+-- >    | !𝐸
+-- >    | 𝐸₁ == 𝐸₂
+-- >    | 𝐸₁ != 𝐸₂
+-- >    | 𝐸₁ >= 𝐸₂
+-- >    | 𝐸₁ + 𝐸₂
+-- >    | 𝐸₁ - 𝐸₂
+-- >    | 𝐸₁ * 𝐸₂
+-- >    | 𝐸₁ / 𝐸₂
+-- >    | 𝐸₁ + 𝐸₂
+-- >    | true | false
+-- >    | 𝑛 | x
 data 𝐸
-  = -- e1 && e2
+  = -- | 𝐸₁ && 𝐸₂
     𝐸 :& 𝐸
-  | -- e1 || e2
+  | -- | 𝐸₁ || 𝐸₂
     𝐸 :| 𝐸
-  | -- not e
+  | -- | !𝐸
     Not 𝐸
-  | -- e1 == e2
+  | -- | 𝐸₁ == 𝐸₂
     𝐸 :== 𝐸
-  | -- e1 != e2
+  | -- | 𝐸₁ != 𝐸₂
     𝐸 :!= 𝐸
-  | -- e1 >= e2
+  | -- | 𝐸₁ >= 𝐸₂
     𝐸 :>= 𝐸
-  | -- e1 > e2
+  | -- | 𝐸₁ > 𝐸₂
     𝐸 :> 𝐸
-  | -- e1 <= e2
+  | -- | 𝐸₁ <= 𝐸₂
     𝐸 :<= 𝐸
-  | -- e1 < e2
+  | -- | 𝐸₁ < 𝐸₂
     𝐸 :< 𝐸
-  | -- e1 + e2
+  | -- | 𝐸₁ + 𝐸₂
     𝐸 :+ 𝐸
-  | -- e1 - e2
+  | -- | 𝐸₁ - 𝐸₂
     𝐸 :- 𝐸
-  | -- e1 * e2
+  | -- | 𝐸₁ * 𝐸₂
     𝐸 :* 𝐸
-  | -- e1 / e2
+  | -- | 𝐸₁ / 𝐸₂
     𝐸 :/ 𝐸
-  | -- n ∈ ℤ
+  | -- | 𝑛 ∈ ℤ
     Const Int
-  | -- true
+  | -- | > true
     BTrue
-  | -- false
+  | -- | > false
     BFalse
-  | -- x
+  | -- | x
     Var String
   deriving (Eq, Ord, Read)
 
@@ -86,25 +127,27 @@ instance Show 𝑆 where
   show = prettyPrint 0
 
 instance PrettyPrint 𝑆 where
-  prettyPrint n = \case
-    Seq s1 s2 -> multiline [prettyPrint n s1 ++ ";", prettyPrint n s2]
-    Skip -> indent n ++ "skip"
-    Return -> indent n ++ "return"
-    Atomic o -> indent n ++ show o
-    If e s1 s2 ->
-      multiline
-        [ unwords [indent n ++ "if", show e, "{"],
-          prettyPrint (n + 1) s1,
-          unwords [indent n ++ "} else {"],
-          prettyPrint (n + 1) s2,
-          indent n ++ "}"
-        ]
-    For x e1 e2 os ->
-      multiline
-        [ unwords [indent n ++ "for", x, ":", show e1, "..", show e2, "{"],
-          multiline $ map ((indent (n + 1) ++) . (++ ";") . show) os,
-          indent n ++ "}"
-        ]
+  prettyPrint n =
+    let tab = indent n
+    in \case
+      Seq s1 s2 -> multiline [prettyPrint n s1 ++ ";", prettyPrint n s2]
+      Skip -> tab "skip"
+      Return -> tab "return"
+      Atomic o -> tab $ show o
+      If e s1 s2 ->
+        multiline
+          [ unwords [tab "if", show e, "{"],
+            prettyPrint (n + 1) s1,
+            unwords [tab "} else {"],
+            prettyPrint (n + 1) s2,
+            tab "}"
+          ]
+      For x e1 e2 os ->
+        multiline
+          [ unwords [tab "for", x, ":", show e1, "..", show e2, "{"],
+            multiline $ map (indent (n + 1) . (++ ";") . show) os,
+            tab  "}"
+          ]
 
 instance Show 𝐸 where
   show =
@@ -143,12 +186,12 @@ instance ProgramPointOffset 𝑃 where
 --
 -- The offsets are:
 -- 1. skip: 0 (skip statements are ignored)
--- 2. return: 1 for the return isntruction point
--- 3. S1; S2: |S1| + |S2|
--- 4. for x : e1 .. e2 { s }: 2 + |s|
+-- 2. return: 1 for the return instruction point
+-- 3. 𝑆₁; 𝑆₂: |𝑆₁| + |𝑆₂|
+-- 4. for x : 𝐸₁ .. 𝐸₂ { 𝑠 }: 2 + |𝑠|
 --      1 for the guard
 --      1 for the index incrementing operation
--- 5. if e S1 S2 -> 2 + |S1| + |S2|
+-- 5. if 𝐸 𝑆₁ 𝑆₂ -> 2 + |𝑆₁| + |𝑆₂|
 --      1 for the guard
 --      1 for the continuation of the 'then' path
 instance ProgramPointOffset 𝑆 where

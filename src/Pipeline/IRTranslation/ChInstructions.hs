@@ -7,7 +7,7 @@ import Pipeline.IRTranslation.Meta.Channel
 import Pipeline.IRTranslation.Utilities
 import Utilities.Collection
 
--- Aggregates all non-loop channel operations across
+-- | Aggregates all non-loop channel operations across
 -- all processes of the program, including operation
 -- direction, program point, and channel name.
 noloopPsChanInsns :: 𝑃 -> P ↦ (𝐶 ↦ 𝒪s)
@@ -15,19 +15,20 @@ noloopPsChanInsns (𝑃 _ ps) =
   let ps' = zip [0 ..] ps
    in M.mapWithKey (\i -> fst . noloopPChanInsns i 0) $ M.fromList ps'
 
-{- Aggregates all non-loop channel operations, including operation
+{- | Aggregates all non-loop channel operations, including operation
 direction, program point, and channel name.
 Depends on: 𝑛, S
 
 Rules:
-[SKIP]:    ⟨𝑛, skip⟩ -> ⟨𝑛, []⟩
-[RETURN]:  ⟨𝑛, return⟩ -> ⟨𝑛 + 1, []⟩
-[SEND]:    ⟨𝑛, c!⟩ -> ⟨𝑛 + 2, [c ↦ [! ↦ {𝑛}]]⟩
-[RECV]:    ⟨𝑛, c?⟩ -> ⟨𝑛 + 1, [c ↦ [? ↦ {𝑛}]]⟩
-[FOR]:     ⟨𝑛, for (i : e .. e) { s }⟩ -> ⟨𝑛 + |s| + 2, []⟩
-[SEQ]:     ⟨𝑛, S₁; S₂⟩ -> ⟨𝑛'', M₁ ⊔ M₂⟩
-           |- ⟨𝑛, S₁⟩ -> ⟨𝑛', M₁⟩
-           |- ⟨𝑛', S₂⟩ -> ⟨𝑛'', M₂⟩
+
+> [SKIP]:    ⟨𝑛, skip⟩ -> ⟨𝑛, []⟩
+> [RETURN]:  ⟨𝑛, return⟩ -> ⟨𝑛 + 1, []⟩
+> [SEND]:    ⟨𝑛, c!⟩ -> ⟨𝑛 + 2, [c ↦ [! ↦ {𝑛}]]⟩
+> [RECV]:    ⟨𝑛, c?⟩ -> ⟨𝑛 + 1, [c ↦ [? ↦ {𝑛}]]⟩
+> [FOR]:     ⟨𝑛, for (i : e .. e) { s }⟩ -> ⟨𝑛 + |s| + 2, []⟩
+> [SEQ]:     ⟨𝑛, S₁; S₂⟩ -> ⟨𝑛'', M₁ ⊔ M₂⟩
+>            |- ⟨𝑛, S₁⟩ -> ⟨𝑛', M₁⟩
+>            |- ⟨𝑛', S₂⟩ -> ⟨𝑛'', M₂⟩
 -}
 noloopPChanInsns :: P -> 𝑁 -> 𝑆 -> (𝐶 ↦ 𝒪s, 𝑁)
 noloopPChanInsns p 𝑛 s =

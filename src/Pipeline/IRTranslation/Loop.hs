@@ -10,7 +10,7 @@ import Pipeline.IRTranslation.Meta.Loop
 import Pipeline.IRTranslation.Utilities
 import Utilities.Collection
 
--- Collect all loops found in the program.
+-- | Collect all loops found in the program.
 -- Assume that all loops are initially guarded by true.
 loops :: 𝑃 -> [ℒ]
 loops (𝑃 _ procs) =
@@ -18,7 +18,7 @@ loops (𝑃 _ procs) =
       procs' = zip [0 ..] (zip zeros procs)
    in concatMap (fst . uncurry processLoops) procs'
 
--- Collect all loops found in a process.
+-- | Collect all loops found in a process.
 processLoops :: P -> (𝑁, 𝑆) -> ([ℒ], 𝑁)
 processLoops p (𝑛, s) =
   let get = processLoops p
@@ -64,7 +64,7 @@ processLoops p (𝑛, s) =
               (l2, 𝑛'') = get (𝑛' + 1, s2)
            in (l1 ++ l2, 𝑛'')
 
--- Collect all channel operations in a loop.
+-- | Collect all channel operations in a loop.
 -- Relevant information includes: channel name, program point
 -- and direction.
 chanOps :: P -> 𝑁 -> [Op] -> (𝐶 ↦ 𝒪s, 𝑁)

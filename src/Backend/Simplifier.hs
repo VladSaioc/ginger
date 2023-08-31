@@ -4,11 +4,11 @@ import Backend.Ast
 import Backend.Utilities
 import Data.Maybe qualified as Mb
 
--- Takes a back-end program and applies heuristics to simplify it.
+-- | Takes a back-end program and applies heuristics to simplify it.
 simplify :: Program -> Program
 simplify (Program ds) = Program $ map decSimplify ds
 
--- Simplification of a declaration. Only applies to method and
+-- | Simplification of a declaration. Only applies to method and
 -- function declarations, and acts as identity on type declarations.
 decSimplify :: Decl -> Decl
 decSimplify = \case
@@ -16,7 +16,7 @@ decSimplify = \case
   MDecl m -> MDecl $ mSimplify m
   d -> d
 
--- Simplify function declaration. Affects Hoare clauses and the function body.
+-- | Simplify function declaration. Affects Hoare clauses and the function body.
 fSimplify :: Function -> Function
 fSimplify (Function {yields, funcHoare, funcBody}) =
   Function
@@ -25,7 +25,7 @@ fSimplify (Function {yields, funcHoare, funcBody}) =
       funcBody = eSimplify funcBody
     }
 
--- Simplify method declaration. Affects Hoare clauses and the method body.
+-- | Simplify method declaration. Affects Hoare clauses and the method body.
 mSimplify :: Method -> Method
 mSimplify (Method {returns, methodHoare, methodBody}) =
   Method
@@ -34,7 +34,7 @@ mSimplify (Method {returns, methodHoare, methodBody}) =
       methodBody = sSimplify methodBody
     }
 
--- Simplify clauses in Hoare triples. The process eliminates redundant clauses
+-- | Simplify clauses in Hoare triples. The process eliminates redundant clauses
 -- i.e., requires/ensures true
 hSimplify :: HoareWrap -> HoareWrap
 hSimplify (HoareWrap {ghost, name, types, params, decreases, requires, ensures}) =
@@ -48,13 +48,13 @@ hSimplify (HoareWrap {ghost, name, types, params, decreases, requires, ensures})
       ensures = clausesSimplify ensures
     }
 
--- Simplify lists of clauses in Hoare triples, by simplifying each
+-- | Simplify lists of clauses in Hoare triples, by simplifying each
 -- underlying expression, and eliminating redundant clauses i.e.,
 -- trivially true clauses.
 clausesSimplify :: [Exp] -> [Exp]
 clausesSimplify = filter (ECon CTrue /=) . map eSimplify
 
--- Simplify expressions via several heuristics. Applies constant folding.
+-- | Simplify expressions via several heuristics. Applies constant folding.
 -- Simplification is carried out repeatedly until a fixpoint is reached.
 eSimplify :: Exp -> Exp
 eSimplify pe =
@@ -251,7 +251,7 @@ eSimplify pe =
         else -- Otherwise, do another simplification pass
           eSimplify e'
 
--- Applies heuristics to simplify statements.
+-- | Applies heuristics to simplify statements.
 sSimplify :: Stmt -> Stmt
 sSimplify = \case
   -- Assignment right-hand-sides are point-wise simplified
@@ -297,7 +297,7 @@ sSimplify = \case
           _ -> While e' (clausesSimplify es1) (clausesSimplify es2) (sSimplify s)
   Return es -> Return $ map eSimplify es
 
--- Statement sequence simplification point-wise simplifies statement in lists
+-- | Statement sequence simplification point-wise simplifies statement in lists
 -- and afterwards eliminates "dead" statements, identified as empty blocks.
 ssSimplify :: [Stmt] -> [Stmt]
 ssSimplify = filter (Block [] /=) . map sSimplify

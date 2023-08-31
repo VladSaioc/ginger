@@ -4,19 +4,21 @@ import Data.Bifunctor
 import Go.Ast
 import Utilities.Position
 
--- Turns:
--- if e1 s1
--- else if e2 s2
--- ...
--- else if en sn
--- else { ... }
+-- | Turns:
+--
+-- > if e1 s1
+-- > else if e2 s2
+-- > ...
+-- > else if en sn
+-- > else { ... }
 --
 -- Into:
--- if en sn
--- ...
--- else if e2 s2
--- else if e1 s1
--- else { ... }
+--
+-- > if en sn
+-- > ...
+-- > else if e2 s2
+-- > else if e1 s1
+-- > else { ... }
 flipIfs :: Pos Stmt -> Pos Stmt
 flipIfs s =
   let collectBranches = \case

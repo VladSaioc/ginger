@@ -4,6 +4,8 @@ import Backend.Ast qualified as T
 import Backend.Utilities
 import IR.Ast
 
+-- | Parse IR expression into back-end expression.
+-- No explanation is needed. Parity is 1-to-1.
 parseExp :: 𝐸 -> T.Exp
 parseExp =
   let bin c e1 e2 = c (parseExp e1) (parseExp e2)

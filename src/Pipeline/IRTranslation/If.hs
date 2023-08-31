@@ -5,14 +5,14 @@ import Pipeline.IRTranslation.Exps (parseExp)
 import Pipeline.IRTranslation.Meta.If
 import Pipeline.IRTranslation.Utilities
 
--- Collect all if statements found in the program.
+-- | Collect all if statements found in the program.
 ifs :: 𝑃 -> [ℐ]
 ifs (𝑃 _ procs) =
   let zeros = 0 : zeros
       procs' = zip [0 ..] (zip zeros procs)
    in concatMap (fst . uncurry processIfs) procs'
 
--- Collect all if statement found in a process.
+-- | Collect all if statement found in a process.
 processIfs :: P -> (𝑁, 𝑆) -> ([ℐ], 𝑁)
 processIfs p (𝑛, s) = case s of
   Skip -> ([], 𝑛)

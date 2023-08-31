@@ -11,21 +11,21 @@ import Pipeline.IRTranslation.Utilities
 import Utilities.Err
 import Utilities.TransformationCtx
 
--- Context for union-based inferrence of the IR program.
+-- | Context for unification-based type inferrence of the IR program.
 data Ctx a b = Ctx
-  { -- Information the context (e.g. IR syntax).
+  { -- | Information the context (e.g. IR syntax).
     datum :: a,
-    -- Next fresh index
+    -- | Next fresh index
     next :: Int,
-    -- Variable environment, from variable name to inferred construct
+    -- | Variable environment, from variable name to inferred construct
     venv :: M.Map String b,
-    -- Point supply for unification
+    -- | Point supply for unification
     supply :: PointSupply b,
-    -- Environment from inferred construct to equivalence classes
+    -- | Environment from inferred construct to equivalence classes
     tenv :: M.Map b (Point b)
   }
 
--- Partial implementation is safe because no access
+-- | Partial implementation is safe because no access
 -- of object is necessary for type inference.
 instance TransformCtx Ctx where
   source = datum
@@ -53,7 +53,7 @@ mkTCtx =
           tenv = te
         }
 
-{- Order type points, such that the "dominant" type in the second position.
+{- | Order type points, such that the "dominant" type ends in the second position.
 Will return an error if the two types cannot be unified.
 
 FIXME: Currently only supports boolean, integer, and named type unification.
@@ -73,7 +73,7 @@ orderPoints ps p1 p2 =
             then return (p1, p2)
             else Bad $ unwords ["Type unification error:", show t1, "⊔", show t2]
 
-{- Injects the proper descriptor when unifying two types.
+{- | Injects the proper descriptor when unifying two types.
 It favors builtin types over their named counterparts.
 
 FIXME: Currently only supports boolean, integer, and named type unification.
@@ -117,14 +117,14 @@ fvs (𝑃 chs procs) = do
   let ts = unboundTypes ctx'
   return (vs, ts)
 
-{- Collect and unify types in channel capacity expressions.
--}
+-- | Collect and unify types in channel capacity expressions.
 chanFVs :: TCtx Chan -> Err (TCtx ())
 chanFVs ctx@(Ctx {datum = Chan _ e}) = do
   ctx'@(Ctx {datum = t}) <- expFVs $ e >: ctx
   ctx'' <- unifyTypes ctx' T.TInt t
   done ctx''
 
+-- | Collect and unify types across IR statements.
 stmtFVs :: TCtx 𝑆 -> Err (TCtx ())
 stmtFVs ctx@(Ctx {datum = s}) =
   let updateWithExp t ctx' e = do
@@ -146,17 +146,7 @@ stmtFVs ctx@(Ctx {datum = s}) =
           ctx2 <- stmtFVs $ s1 >: ctx1
           stmtFVs $ s2 >: ctx2
 
--- {- Produces all the free variables (and their corresponding types)
--- and free type variables, for variables without clear type resolutions.
--- -}
--- -- fvs :: Prog -> Err (M.Map String T.Type, S.Set T.Type)
--- -- fvs (Prog chs procs) = do
--- --   S.unions (map chanFVs chs ++ map stmtFVs procs)
-
--- -- chanFVs :: U.ST s -> Chan -> S.Set (String, T.Type)
--- -- chanFVs _ (Chan _ e) = expFVs e
-
--- Extract, and infer the types of, free variables in expressions.
+-- | Extract, and infer the types of, free variables in expressions.
 expFVs :: TCtx 𝐸 -> Err (TCtx T.Type)
 expFVs ctx@(Ctx {datum = e, supply}) =
   let -- Short-hand for unifying the operands of binary operators.

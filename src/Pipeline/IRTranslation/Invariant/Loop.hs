@@ -7,13 +7,14 @@ import Pipeline.IRTranslation.Meta.Loop
 import Pipeline.IRTranslation.Utilities
 import Utilities.Collection
 
-{- Get all loop monitors for every loop.
+{- | Get all loop monitors for every loop.
 -}
 loopMonitors :: P ↦ (𝑁 ↦ Exp) -> [ℒ] -> [Exp]
 loopMonitors 𝜓 = map (loopMonitor 𝜓)
 
-{- Constructs a loop monitor invariant.
+{- | Constructs a loop monitor invariant.
 Depends on:
+
 I. Reachability conditions for all processes:
     𝜓 = [π ↦ [𝑛 ↦ e | 𝑛 ∈ dom(𝛱(π))] | π ∈ dom(𝛱)]
 
@@ -27,18 +28,21 @@ II. ℓ = (π, x, 𝑛, 𝑛', e₁, e₂) with the following properties:
 6. 𝑛' is the exit point
 
 Produces:
-if 𝜓(π)(𝑛) && e₁ ≤ e₂ then
-  e₁ ≤ x ≤ e₂
-  pc(π) < 𝑛 => x = e₁ ∧
-  𝑛 < pc(π) < 𝑛' => x < e₂ ∧
-  𝑛' ≤ pc(π) => x = e₂
-else x = e₁ ∧ ¬(𝑛 < pc(π) < 𝑛')
+
+> if 𝜓(π)(𝑛) && e₁ ≤ e₂ then
+>   e₁ ≤ x ≤ e₂
+>   pc(π) < 𝑛 => x = e₁ ∧
+>   𝑛 < pc(π) < 𝑛' => x < e₂ ∧
+>   𝑛' ≤ pc(π) => x = e₂
+> else x = e₁ ∧ ¬(𝑛 < pc(π) < 𝑛')
 -}
 loopMonitor :: P ↦ (𝑁 ↦ Exp) -> ℒ -> Exp
 loopMonitor 𝜓 (ℒ {l𝑋 = var, lP = p, l𝑛 = 𝑛, lExit = 𝑛', lower, upper}) =
   let b = 𝜓 M.! p M.! 𝑛
-      lo = lower -- Short-hand for lower bound
-      hi = upper -- Short-hand for upper bound
+      -- Short-hand for lower bound
+      lo = lower 
+      -- Short-hand for upper bound
+      hi = upper 
       -- Loop variable as a back-end variable
       x = (var @)
       -- Program counter as a back-end variable
