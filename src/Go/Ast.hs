@@ -5,50 +5,204 @@ import Utilities.PrettyPrint (PrettyPrint, indent, multiline, prettyPrint)
 
 newtype Prog = Prog [Pos Stmt] deriving (Eq, Ord, Read)
 
-data Stmt
+-- | Represents statement syntax in the Go programming language.
+--
+-- > S ::= skip
+-- >    | return
+-- >    | chan c = [E]
+-- >    | break
+-- >    | continue
+-- >    | C
+-- >    | x := E
+-- >    | x = E
+-- >    | close(c)
+-- >    | { {S; ...}* }
+-- >    | if E { {S; ...}* } { {S: ...}* }
+-- >    | select { {case C: {S; ... } ...}* [ default: {S; ... }* ] }
+-- >    | for x E E D { {S; ... }* }
+-- >    | while Exp { {S; ...}* }
+-- >    | go { {S; ...}* }
+data Stmt -- | Represents a skip statement
+  -- 
+  -- > skip
   = Skip
+  -- | Represents a return statement
+  --
+  -- > return
   | Return
+  -- | Represents a channel operation with a channel name and an expression
+  --
+  -- > chan "myChannel" = [E]
   | Chan String Exp
+  -- | Represents a break statement
+  --
+  -- > break
   | Break
+  -- | Represents a continue statement
+  --
+  -- > continue
   | Continue
+  -- | Represents an atomic channel operation
+  --
+  -- > C
   | Atomic CommOp
+  -- | Represents a variable declaration with a name and an expression
+  --
+  -- > x := E
   | Decl String Exp
+  -- | Represents an assignment statement with a variable name and an expression
+  --
+  -- > x = E
   | As String Exp
+  -- | Represents a close statement for a channel
+  --
+  -- > close(c)
   | Close String
+  -- | Represents a block of statements enclosed in curly braces
+  --
+  -- > { S; ... }
   | Block [Pos Stmt]
+  -- | Represents an if statement with a condition and two sets of statements for the true and false branches
+  --
+  -- > if E { S; ... } { S; ... }
   | If Exp [Pos Stmt] [Pos Stmt]
+  -- | Represents a select statement with a list of communication operations and an optional default branch
+  --
+  -- > select { case o: { S; ... } ... [ default: { S; ... }* ] }
   | Select [(Pos CommOp, [Pos Stmt])] (Maybe [Pos Stmt])
+  -- | Represents a for loop with a variable name, start expression, end expression, step difference, and a set of statements
+  --
+  -- > for x E E D { S; ... }
   | For String Exp Exp Diff [Pos Stmt]
+  -- | Represents a while loop with a condition and a set of statements
+  --
+  -- > while E { S; ... }
   | While Exp [Pos Stmt]
+  -- | Represents a goroutine statement with a set of statements
+  --
+  -- > go { S; ... }
   | Go [Pos Stmt]
   deriving (Eq, Ord, Read)
 
-data Diff = Inc | Dec deriving (Eq, Ord, Read)
+-- | Represents the growth factor in a loop, either increment or decrement.
+--
+-- > D ::= ++ | --
+data Diff
+  = Inc  -- ^ Increment (++).
+  | Dec  -- ^ Decrement (--).
+  deriving (Eq, Ord, Read)
 
+-- | Represents channel operations.
+--
+-- > C ::= c!
+-- >     | c?
+-- >     | *
 data CommOp
+  -- | Send operation.
+  --
+  -- > c!
   = Send String
+  -- | Receive operation.
+  --
+  -- > c?
   | Recv String
+  -- | Wildcard operation (unknown channel operation).
+  --
+  -- > *
   | Star
   deriving (Eq, Ord, Read)
 
+-- | Represents Go expressions:
+--
+-- > E ::= n
+-- >     | true
+-- >     | false
+-- >     | E && E
+-- >     | E || E
+-- >     | !E
+-- >     | E == E
+-- >     | E != E
+-- >     | E <= E
+-- >     | E < E
+-- >     | E >= E
+-- >     | E > E
+-- >     | E + E
+-- >     | E - E
+-- >     | -E
+-- >     | E * E
+-- >     | E / E
 data Exp
+  -- | Integer constant.
+  --
+  -- > n
   = CNum Int
+  -- | Boolean constant true.
+  --
+  -- > true
   | CTrue
+  -- | Boolean constant false.
+  --
+  -- > false
   | CFalse
+  -- | Logical AND operation.
+  --
+  -- > E && E
   | And Exp Exp
+  -- | Logical OR operation.
+  --
+  -- > E || E
   | Or Exp Exp
+  -- | Logical NOT operation.
+  --
+  -- > !E
   | Not Exp
+  -- | Equality comparison.
+  --
+  -- > E == E
   | Eq Exp Exp
+  -- | Inequality comparison.
+  --
+  -- > E != E
   | Ne Exp Exp
+  -- | Less than or equal to comparison.
+  --
+  -- > E <= E
   | Le Exp Exp
+  -- | Less than comparison.
+  --
+  -- > E < E
   | Lt Exp Exp
+  -- | Greater than or equal to comparison.
+  --
+  -- > E >= E
   | Ge Exp Exp
+  -- | Greater than comparison.
+  --
+  -- > E > E
   | Gt Exp Exp
+  -- | Addition operation.
+  --
+  -- > E + E
   | Plus Exp Exp
+  -- | Subtraction operation.
+  --
+  -- > E - E
   | Minus Exp Exp
+  -- | Multiplication operation.
+  --
+  -- > E * E
   | Mult Exp Exp
+  -- | Unary negation.
+  --
+  -- > -E
   | Neg Exp
+  -- | Variable reference.
+  --
+  -- > x
   | Var String
+  -- | Division operation.
+  --
+  -- > E / E
   | Div Exp Exp
   deriving (Eq, Ord, Read)
 
@@ -91,12 +245,12 @@ instance PrettyPrint Stmt where
           Select cs dfs ->
             let showCase (Pos _ c, ss) =
                   multiline
-                    [ unwords [indent (n + 1) ++ "case", show c ++ ":"],
+                    [ unwords [indent (n + 1) "case", show c ++ ":"],
                       block 2 ss
                     ]
                 defCase = case dfs of
                   Nothing -> []
-                  Just dfs' -> [multiline [indent (n + 1) ++ "default:", block 2 dfs']]
+                  Just dfs' -> [multiline [indent (n + 1) "default:", block 2 dfs']]
              in multiline $
                   [tab "select {"]
                     ++ map showCase cs

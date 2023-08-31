@@ -8,21 +8,21 @@ import Pipeline.IRTranslation.Utilities
 import Utilities.Collection
 import Utilities.PrettyPrint
 
--- (Meta)data about loops found in the program.
+-- | (Meta)data about loops found in the program.
 data ℒ = ℒ
-  { -- Process
+  { -- | Process of loop
     lP :: P,
-    -- Index variable
+    -- | Index variable
     l𝑋 :: String,
-    -- Guard program point
+    -- | Guard program point
     l𝑛 :: 𝑁,
-    -- Exit program point
+    -- | Exit program point
     lExit :: 𝑁,
-    -- Lower bound
+    -- | Lower bound
     lower :: Exp,
-    -- Upper bound
+    -- | Upper bound
     upper :: Exp,
-    -- Channel operations in the loop (indexed by channel name)
+    -- | Channel operations in the loop (indexed by channel name)
     l𝒪s :: 𝐶 ↦ 𝒪s
   }
 

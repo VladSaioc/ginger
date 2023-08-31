@@ -4,79 +4,164 @@ import Data.List (intercalate)
 import Utilities.Position
 import Utilities.PrettyPrint
 
+
+-- | An alias for Promela identifier names.
 type Ident = String
 
+-- | The syntax of a Promela specification.
+--
+-- > S ::= ϵ | M S
 newtype Spec = Spec [Module] deriving (Eq, Ord, Read)
 
+-- | Promela module syntax:
+--
+-- > M ::= #define x T V
+-- >    | init { {S; ...}* }
+-- >    | proctype f ({P; ...}*) { {S; ...}* }
+-- >    | typedef x { {D; ...}* }
 data Module
-  = TopDecl Ident Type Val
+  = -- | Top-level constant declaration.
+    -- 
+    -- > #define x T v
+    TopDecl Ident Type Val
+    -- | Entry-point process declaration.
+    --
+    -- > init { {S; ...}* }
   | Init [Pos Stmt]
+    -- | Process declaration.
+    --
+    -- > proctype f ({P; ...}*) { {S; ...}* }
   | Proc Ident [Param] [Pos Stmt]
+    -- | Custom type declaration.
+    --
+    -- > typedef x { {D; ...}* }
   | Typedef Ident [Field]
   deriving (Eq, Ord, Read)
 
+-- | An alias for struct fields.
+--
+-- > D ::= T x [= E]
 type Field = (Ident, Type, Maybe Exp)
 
+-- | An alias for function parameters
+--
+-- > P ::= T x
 type Param = (Ident, Type)
 
+-- | An alias for a 'case' branch
+--
+-- > C ::= :: S -> {S; ...}*
 type Case = (Pos Stmt, [Pos Stmt])
 
+-- | Promela statement syntax:
+--
+-- > S ::= T x [= E]
+-- >    | if {C ...}* [else :: {S; ...}*] fi
+-- >    | do {C ...}* [else :: {S; ...}*] od
+-- >    | for R { {S; ...}* }
+-- >    | L ::= E
 data Stmt
-  = Decl Ident Type (Maybe Exp)
-  | If [(Pos Stmt, [Pos Stmt])] (Maybe [Pos Stmt])
-  | Do [(Pos Stmt, [Pos Stmt])] (Maybe [Pos Stmt])
-  | For Range [Pos Stmt]
-  | As LVal Exp
-  | Goto Ident
-  | Break
-  | Skip
-  | Assert Exp
-  | Recv LVal [Exp]
-  | Send LVal [Exp]
-  | ExpS Exp
-  | Label Ident
+  = Decl Ident Type (Maybe Exp)                -- ^ Variable declaration: T x [= E]
+  | If [(Pos Stmt, [Pos Stmt])] (Maybe [Pos Stmt])  -- ^ If statement with optional else: if {C ...}* [else :: {S; ...}*] fi
+  | Do [(Pos Stmt, [Pos Stmt])] (Maybe [Pos Stmt])  -- ^ Do-while loop with optional else: do {C ...}* [else :: {S; ...}*] od
+  | For Range [Pos Stmt]                       -- ^ For loop: for R { {S; ...}* }
+  | As LVal Exp                                 -- ^ Assignment statement: L ::= E
+  | Goto Ident                                  -- ^ Goto statement: goto x
+  | Break                                       -- ^ Break statement: break
+  | Skip                                        -- ^ Skip statement: skip
+  | Assert Exp                                  -- ^ Assert statement: assert E
+  | Recv LVal [Exp]                             -- ^ Receive statement: L?{E, ...}*
+  | Send LVal [Exp]                             -- ^ Send statement: L!{E, ...}*
+  | ExpS Exp                                    -- ^ Expression statement: E
+  | Label Ident                                -- ^ Label statement: x:
   deriving (Eq, Ord, Read)
 
+-- | Promela expression syntax:
+--
+-- > E ::= [E] of {?}
+-- >    | V | L
+-- >    | E1 && E2 | E1 || E2 | !E
+-- >    | E1 == E2 | E1 != E2
+-- >    | E1 <= E2 | E1 < E2
+-- >    | E1 >= E2 | E1 > E2
+-- >    | E1 + E2 | E1 - E2 | -E
+-- >    | E1 * E2 | E1 / E2
+-- >    | len(L) | run x ({E, ...}*)
 data Exp
-  = Chan Exp
-  | Const Val
-  | And Exp Exp
-  | Or Exp Exp
-  | Eq Exp Exp
-  | Ne Exp Exp
-  | Le Exp Exp
-  | Lt Exp Exp
-  | Ge Exp Exp
-  | Gt Exp Exp
-  | Plus Exp Exp
-  | Minus Exp Exp
-  | Mult Exp Exp
-  | Div Exp Exp
-  | Neg Exp
-  | Not Exp
-  | Len LVal
-  | EVar LVal
-  | Run Ident [Exp]
+  = Chan Exp                  -- ^ Channel expression: [E] of {?}
+  | Const Val                 -- ^ Constant value expression: V
+  | And Exp Exp               -- ^ Logical AND expression: E1 && E2
+  | Or Exp Exp                -- ^ Logical OR expression: E1 || E2
+  | Eq Exp Exp                -- ^ Equality expression: E1 == E2
+  | Ne Exp Exp                -- ^ Inequality expression: E1 != E2
+  | Le Exp Exp                -- ^ Less than or equal expression: E1 <= E2
+  | Lt Exp Exp                -- ^ Less than expression: E1 < E2
+  | Ge Exp Exp                -- ^ Greater than or equal expression: E1 >= E2
+  | Gt Exp Exp                -- ^ Greater than expression: E1 > E2
+  | Plus Exp Exp              -- ^ Addition expression: E1 + E2
+  | Minus Exp Exp             -- ^ Subtraction expression: E1 - E2
+  | Mult Exp Exp              -- ^ Multiplication expression: E1 * E2
+  | Div Exp Exp               -- ^ Division expression: E1 / E2
+  | Neg Exp                   -- ^ Negation expression: -E
+  | Not Exp                   -- ^ Logical NOT expression: !E
+  | Len LVal                  -- ^ Length expression: len(L)
+  | EVar LVal                 -- ^ Variable expression: L
+  | Run Ident [Exp]           -- ^ Run process expression: run x ({E, ...}*)
   deriving (Eq, Ord, Read)
 
+-- | Promela syntax for range clauses in for loops:
+--
+-- > R ::= x : E1 .. E2 | x in x
 data Range
-  = Between Ident Exp Exp
+  = -- | Iterate over a finite integer range.
+    --
+    -- > x : E1 .. E2
+    Between Ident Exp Exp
+    -- | Iterate over an array
+    --
+    -- > x in x
   | In Ident Ident
   deriving (Eq, Ord, Read)
 
+-- | Promela l-values syntax:
+--
+-- > L ::= x | L.x | L[E]
 data LVal
-  = Var Ident
+  = -- | Simple variable:
+    --
+    -- > x
+    Var Ident
+    -- | Structure field access:
+    --
+    -- > L.x
   | Field LVal Ident
+    -- | Array access:
+    --
+    -- > L[E]
   | Arr LVal Exp
   deriving (Eq, Ord, Read)
 
-data Val = Free | VInt Int | VBool Bool deriving (Eq, Ord, Read)
+-- | The syntax of Promela values:
+--
+-- > V ::= ?? | n | true | false, where n ∈ ℤ
+data Val = 
+      -- | The free Promela value. Denotes a name with an unknown value.
+      --
+      -- > ??
+      Free 
+      -- | A Promela integer.
+    | VInt Int 
+      -- | A Promela boolean.
+    | VBool Bool deriving (Eq, Ord, Read)
 
+-- | The syntax of Promela types.
+--
+-- > T ::= int | bool | chan | x
 data Type
-  = TInt
-  | TBool
-  | TChan
-  | TNamed Ident
+  = TInt      -- ^ Integer type: int
+  | TBool     -- ^ Boolean type: bool
+  | TChan     -- ^ Channel type: chan
+  | TNamed Ident  -- ^ Named type: x
   deriving (Eq, Ord, Read)
 
 block :: PrettyPrint a => Int -> [a] -> String
@@ -102,7 +187,6 @@ showParam :: Show a => (String, a) -> String
 showParam (x, t) = unwords [show t, x]
 
 instance PrettyPrint Stmt where
-  prettyPrint :: Int -> Stmt -> String
   prettyPrint n =
     let tab = indent n
         makeElse =

@@ -7,7 +7,7 @@ import Utilities.Err
 import Utilities.General
 import Utilities.Position
 
--- Context for checking program permissivity
+-- | Context for checking program permissivity
 data Ctxt a = Ctxt
   { -- A set of channel names
     chans :: S.Set String,
@@ -24,12 +24,12 @@ data Ctxt a = Ctxt
   }
   deriving (Eq, Ord, Read, Show)
 
--- Checks whether the Promela program only uses covered features.
+-- | Checks whether the Promela program only uses covered features.
 -- All of its modules must be allowed for the whole program to be allowed.
 allowed :: Spec -> Err [()]
 allowed (Spec ms) = results (map allowedModule ms)
 
--- Checks whether a top-level declaration uses only allowed features.
+-- | Checks whether a top-level declaration uses only allowed features.
 -- Procedures and the initial process are only allowed if:
 --  1. All their declarations appear first
 --  2. All their goroutines appear second

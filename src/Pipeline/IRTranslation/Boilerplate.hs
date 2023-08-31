@@ -23,13 +23,14 @@ import Pipeline.IRTranslation.Postcondition (postconditions)
 import Pipeline.IRTranslation.Utilities
 import Utilities.Collection
 
-{- A function for computing the number of iterations that
+{- | A function for computing the number of iterations that
 may be performed in a loop.
 
 Produces:
-ghost function iterations(lo, hi) : int {
-  if lo <= hi then hi - lo else 0
-}
+
+> ghost function iterations(lo, hi) : int {
+>   if lo <= hi then hi - lo else 0
+> }
 -}
 iterationsFunc :: Function
 iterationsFunc =
@@ -50,14 +51,15 @@ iterationsFunc =
               }
         }
 
-{- A predicate on schedules that ensures all natural numbers
+{- | A predicate on schedules that ensures all schedule steps
 are bound to valid process IDs.
 Depends on: 𝛱
 
 Produces:
-ghost function isSchedule(S : nat -> nat) {
-  forall n :: s <= |dom(𝛱)|
-}
+
+> ghost function isSchedule(S : nat -> nat) {
+>   forall n :: s <= |dom(𝛱)|
+> }
 -}
 isScheduleFunc :: 𝛱 -> Function
 isScheduleFunc ps =
@@ -79,13 +81,14 @@ isScheduleFunc ps =
               }
         }
 
-{- Case analysis of a single process over its program points.
+{- | Case analysis of a single process over its program points.
 Depends on: π, 𝜙
 
 Produces:
-switch pc(π) {
-  ∀ n ∈ 𝜙. case n => 𝜙(n)
-}
+
+> switch pc(π) {
+>   ∀ n ∈ 𝜙. case n => 𝜙(n)
+> }
 -}
 processSwitch :: P -> 𝛷 -> Stmt
 processSwitch pid =
@@ -94,14 +97,15 @@ processSwitch pid =
       cases = M.toList . M.mapKeys iguard
    in MatchStmt pc . cases
 
-{- Case analysis for scheduled process at the given step
+{- | Case analysis for scheduled process at the given step
 over process ids.
 Depends on: 𝛱
 
 Produces:
-switch S(step) {
-  ∀ π ∈ 𝛱. case π => processSwitch(π, 𝜙)
-}
+
+> switch S(step) {
+>   ∀ π ∈ 𝛱. case π => processSwitch(π, 𝜙)
+> }
 -}
 scheduleSwitch :: 𝛱 -> Stmt
 scheduleSwitch =
@@ -110,19 +114,20 @@ scheduleSwitch =
       step = Call "S" [("step" @)]
    in MatchStmt step . cases
 
-{- Constructs the central loop which emulates the execution
+{- | Constructs the central loop which emulates the execution
 of the concurrent program.
 Depends on: 𝜓, κ, 𝛱, nonloop(P), loop(P)
 
 Produces:
-while enabledExp(κ, 𝛱)
-∀ (π, 𝜙) ∈ 𝛱. invariant counterInvariant(π, 𝜙)
-∀ e ∈ channelMonitors(noloop(P), loop(P)). invariant e
-∀ ℓ ∈ loop(P). invariant loopMonitor(ℓ)
-{
-  scheduleSwitch(𝛱)
-  step := step + 1
-}
+
+> while enabledExp(κ, 𝛱)
+> ∀ (π, 𝜙) ∈ 𝛱. invariant counterInvariant(π, 𝜙)
+> ∀ e ∈ channelMonitors(noloop(P), loop(P)). invariant e
+> ∀ ℓ ∈ loop(P). invariant loopMonitor(ℓ)
+> {
+>   scheduleSwitch(𝛱)
+>   step := step + 1
+> }
 -}
 centralLoop :: 𝛹 -> K -> 𝛱 -> P ↦ (𝐶 ↦ 𝒪s) -> [ℐ] -> [ℒ] -> [ℛ] -> Stmt
 centralLoop 𝜓 κ ps atomicOps ifs ls rs =
@@ -160,11 +165,12 @@ centralLoop 𝜓 κ ps atomicOps ifs ls rs =
             ]
         )
 
-{- Constructs an initial assignment for all program counters.
+{- | Constructs an initial assignment for all program counters.
 Depends on: 𝛱
 
 Produces:
-var pc(π)₁, ..., pc(π)ₙ = 0, ..., 0
+
+> var pc(π)₁, ..., pc(π)ₙ = 0, ..., 0
 -}
 counterDef :: 𝛱 -> Stmt
 counterDef ps =
@@ -174,11 +180,12 @@ counterDef ps =
        in Assign . L.map def . M.keys $ ps
     else Assert (True ?)
 
-{- Constructs an initial assignment for all loop variables.
+{- | Constructs an initial assignment for all loop variables.
 Depends on: loop(P)
 
 Produces:
-var x₁, ..., xₙ = lo₁, ..., loₙ
+
+> var x₁, ..., xₙ = lo₁, ..., loₙ
 -}
 loopVarDef :: [ℒ] -> Stmt
 loopVarDef = \case
@@ -187,14 +194,15 @@ loopVarDef = \case
     let def (ℒ {l𝑋 = x, lower}) = (x, Nothing, lower)
      in VarDef False . L.map def $ ls
 
-{- Constructs an assignment for the process termination variables.
+{- | Constructs an assignment for the process termination variables.
 The variables are assigned the process termination point.
 Other expressions may indirectly reference process termination
 by proxy of these variables.
 Depends on: 𝛱
 
 Produces:
-∀ (π, 𝜙) ∈ 𝛱. var exit(π) = (max ∘ dom)(𝜙)
+
+> ∀ (π, 𝜙) ∈ 𝛱. var exit(π) = (max ∘ dom)(𝜙)
 -}
 terminationVars :: 𝛱 -> Stmt
 terminationVars ps =
@@ -204,11 +212,12 @@ terminationVars ps =
        in VarDef False . M.elems . M.mapWithKey def $ ps
     else Assert (True ?)
 
-{- Constructs an initial assignment for all channel variables.
+{- | Constructs an initial assignment for all channel variables.
 Depends on: κ
 
 Produces:
-∀ c ∈ dom(κ). var c = 0
+
+> ∀ c ∈ dom(κ). var c = 0
 -}
 chanDef :: K -> Stmt
 chanDef κ =
@@ -218,30 +227,31 @@ chanDef κ =
        in VarDef False . L.map def . M.keys $ κ
     else Assert (True ?)
 
-{- Construcs the "isSchedule(S)" precondition.
+{- | Construcs the "isSchedule(S)" precondition.
 -}
 isSchedule :: Exp
 isSchedule = Call "isSchedule" [("S" @)]
 
-{- Constructs the main program encoding.
+{- | Constructs the main program encoding.
 Depends on: 𝜓, κ, 𝛱, nonloop(P), loop(P), fv(P)
 
 Produces:
-method Program(S : nat -> nat, ∀ x ∈ fv(P). x : int)
-returns (∀ (π, 𝜙) ∈ 𝛱. pc(π) : int)
 
-requires capPreconditions(κ)
-requires preconditions(κ, nonloop(P), loop(P))
-
-ensures postconditions(𝛱)
-
-decreases * {
-  counterDef(𝛱);
-  chanDef(κ);
-  loopVarDef(loop(P));
-  step := 0;
-  centralLoop(κ, 𝛱, nonloop(P), loop(P))
-}
+> method Program(S : nat -> nat, ∀ x ∈ fv(P). x : int)
+> returns (∀ (π, 𝜙) ∈ 𝛱. pc(π) : int)
+> 
+> requires capPreconditions(κ)
+> requires preconditions(κ, nonloop(P), loop(P))
+> 
+> ensures postconditions(𝛱)
+> 
+> decreases * {
+>   counterDef(𝛱);
+>   chanDef(κ);
+>   loopVarDef(loop(P));
+>   step := 0;
+>   centralLoop(κ, 𝛱, nonloop(P), loop(P))
+> }
 
 -}
 progEncoding :: 𝛹 -> 𝛴 -> [Type] -> K -> 𝛱 -> P ↦ (𝐶 ↦ 𝒪s) -> [ℐ] -> [ℒ] -> [ℛ] -> Method
@@ -272,7 +282,7 @@ progEncoding 𝜓 𝜎 ts κ ps os ifs ls rs =
               ]
         }
 
-{- Constructs the complete program specification, by emitting
+{- | Constructs the complete program specification, by emitting
 all the necessary functions, and the program encoding.
 -}
 wholeEncoding :: 𝛹 -> 𝛴 -> [Type] -> K -> 𝛱 -> P ↦ (𝐶 ↦ 𝒪s) -> [ℐ] -> [ℒ] -> [ℛ] -> Program

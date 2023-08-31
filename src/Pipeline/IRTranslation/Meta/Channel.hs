@@ -8,26 +8,26 @@ import IR.Utilities
 import Pipeline.IRTranslation.Utilities
 import Utilities.Collection
 
--- An alias for the type of channel names, denoted as strings.
+-- | An alias for the type of channel names, denoted as strings.
 -- Its purpose is to shorten type definitions involving channel names.
 type 𝐶 = String
 
--- The type of channel capacity environments, connecting channel names to capacity expressions.
+-- | The type of channel capacity environments, connecting channel names to capacity expressions.
 type K = 𝐶 ↦ Exp
 
--- Mappings from channel operation directionality to a set of
+-- | Mappings from channel operation directionality to a set of
 -- program points marking channel operations with that direction.
 type 𝒪s = OpDir ↦ [𝒪]
 
--- (Meta)data about channel operations.
+-- | (Meta)data about channel operations.
 data 𝒪 = 𝒪
-  { -- Process
+  { -- | Process of channel operation
     oP :: P,
-    -- Channel name
+    -- | Channel name
     o𝐶 :: 𝐶,
-    -- Channel operation
+    -- | Channel operation
     oDir :: OpDir,
-    -- Program point
+    -- | Program point
     o𝑛 :: 𝑁
   }
   deriving (Eq, Read)
@@ -37,13 +37,13 @@ instance Show 𝒪 where
     -- PID: c{!,?} <n>
     unwords [show pid ++ ":", o𝐶 ++ show oDir, "<" ++ show n ++ ">"]
 
--- Inserts a channel operation into a channel operation map.
+-- | Inserts a channel operation into a channel operation map.
 -- Given, a triple (c, d, n) where c is a channel name, d
 -- is the direction of an operation, and n is the program point
 -- of the operation, and a map of channel operations M,
 -- the result is:
 --
--- M[c ↦ M(c)[d ↦ M(c)(d) ∪ {n}]]
+-- > M[c ↦ M(c)[d ↦ M(c)(d) ∪ {n}]]
 --
 -- If M(c) is undefined (and similarly M(c)(d)), they get initialized
 -- to the corresponding zero value for the appropriate type.
@@ -56,24 +56,24 @@ ch +> chops =
       ops' = M.insert d dops' ops
    in M.insert c ops' chops
 
--- Checks whether a back-end statement encodes a channel send or receive
+-- | Checks whether a back-end statement encodes a channel send or receive
 -- operation, and returns the name of the channel if that is the case.
 -- The result is wrapped in "Left" for channel sends, and "Right" for channel
 -- receives. Channel operations have the following pattern (members between
 -- angle brackets correspond to code generated for send on the left side,
 -- and receive on the right side):
---
--- if 0 < κ(c) {
---    if c ⟨< κ(c) | > 0⟩ {
---       c := c ⟨+ | -⟩ 1;
---       pc := n;
---    }
--- } else {
---    if c == ⟨0 | 1⟩ {
---       c := ⟨1 | -1⟩;
---       pc := n';
---    }
--- }
+-- 
+-- > if 0 < κ(c) {
+-- >    if c ⟨< κ(c) | > 0⟩ {
+-- >       c := c ⟨+ | -⟩ 1;
+-- >       pc := n;
+-- >    }
+-- > } else {
+-- >    if c == ⟨0 | 1⟩ {
+-- >       c := ⟨1 | -1⟩;
+-- >       pc := n';
+-- >    }
+-- > }
 -- where n' = ⟨n + 1 | n⟩
 backendChannelOp :: Stmt -> Maybe (Either 𝐶 𝐶)
 backendChannelOp =
@@ -213,13 +213,14 @@ backendChannelOp =
         -- The statement does not conform to any channel operation pattern.
         _ -> Nothing
 
-{- Convert back-end instruction point to channel metadata.
+{- | Convert back-end instruction point to channel metadata.
 Depends on: π, 𝜙, 𝑛
 
 ! Metadata does not include path conditions.
 
 Produces:
-𝒪 {π, c, d, 𝑛}, where cd = 𝜙(𝑛)
+
+> 𝒪 {π, c, d, 𝑛}, where cd = 𝜙(𝑛)
 -}
 insnToChMetadata :: P -> 𝑁 -> Stmt -> Maybe 𝒪
 insnToChMetadata p 𝑛 s = do
@@ -233,22 +234,24 @@ insnToChMetadata p 𝑛 s = do
         o𝑛 = 𝑛
       }
 
-{- Aggregate all channel operation points from all processes, indexed.
+{- | Aggregate all channel operation points from all processes, indexed.
 Produces a map of channel operation metadata indexed by the channel name.
 Depends on: π, 𝜙
 
 Produces:
-[ c ↦ 𝒪 {π, c, d, 𝑛} | (𝑛, cd) ∈ 𝜙 . d ∈ {!, ?} ]
+
+> [ c ↦ 𝒪 {π, c, d, 𝑛} | (𝑛, cd) ∈ 𝜙 . d ∈ {!, ?} ]
 -}
 chanOpsMap :: 𝛱 -> P ↦ (𝐶 ↦ [𝒪])
 chanOpsMap = M.mapWithKey processChanOpsMap
 
-{- Aggregate all channel operation points from a given process and its program points.
+{- | Aggregate all channel operation points from a given process and its program points.
 Produces a map of channel operation metadata indexed by the channel name.
 Depends on: π, 𝜙
 
 Produces:
-[ c ↦ 𝒪 {π, c, d, 𝑛} | (𝑛, cd) ∈ 𝜙 . d ∈ {!, ?} ]
+
+> [ c ↦ 𝒪 {π, c, d, 𝑛} | (𝑛, cd) ∈ 𝜙 . d ∈ {!, ?} ]
 -}
 processChanOpsMap :: P -> 𝛷 -> 𝐶 ↦ [𝒪]
 processChanOpsMap p =
@@ -258,13 +261,14 @@ processChanOpsMap p =
           Nothing -> cops
    in M.foldrWithKey addChanOp M.empty
 
-{- Aggregate all channel operation points from a given map of program points.
+{- | Aggregate all channel operation points from a given map of program points.
 Produces a list of channel operation metadata, including the channel name,
 process id, operation direction, program point.
 Depends on: π, 𝜙
 
 Produces:
-{ 𝒪 {π, c, d, 𝑛} | (𝑛, cd) ∈ 𝜙. d ∈ {!, ?} }
+
+> { 𝒪 {π, c, d, 𝑛} | (𝑛, cd) ∈ 𝜙. d ∈ {!, ?} }
 -}
 processChanOps :: P -> 𝛷 -> [𝒪]
 processChanOps p = catMaybes . M.elems . M.mapWithKey (insnToChMetadata p)

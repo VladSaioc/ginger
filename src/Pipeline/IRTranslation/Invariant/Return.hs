@@ -6,16 +6,17 @@ import Data.Map qualified as M
 import Pipeline.IRTranslation.Meta.Return
 import Pipeline.IRTranslation.Utilities
 
-{- Get all if monitor expressions.
+{- Get all return monitor expressions.
 -}
 returnMonitors :: 𝛹 -> [ℛ] -> [Exp]
 returnMonitors 𝜓 = map $ returnMonitor 𝜓
 
-{- Constructs a return monitor invariant.
+{- | Constructs a return monitor invariant.
 Depends on: 𝑟 = (π, n, e)
 
 Produces:
-e ==> !(n < pc(π) && pc(π) < exit(π))
+
+> e ==> !(n < pc(π) && pc(π) < exit(π))
 -}
 returnMonitor :: 𝛹 -> ℛ -> Exp
 returnMonitor 𝜓 (ℛ {rP = p, r𝑛 = 𝑛}) =

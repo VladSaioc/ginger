@@ -7,6 +7,7 @@ import IR.Utilities
 import Pipeline.IRTranslation.Meta.Channel
 import Pipeline.IRTranslation.Utilities
 
+-- | Aggregates all rendezvous mutexes.
 rendezvousMutexes :: 𝛱 -> [Exp]
 rendezvousMutexes ps =
   let flattenMap2 = concatMap (concat . M.elems)
@@ -16,17 +17,19 @@ rendezvousMutexes ps =
       mes = M.mapWithKey (\p cs -> map (makeInv p) (M.keys cs)) opsMap
    in concatMap concat $ M.elems mes
 
-{- For the given channel and process, ensures that no other process may
+{- | For the given channel and process, ensures that no other process may
 simultaneously sit on the rendezvous point as long as the current process
 also visits a rendezvous point.
 Depends on: π, c, 𝒪
 
 Let:
-E = ⋁ ∀ c ∈ { pc(π) == 𝓃 + 1 | ∀ (π, c, !, 𝓃) ∈ 𝒪 }
-E' = ⋀ ∀ c ∈ { pc(π') != 𝓃 + 1 | ∀ (π', c, !, 𝓃) ∈ 𝒪, π' ≠ π }
+
+> E = ⋁ ∀ c ∈ { pc(π) == 𝓃 + 1 | ∀ (π, c, !, 𝓃) ∈ 𝒪 }
+> E' = ⋀ ∀ c ∈ { pc(π') != 𝓃 + 1 | ∀ (π', c, !, 𝓃) ∈ 𝒪, π' ≠ π }
 
 Produces:
-E ==> E'
+
+> E ==> E'
 -}
 rendezvousMutex :: P -> 𝐶 -> [𝒪] -> Exp
 rendezvousMutex p c os =

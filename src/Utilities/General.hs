@@ -14,7 +14,7 @@ results (r : rs) = do
 
 -- |
 foldMonad :: (Foldable t1, Monad m) => (t2 -> m t3) -> t4 -> (t4 -> t3 -> t4) -> t1 t2 -> m t4
-foldMonad f start combine = Control.Monad.foldM (\b -> (<&> combine b) . f) start
+foldMonad f start combine = Control.Monad.foldM (\b a -> f a <&> combine b) start
 
 binaryCons :: Monad m => (a -> m b) -> (b -> b -> c) -> a -> a -> m c
 binaryCons p cons e1 e2 = do

@@ -3,6 +3,9 @@ module Backend.Ast where
 import Data.List (intercalate)
 import Utilities.PrettyPrint
 
+-- | Back-end type syntax:
+--
+-- > T ::= int | nat | bool | x | T -> T | ({T, ...}*)
 data Type
   = TBad
   | -- int
@@ -19,118 +22,153 @@ data Type
     Tuple [Type]
   deriving (Eq, Ord, Read)
 
+-- | Back-end pattern matching syntax:
+--
+-- > P ::= _ | c | x | C(p, ...) | (p, ...)
 data Pattern
-  = -- _
+  = -- | >  _
     Wildcard
-  | -- Constant
+  | -- | > c
     PCon Const
-  | -- Variable
+  | -- | > x
     PVar String
-  | -- cons(p, ...)
+  | -- | > C(p, ...)
     PAdt String [Pattern]
-  | -- (p, ...)
+  | -- | > (p, ...)
     PTuple [Pattern]
   deriving (Eq, Ord, Show, Read)
 
--- Statement
+-- | Back-end statement syntax:
+--
+-- > S ::= {x, ...}* := {e, ...}*
+-- >    | { S; ... }
+-- >    | [ghost] var {x [: T], ...}* := {e, ...}*
+-- >    | if e { S } else { S }
+-- >    | assert e
+-- >    | match e { {case p => S ...}* }
+-- >    | while e {invariant e ...}* {decreases e}* { S }
+-- >    | return {e, ...}*
 data Stmt
-  = -- {x, ...}* := {e, ...}*
+  = -- | > {x, ...}* := {e, ...}*
     Assign [(String, Exp)]
-  | -- { S; ... }
+  | -- | > { S; ... }
     Block [Stmt]
-  | -- [ghost] var {x [: T], ...}* := {e, ...}*
+  | -- | > [ghost] var {x [: T], ...}* := {e, ...}*
     VarDef Bool [(String, Maybe Type, Exp)]
-  | -- if e { S } else { S }
+  | -- | > if e { S } else { S }
     If Exp Stmt (Maybe Stmt)
-  | -- assert e
+  | -- | > assert e
     Assert Exp
-  | -- match e { {case p => S ...}* }
+  | -- | > match e { {case p => S ...}* }
     MatchStmt Exp [(Pattern, Stmt)]
-  | -- while e {invariant e ...}* {decreases e}* { S }
+  | -- | > while e {invariant e ...}* {decreases e}* { S }
     While Exp [Exp] [Exp] Stmt
-  | -- return {e, ...}*
+  | -- | > return {e, ...}*
     Return [Exp]
   deriving (Eq, Ord, Show, Read)
 
+-- | Back-end constants:
+-- > c ::= true | false | n
 data Const
-  = -- -- true
+  = -- | > true
     CTrue
-  | -- -- false
+  | -- | > false
     CFalse
-  | -- -- n ∈ ℤ
+  | -- | > n ∈ ℤ
     CNum Int
   deriving (Eq, Ord, Show, Read)
 
--- Expressions
+-- | Back-end expressions:
+--
+-- > e ::= match e1 { {case p => e ...}* }
+-- >    | if e1 then e2 else e3
+-- >    | exists {x [: T], ...}* :: e
+-- >    | forall {x [: T], ...}* :: e
+-- >    | e1 in e2
+-- >    | {{e, ...} *}
+-- >    | e1 <==> e2 | e1 ==> e2
+-- >    | e1 && e2 | e1 || e2
+-- >    | e1 == e2 | e1 != e2
+-- >    | e1 >= e2 | e1 > e2
+-- >    | e1 <= e2 | e1 < e2
+-- >    | exists {x [: T], ...}* :: e
 data Exp
   = -- COMPOUND EXPRESSIONS
-    -- -- match e1 { {case p => e ...}* }
+    -- | > match e1 { {case p => e ...}* }
     Match Exp [(Pattern, Exp)]
-  | -- -- if e1 then e2 else e3
+  | -- | > if e1 then e2 else e3
     IfElse Exp Exp Exp
   | -- PROPOSITIONAL QUANTIFIERS
-    -- exists {x [: T], ...}* :: e
+    -- | > exists {x [: T], ...}* :: e
     Exists [(String, Maybe Type)] Exp
-  | -- forall {x [: T], ...}* :: e
+  | -- | > forall {x [: T], ...}* :: e
     Forall [(String, Maybe Type)] Exp
-  | -- e1 in e2
+  | -- | > e1 in e2
     In Exp Exp
-  | -- {{e, ...} *}
+  | -- | > {{e, ...} *}
     ESet [Exp]
   | -- BINARY OPERATORS
     -- Propositional logic
-    -- -- e1 <==> e2
+    -- | > e1 <==> e2
     Exp :<==> Exp
-  | -- -- e1 ==> e2
+  | -- | > e1 ==> e2
     Exp :==> Exp
   | -- Boolean arithmetic
-    -- -- e1 && e2
+    -- | > e1 && e2
     Exp :&& Exp
-  | -- -- e1 || e2
+  | -- | > e1 || e2
     Exp :|| Exp
   | -- Comparison
-    -- -- e1 == e2
+    -- | > e1 == e2
     Exp :== Exp
-  | -- -- e1 != e2
+  | -- | > e1 != e2
     Exp :!= Exp
-  | -- -- e1 >= e2
+  | -- | > e1 >= e2
     Exp :>= Exp
-  | -- -- e1 > e2
+  | -- | > e1 > e2
     Exp :> Exp
-  | -- -- e1 <= e2
+  | -- | > e1 <= e2
     Exp :<= Exp
-  | -- -- e1 < e2
+  | -- | > e1 < e2
     Exp :< Exp
   | -- Arithmetic
-    -- -- e1 + e2
+    -- | > e1 + e2
     Exp :+ Exp
-  | -- -- e1 - e2
+  | -- | > e1 - e2
     Exp :- Exp
-  | -- -- e1 * e2
+  | -- | > e1 * e2
     Exp :* Exp
-  | -- -- e1 / e2
+  | -- | > e1 / e2
     Exp :/ Exp
-  | -- -- e1 % e2
+  | -- | > e1 % e2
     Exp :% Exp
   | -- UNARY OPERATORS
-    -- -- !e
+    -- | > !e
     Not Exp
-  | -- -- (e1, ... en)
+  | -- | > (e1, ... en)
     ETuple [Exp]
   | -- TERMINAL EXPRESSIONS
-    -- -- *
+    -- | > *
     Any
-  | -- -- x
+  | -- | > x
     EVar String
-  | -- -- const
+  | -- | > c
     ECon Const
-  | -- -- f({e, ...}*)
+  | -- | > f({e, ...}*)
     Call String [Exp]
   deriving (Eq, Ord, Show, Read)
 
--- Cons({field : type, ...})
+-- | Back-end record type definition:
+--
+-- > T({field : type, ...}*)
 data Cons = Cons String [(String, Type)] deriving (Eq, Ord, Read)
 
+-- | Back-end Hoare triple syntax. Uses holes for keyword and return type:
+--
+-- > H<_, _> ::= _ x[\<{T, ...}>]({x : T, ...}*) _
+-- >      {requires e\n...}*
+-- >      {ensures e\n...}*
+-- >      {decreases e\n...}*
 data HoareWrap = HoareWrap
   { ghost :: Bool,
     name :: String,
@@ -142,6 +180,9 @@ data HoareWrap = HoareWrap
   }
   deriving (Eq, Ord, Read)
 
+-- | Back-end function declaration syntax:
+--
+-- > F ::= H<[ghost] function, : T> E
 data Function = Function
   { yields :: Type,
     funcHoare :: HoareWrap,
@@ -149,6 +190,9 @@ data Function = Function
   }
   deriving (Eq, Ord, Read)
 
+-- | Method declaration syntax:
+--
+-- > M ::= H<lemma | method, returns ({ x : T, ...}*)> { {S; ...}* }
 data Method = Method
   { returns :: [(String, Type)],
     methodHoare :: HoareWrap,
@@ -156,60 +200,65 @@ data Method = Method
   }
   deriving (Eq, Ord, Read)
 
+-- | Back-end top-level declaration:
+--
+-- > D ::= datatype x<{T, ...}> = {Cons | ...}
+-- >    | type x = T
 data Decl
-  = -- datatype x<{Type, ...}> = {Cons | ...}
+  = -- | > datatype x<{Type, ...}> = {Cons | ...}
     Datatype String [Type] [Cons]
-  | -- type x = Type
+  | -- | > type x = Type
     TypeDecl String Type
   | -- [ghost] function f({x : T, ...}*) : T {requires e}* {ensures e}* { e }
     FDecl Function
-  | -- If not ghost:
-    -- method f({x : T, ...}*) returns ({x : T, ...}*)  {requires e ...}* {ensures e ...}* {decreases e ...}* S
-    -- If ghost:
-    -- lemma f({x : T, ...}*) returns ({x : T, ...}*)  {requires e ...}* {ensures e ...}* {decreases e ...}* S
+  | -- (lemma | method) f({x : T, ...}*) returns ({x : T, ...}*)  {requires e ...}* {ensures e ...}* {decreases e ...}* { {S; ...}* }
     MDecl Method
   deriving (Eq, Ord, Read)
 
--- Back-end program
+-- | Back-end program syntax:
+--
+-- > P ::= {D \n D}*
 newtype Program = Program [Decl] deriving (Eq, Ord, Read)
 
+-- | Unparser precedence order helper for binary operations. 
+-- Does not wrap sub-tree expressions operations
 (<.|.>) :: Exp -> Either Exp Exp -> String
 (<.|.>) e1 lre2 =
   let needParens =
         ( case (e1, lre2) of
             (_ :<==> _, Right (_ :<==> _)) -> False
             (_ :<==> _, Left (_ :<==> _)) -> False
-            (_ :==> _, Left (_ :==> _)) -> True
+            (_ :==> _, Left (_ :==> _)) -> True    -- Need parentheses if left is implication
             (_ :==> _, Right (_ :==> _)) -> False
-            (_ :&& _, Right (_ :&& _)) -> False
+            (_ :&& _, Right (_ :&& _)) -> False    -- No need for parentheses for AND
             (_ :&& _, Left (_ :&& _)) -> False
-            (_ :|| _, Right (_ :|| _)) -> False
+            (_ :|| _, Right (_ :|| _)) -> False    -- No need for parentheses for OR
             (_ :|| _, Left (_ :|| _)) -> False
-            (_ :&& _, Right (_ :|| _)) -> True
+            (_ :&& _, Right (_ :|| _)) -> True     -- Need parentheses if mixed AND and OR
             (_ :&& _, Left (_ :|| _)) -> True
             (_ :|| _, Right (_ :&& _)) -> True
             (_ :|| _, Left (_ :&& _)) -> True
-            (_ :== _, Right (_ :== _)) -> True
+            (_ :== _, Right (_ :== _)) -> True     -- Need parentheses for equality and inequality
             (_ :== _, Left (_ :== _)) -> True
             (_ :== _, Right (_ :!= _)) -> True
             (_ :== _, Left (_ :!= _)) -> True
-            (_ :+ _, Right (_ :+ _)) -> False
+            (_ :+ _, Right (_ :+ _)) -> False      -- No need for parentheses for addition
             (_ :+ _, Left (_ :+ _)) -> False
-            (_ :+ _, Right (_ :- _)) -> False
+            (_ :+ _, Right (_ :- _)) -> False      -- No need for parentheses for addition and subtraction mix
             (_ :+ _, Left (_ :- _)) -> False
-            (_ :- _, Right (_ :- _)) -> True
+            (_ :- _, Right (_ :- _)) -> True       -- Need parentheses if left is subtraction
             (_ :- _, Left (_ :- _)) -> False
             (_ :- _, Left (_ :+ _)) -> False
             (_ :- _, Right (_ :+ _)) -> True
-            (_ :* _, Right (_ :* _)) -> False
+            (_ :* _, Right (_ :* _)) -> False      -- No need for parentheses for multiplication
             (_ :* _, Left (_ :* _)) -> False
-            (_ :* _, Right (_ :/ _)) -> False
+            (_ :* _, Right (_ :/ _)) -> False      -- No need for parentheses for multiplication and division mix
             (_ :* _, Left (_ :/ _)) -> False
-            (_ :/ _, Right (_ :/ _)) -> True
+            (_ :/ _, Right (_ :/ _)) -> True       -- Need parentheses if left is division
             (_ :/ _, Left (_ :/ _)) -> False
             (_ :/ _, Left (_ :* _)) -> False
             (_ :/ _, Right (_ :* _)) -> True
-            (_ :% _, Left (_ :% _)) -> True
+            (_ :% _, Left (_ :% _)) -> True        -- Need parentheses for modulo
             (_ :% _, Right (_ :% _)) -> True
             _ -> e1 > either id id lre2
         )

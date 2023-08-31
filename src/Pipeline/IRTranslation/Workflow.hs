@@ -18,6 +18,7 @@ import Pipeline.IRTranslation.Reachability (reachability)
 import Pipeline.IRTranslation.Return (returns)
 import Utilities.Err
 
+-- | Convert IR program to back-end program. May fail.
 irToBackend :: 𝑃 -> Err Program
 irToBackend p' = do
   let p = simplify p'

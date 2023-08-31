@@ -3,6 +3,7 @@ module Pipeline.Callgraph (getCG) where
 import Data.Map
 import Promela.Ast
 
+-- | Construct call graph from a Promela model.
 getCG :: Spec -> Map String Module
 getCG (Spec ms) =
   Prelude.foldl

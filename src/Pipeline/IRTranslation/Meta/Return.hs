@@ -2,11 +2,11 @@ module Pipeline.IRTranslation.Meta.Return where
 
 import Pipeline.IRTranslation.Utilities
 
--- Meta(data) about a return instruction.
+-- | Meta(data) about a return instruction.
 data ℛ = ℛ
-  { -- Process ID
+  { -- | Process ID of return statement.
     rP :: P,
-    -- Program point
+    -- | Program point
     r𝑛 :: 𝑁
   }
 

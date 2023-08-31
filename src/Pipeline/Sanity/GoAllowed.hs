@@ -10,7 +10,7 @@ import Utilities.Position
 
 type Ident = String
 
--- Context for checking whether a Go program
+-- | Context for checking whether a Go program
 -- conforms to the restrictions imposed by Ginger
 type Ctxt a = ICtxt a ()
 data ICtxt a b = Ctxt
@@ -34,7 +34,7 @@ data ICtxt a b = Ctxt
   deriving (Eq, Ord, Read, Show)
 
 
--- A program is allowed if all of its processes are allowed,
+-- | A program is allowed if all of its processes are allowed,
 -- and they follow the pattern:
 --  1. Check for allowed declarations
 --  2. Check for allowed goroutine spawns
@@ -54,7 +54,7 @@ allowed (Prog ss) =
           }
    in allowedDeclarations newCtxt
 
--- Checks that all the declaration in a program are allowed.
+-- | Checks that all the declaration in a program are allowed.
 allowedDeclarations :: Ctxt [Pos Stmt] -> Err ()
 allowedDeclarations ρ = case syntax ρ of
   [] -> return ()
@@ -84,7 +84,7 @@ allowedDeclarations ρ = case syntax ρ of
             _ <- allowedGoroutines ρ'
             return ()
 
--- Check that all goroutines in a Go program are allowed.
+-- | Check that all goroutines in a Go program are allowed.
 allowedGoroutines :: Ctxt [Pos Stmt] -> Err (Ctxt ())
 allowedGoroutines ρ = case syntax ρ of
   [] -> return (ρ {syntax = ()})
@@ -96,7 +96,7 @@ allowedGoroutines ρ = case syntax ρ of
             allowedGoroutines ρ'
           _ -> allowedStmts ρ'
 
--- Check that all statements in a Go program consist strictly
+-- | Check that all statements in a Go program consist strictly
 -- of allowed features.
 allowedStmts :: Ctxt [Pos Stmt] -> Err (Ctxt ())
 allowedStmts ρ =
@@ -212,7 +212,7 @@ allowedStmts ρ =
                 -- Skip statements are always allowed.
                 Skip -> allowedStmts ρ'
 
--- Collect all variables used in expressions.
+-- | Collect all variables used in expressions.
 expVars :: Exp -> Err (S.Set Ident)
 expVars =
   let bin = binaryCons expVars S.union

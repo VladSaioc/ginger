@@ -5,6 +5,7 @@ import Go.Ast
 import Go.Cyclomatic
 import Utilities.Position
 
+-- | Describes a syntactical goroutine.
 data Goroutine = Goroutine
   { decls :: [Pos Stmt],
     body :: [Pos Stmt],
@@ -12,29 +13,29 @@ data Goroutine = Goroutine
   }
   deriving (Eq, Ord, Read, Show)
 
--- goForCommute attempts to commute appropriate 'go' and 'for' statements.
+-- | Attempts to commute appropriate 'go' and 'for' statements.
 -- A 'go' and 'for' statements may be commuted iff. the communication pattern
 -- of the goroutines spawned in the body of the 'for' exhibit simple behaviour,
 -- and if there are no side effects outside the
 --
---
 -- Example:
--- for (x : e1 .. e2) {
---    go { S1 }; go { S2 }; ...; go { Sn }
--- }
+--
+-- > for (x : e1 .. e2) {
+-- >    go { S1 }; go { S2 }; ...; go { Sn }
+-- > }
 --
 -- becomes
 --
--- go {
---    for (x : e1 .. e2) { S1 }
--- }
--- go {
---    for (x : e1 .. e2) { S2 }
--- }
--- ...
--- go {
---    for (x : e1 .. e2) { Sn }
--- }
+-- > go {
+-- >    for (x : e1 .. e2) { S1 }
+-- > }
+-- > go {
+-- >    for (x : e1 .. e2) { S2 }
+-- > }
+-- > ...
+-- > go {
+-- >    for (x : e1 .. e2) { Sn }
+-- > }
 goForCommute :: Prog -> Prog
 goForCommute (Prog ss) = Prog (goForCommuteSpine ss)
 
@@ -63,7 +64,7 @@ goForCommuteSpine = \case
           s' -> s'
      in Pos p s'' : goForCommuteSpine ss
 
--- processForBody inspects the body of a for loop and checks whether its body
+-- | Inspects the body of a for loop and checks whether its body
 -- consists only of simple goroutine spawns.
 -- If it is the case, it returns just the bodies of the goroutines.
 -- Otherwise, it returns nothing.
@@ -93,7 +94,7 @@ processForBody = \case
       ss' <- processForBody ss
       return $ g : ss'
 
--- goroutineDecls collects all the upfront declarations in a goroutine's body.
+-- | Collects all the upfront declarations in a goroutine's body.
 goroutineDecls :: [Pos Stmt] -> Maybe [Pos Stmt]
 goroutineDecls = \case
   [] -> return []
@@ -104,7 +105,7 @@ goroutineDecls = \case
     Block ss' -> goroutineDecls $ ss' ++ ss
     _ -> return []
 
--- goroutineStmts collects all the non-declaration statements in a goroutine's body.
+-- | Collects all the non-declaration statements in a goroutine's body.
 goroutineStmts :: [Pos Stmt] -> [Pos Stmt]
 goroutineStmts ss =
   let addStmt = \case

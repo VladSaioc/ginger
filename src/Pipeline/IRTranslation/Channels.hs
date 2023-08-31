@@ -5,7 +5,7 @@ import IR.Ast
 import Pipeline.IRTranslation.Exps (parseExp)
 import Pipeline.IRTranslation.Meta.Channel
 
-{- Extract capacity expressions from channel definitions in
+{- | Extract capacity expressions from channel definitions in
   IR program.
 -}
 caps :: 𝑃 -> K
