@@ -19,6 +19,21 @@ instance Show OpDir where
     S -> "!"
     R -> "?"
 
+-- | Checks whether the IR program is interesting.
+-- If the program is not interesting, the generated back-end code is not emitted.
+--
+-- > [SEND]:      interesting(c!)
+-- > [RECV]:      interesting(c?)
+-- > [SEQ-1]:     interesting(S1; S2)
+-- >              |- interesting(S1)
+-- > [SEQ-2]:     interesting(S1; S2)
+-- >              |- interesting(S2)
+-- > [IF-1]:      interesting(if e then S1 else S2)
+-- >              |- interesting(S1)
+-- > [IF-2]:      interesting(if e then S1 else S2)
+-- >              |- interesting(S2)
+-- > [FOR]:       interesting(for x : e1 .. e2 { S })
+-- >              |- interesting(S)
 interesting :: 𝑃 -> Bool
 interesting (𝑃 _ ps) =
   let
