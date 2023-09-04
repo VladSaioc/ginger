@@ -7,6 +7,14 @@ import Data.Set qualified as S
 -- > a ↦ b ≡ Map a b
 type a ↦ b = M.Map a b
 
+-- | Short-hand for map insertion.
+(⇒) :: Ord k => M.Map k a -> (k, a) -> M.Map k a
+m ⇒ (k, v) = M.insert k v m
+
+-- | Short-hand for multi-element map insertion.
+(⭆) :: Ord k => M.Map k a -> [(k, a)] -> M.Map k a
+m ⭆ kvs = M.union m $ M.fromList kvs
+
 -- | Collection can be implemented by types which can be aggregated.
 class Collection a where
   zero :: a
