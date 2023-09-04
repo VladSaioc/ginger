@@ -1,8 +1,8 @@
-module Pipeline.IRTranslation.Meta.Goroutine where
+module Pipeline.IRTranslation.Meta.Go where
 
 import Pipeline.IRTranslation.Utilities
 
--- | Meta(data) about a goroutine spawning instruction.
+-- | Meta(data) about a go instruction.
 data 𝒢 = 𝒢
   { -- | Process ID of return statement.
     gP :: P,
