@@ -16,7 +16,7 @@ data ℐ = ℐ
     iElse :: 𝑁,
     -- | Exit program point
     iExit :: 𝑁
-  }
+  } deriving Eq
 
 instance Show ℐ where
   show ℐ {iP = p, iGuard = g, i𝑛 = 𝑛₁, iElse = 𝑛₂, iExit = 𝑛₃} =

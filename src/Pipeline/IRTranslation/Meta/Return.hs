@@ -8,7 +8,7 @@ data ℛ = ℛ
     rP :: P,
     -- | Program point
     r𝑛 :: 𝑁
-  }
+  } deriving Eq
 
 instance Show ℛ where
   -- PID: return 𝑛

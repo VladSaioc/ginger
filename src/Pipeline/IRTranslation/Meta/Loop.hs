@@ -24,7 +24,7 @@ data ℒ = ℒ
     upper :: Exp,
     -- | Channel operations in the loop (indexed by channel name)
     l𝒪s :: 𝐶 ↦ 𝒪s
-  }
+  } deriving Eq
 
 instance Show ℒ where
   show ℒ {lP = p, l𝑋 = x, l𝑛 = 𝑛₁, lExit = 𝑛₂, lower, upper, l𝒪s} =
