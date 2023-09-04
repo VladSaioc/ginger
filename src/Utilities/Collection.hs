@@ -13,7 +13,7 @@ m ⇒ (k, v) = M.insert k v m
 
 -- | Short-hand for multi-element map insertion.
 (⭆) :: Ord k => M.Map k a -> [(k, a)] -> M.Map k a
-m ⭆ kvs = M.union m $ M.fromList kvs
+m ⭆ kvs = M.union (M.fromList kvs) m
 
 -- | Collection can be implemented by types which can be aggregated.
 class Collection a where
