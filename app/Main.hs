@@ -52,7 +52,7 @@ main = do
       case result of
         Ok (prog, interestingProg) ->
           ( do
-              putStrLn "Succesfully generated and simplified back-end."
+              putStrLn "Successfully generated and simplified back-end."
               mkdir out
               when interestingProg (do
                 writeFile (out ++ "/" ++ file) (prettyPrint 0 prog)
