@@ -37,15 +37,11 @@ position token NUMBER (digit)+;
 position token ID (letter|["_"]) ((digit|letter|["_'"])*);
 
 -- Program
-Prog. Prog ::= [Chan] [Proc];
+Prog. Prog ::= [Chan] GO "{" [Stm] "}";
 
 -- Channel declaration
 separator Chan ";";
 Chan. Chan ::= ID "=" "[" Exp "]";
-
--- Process declaration
-terminator Proc "}";
-Proc. Proc ::= GO "{" [Stm] ;
 
 -- Statement
 separator Stm ";";
@@ -54,6 +50,7 @@ Return. Stm ::= RETURN;
 SOp. Stm ::= Op;
 SIf. Stm ::= IF Exp "{" [Stm] "}" ELSE "{" [Stm] "}";
 For. Stm ::= FOR ID ":" Exp ".." Exp "{" [Op] "}";
+Go.  Stm ::= GO "{" [Stm] "}";
 
 -- Atomic channel operations
 separator Op ";";
