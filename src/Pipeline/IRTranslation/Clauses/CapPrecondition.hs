@@ -1,4 +1,4 @@
-module Pipeline.IRTranslation.CapPrecondition (capPreconditions) where
+module Pipeline.IRTranslation.Clauses.CapPrecondition (capPreconditions) where
 
 import Backend.Ast
 import Backend.Utilities

@@ -1,10 +1,11 @@
-module Pipeline.IRTranslation.CommPrecondition (preconditions) where
+module Pipeline.IRTranslation.Clauses.CommPrecondition (preconditions) where
 
 import Backend.Ast
 import Backend.Utilities
 import Data.List qualified as L
 import Data.Map qualified as M
 import Data.Maybe qualified as Mb
+import Debug.Trace
 import IR.Utilities
 import Pipeline.IRTranslation.Meta.Channel
 import Pipeline.IRTranslation.Meta.Loop
@@ -64,7 +65,7 @@ Depends on: ℓ = (x, e₁, e₂, O)
 
 Reachability conditions for all processes:
 
->  𝜓 = [π ↦ [𝑛 ↦ e | 𝑛 ∈ dom(𝛱(π))] | π ∈ dom(𝛱)]
+>  𝜓 = [p ↦ [𝑛 ↦ e | 𝑛 ∈ dom(𝛯(p))] | p ∈ dom(𝛯)]
 
 Produces:
 
@@ -90,13 +91,13 @@ Depends on: O
 
 Reachability conditions for all processes:
 
->  𝜓 = [π ↦ [𝑛 ↦ e | 𝑛 ∈ dom(𝛱(π))] | π ∈ dom(𝛱)]
+>  𝜓 = [p ↦ [𝑛 ↦ e | 𝑛 ∈ dom(𝛯(p))] | p ∈ dom(𝛯)]
 
 Produces:
 
 > [ c ↦ [
->   ! ↦ (𝛴 (π, 𝜙) ∈ dom(𝛱). ∀ 𝑛, (𝑛, c!) ∈ 𝜙. if 𝜓(π)(𝑛) then 1 else 0)
->   ? ↦ (𝛴 (π, 𝜙) ∈ dom(𝛱). ∀ 𝑛, (𝑛, c?) ∈ 𝜙. if 𝜓(π)(𝑛) then 1 else 0)
+>   ! ↦ (𝛴 (p, 𝜙) ∈ dom(𝛯). ∀ 𝑛, (𝑛, c!) ∈ 𝜙. if 𝜓(p)(𝑛) then 1 else 0)
+>   ? ↦ (𝛴 (p, 𝜙) ∈ dom(𝛯). ∀ 𝑛, (𝑛, c?) ∈ 𝜙. if 𝜓(p)(𝑛) then 1 else 0)
 > ] | c ∈ chans(O)]
 -}
 noloopOpToPre :: 𝛹 -> P ↦ (𝐶 ↦ 𝒪s) -> 𝐶 ↦ (OpDir ↦ Exp)
