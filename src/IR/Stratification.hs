@@ -4,18 +4,19 @@ import Data.List qualified as L
 import IR.Ast
 import IR.ChanString
 import IR.Utilities
-import Utilities.General
 
 stratified :: 𝑃 -> Bool
 stratified (𝑃 _ gos) =
-  let mcss = do results (Prelude.map getChanStrStmt gos)
+  let mcss = getChanStrStmt gos
    in case mcss of
         Just css -> all (\c -> all (congruent c) css) css
         Nothing -> False
 
 getChanStrStmt :: 𝑆 -> Maybe [String]
 getChanStrStmt = \case
+  Go {} -> Nothing
   If {} -> Nothing
+  Return {} -> Nothing
   Seq s1 s2 -> do
     cs1 <- getChanStrStmt s1
     cs2 <- getChanStrStmt s2
