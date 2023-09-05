@@ -11,45 +11,37 @@ import Utilities.Collection
 -- all processes of the program, including operation
 -- direction, program point, and channel name.
 noloopPsChanInsns :: 𝑃 -> P ↦ (𝐶 ↦ 𝒪s)
-noloopPsChanInsns (𝑃 _ ps) =
-  let ps' = zip [0 ..] ps
-   in M.mapWithKey (\i -> fst . noloopPChanInsns i 0) $ M.fromList ps'
+noloopPsChanInsns = programToCollection noloopPChanInsns
 
 {- | Aggregates all non-loop channel operations, including operation
 direction, program point, and channel name.
-Depends on: 𝑛, S
+Depends on: 𝑛, p, p', S
 
 Rules:
 
-> [SKIP]:    ⟨𝑛, skip⟩ -> ⟨𝑛, []⟩
-> [RETURN]:  ⟨𝑛, return⟩ -> ⟨𝑛 + 1, []⟩
-> [SEND]:    ⟨𝑛, c!⟩ -> ⟨𝑛 + 2, [c ↦ [! ↦ {𝑛}]]⟩
-> [RECV]:    ⟨𝑛, c?⟩ -> ⟨𝑛 + 1, [c ↦ [? ↦ {𝑛}]]⟩
-> [FOR]:     ⟨𝑛, for (i : e .. e) { s }⟩ -> ⟨𝑛 + |s| + 2, []⟩
-> [SEQ]:     ⟨𝑛, S₁; S₂⟩ -> ⟨𝑛'', M₁ ⊔ M₂⟩
->            |- ⟨𝑛, S₁⟩ -> ⟨𝑛', M₁⟩
->            |- ⟨𝑛', S₂⟩ -> ⟨𝑛'', M₂⟩
+> [SKIP]:    𝑛, p, p' ⊢ skip -> []
+
+> [RETURN]:  𝑛, p, p' ⊢ return -> []
+
+> [FOR]:     𝑛, p, p' ⊢ for (i : e .. e) { s } -> []
+
+> [SEND]:    𝑛, p, p' ⊢ c! -> p ↦ [c ↦ [! ↦ {𝑛}]]
+
+> [RECV]:    𝑛, p, p' ⊢ c? -> p ↦ [c ↦ [? ↦ {𝑛}]]
+
+> [SEQ]:     ⟨𝑛, 𝑆₁; 𝑆₂⟩ -> M₁ ⊔ M₂
+>            ↳ ⟨𝑛, 𝑆₁⟩ -> M₁
+>            ↳ ⟨𝑛', 𝑆₂⟩ -> M₂
+
+> [IF]:
 -}
-noloopPChanInsns :: P -> 𝑁 -> 𝑆 -> (𝐶 ↦ 𝒪s, 𝑁)
-noloopPChanInsns p 𝑛 s =
-  let 𝑛' = 𝑛 + ppOffset s
-      get = noloopPChanInsns p
-   in case s of
-        -- Sequence maps are aggregated via point-wise union
-        Seq s₁ s₂ ->
-          let (o₁, 𝑛₁) = get 𝑛 s₁
-              (o₂, 𝑛₂) = get 𝑛₁ s₂
-           in (o₁ ∪ o₂, 𝑛₂)
-        Skip -> (M.empty, 𝑛')
-        Return -> (M.empty, 𝑛')
-        -- Loops are handled separately
-        For {} -> (M.empty, 𝑛')
-        -- Atomic operations are added to the list of triples.
-        Atomic o ->
-          let (c, d) = (chName o, chDir o)
-              o' = 𝒪 {oP = p, o𝐶 = c, oDir = d, o𝑛 = 𝑛}
-           in (o' +> M.empty, 𝑛')
-        If _ s₁ s₂ ->
-          let (o₁, 𝑛₁) = get (𝑛 + 1) s₁
-              (o₂, 𝑛₂) = get (𝑛₁ + 1) s₂
-           in (o₁ ∪ o₂, 𝑛₂)
+noloopPChanInsns :: 𝛬 -> 𝑆 -> P ↦ (𝐶 ↦ 𝒪s)
+noloopPChanInsns 𝛬 { 𝑛, p } = \case
+   -- Atomic operations are added to the list of triples.
+   Atomic o ->
+     let (c, d) = (chName o, chDir o)
+         o' = 𝒪 {oP = p, o𝐶 = c, oDir = d, o𝑛 = 𝑛}
+      in M.empty ⇒ (p, o' +> M.empty)
+   -- All other statements return an empty map, or are traversed
+   -- recursively in inductive cases.
+   _ -> M.empty
