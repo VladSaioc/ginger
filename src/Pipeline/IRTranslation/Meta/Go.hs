@@ -14,4 +14,4 @@ data 𝒢 = 𝒢
 
 instance Show 𝒢 where
   -- PID: return 𝑛
-  show 𝒢 {gP = p, gP' = p', g𝑛 = 𝑛} = unwords [show p ++ ":", "go {", show 𝑛, ":", show p',"}"]
+  show 𝒢 {gP = p, gP' = p', g𝑛 = 𝑛} = unwords [show p ++ ": [" ++ show 𝑛 ++ "]", "go {", show p',"}"]
