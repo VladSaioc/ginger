@@ -6,18 +6,18 @@ import IR.Ast
 import Utilities.Err
 import Utilities.General
 
--- The sanity check context bookkeeps variable names
+-- | The sanity check context bookkeeps variable names
 data Ctx = Ctx
-  { -- Iteration variables
+  { -- | Iteration variables
     ienv :: S.Set String,
-    -- Free variables
+    -- | Free variables
     fvs :: S.Set String,
-    -- Channel variables
+    -- | Channel names
     chenv :: S.Set String
   }
   deriving (Eq, Ord, Read)
 
--- Perform a sanity check on the given IR program
+-- | Perform a sanity check on the given IR program
 sanityCheck :: 𝑃 -> Err Ctx
 sanityCheck (𝑃 chs prc) = do
   -- Create a fresh context
@@ -29,9 +29,9 @@ sanityCheck (𝑃 chs prc) = do
           }
   -- Perform sanity checks on channel declarations
   ctx' <- foldM sanityCheckChan ctx chs
-  foldM sanityCheckStm ctx' prc
+  sanityCheckStm ctx' prc
 
--- Perform sanity checks on channel declarations.
+-- | Perform sanity checks on channel declarations.
 -- Remember any encountered free variables and the names of declared channels.
 sanityCheckChan :: Ctx -> Chan -> Err Ctx
 sanityCheckChan ctx (Chan c e) = do
@@ -42,11 +42,12 @@ sanityCheckChan ctx (Chan c e) = do
   -- Sanity check the capacity expression
   sanityCheckExp ctx' e
 
--- Perform sanity checks on IR statements.
+-- | Perform sanity checks on IR statements.
 sanityCheckStm :: Ctx -> 𝑆 -> Err Ctx
 sanityCheckStm ctx = \case
   Skip -> return ctx
   Return -> return ctx
+  Go s1 -> sanityCheckStm ctx s1
   If e s1 s2 -> do
     ctx' <- sanityCheckExp ctx e
     ctx'' <- sanityCheckStm ctx' s1
