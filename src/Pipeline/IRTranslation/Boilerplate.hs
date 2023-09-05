@@ -4,22 +4,24 @@ import Backend.Ast
 import Backend.Utilities
 import Data.List qualified as L
 import Data.Map qualified as M
-import Pipeline.IRTranslation.CapPrecondition (capPreconditions)
-import Pipeline.IRTranslation.CommPrecondition (preconditions)
+import Pipeline.IRTranslation.Clauses.CapPrecondition (capPreconditions)
+import Pipeline.IRTranslation.Clauses.CommPrecondition (preconditions)
 import Pipeline.IRTranslation.Enabled (enabledExp)
 import Pipeline.IRTranslation.Invariant.ChannelBound (channelBounds)
 import Pipeline.IRTranslation.Invariant.ChannelMonitor (channelMonitors)
 import Pipeline.IRTranslation.Invariant.CounterBound (counterInvariants)
 import Pipeline.IRTranslation.Invariant.If (ifMonitors)
 import Pipeline.IRTranslation.Invariant.Loop (loopMonitors)
+import Pipeline.IRTranslation.Invariant.Go (goMonitors)
 import Pipeline.IRTranslation.Invariant.RendezvousMutex (rendezvousMutexes)
 import Pipeline.IRTranslation.Invariant.RendezvousNoAsync (noAsyncRendezvous)
 import Pipeline.IRTranslation.Invariant.Return (returnMonitors)
 import Pipeline.IRTranslation.Meta.Channel
+import Pipeline.IRTranslation.Meta.Go
 import Pipeline.IRTranslation.Meta.If
 import Pipeline.IRTranslation.Meta.Loop
 import Pipeline.IRTranslation.Meta.Return
-import Pipeline.IRTranslation.Postcondition (postconditions)
+import Pipeline.IRTranslation.Clauses.Postcondition (postconditions)
 import Pipeline.IRTranslation.Utilities
 import Utilities.Collection
 
@@ -53,15 +55,15 @@ iterationsFunc =
 
 {- | A predicate on schedules that ensures all schedule steps
 are bound to valid process IDs.
-Depends on: 𝛱
+Depends on: 𝛯
 
 Produces:
 
 > ghost function isSchedule(S : nat -> nat) {
->   forall n :: s <= |dom(𝛱)|
+>   forall n :: s <= |dom(𝛯)|
 > }
 -}
-isScheduleFunc :: 𝛱 -> Function
+isScheduleFunc :: 𝛯 -> Function
 isScheduleFunc ps =
   let n = "n"
       domPi = ((M.size ps - 1) #)
@@ -82,32 +84,32 @@ isScheduleFunc ps =
         }
 
 {- | Case analysis of a single process over its program points.
-Depends on: π, 𝜙
+Depends on: p, 𝜙
 
 Produces:
 
-> switch pc(π) {
->   ∀ n ∈ 𝜙. case n => 𝜙(n)
+> switch 𝜋(p) {
+>   ∀ 𝑛 ∈ 𝜙. case n => 𝜙(𝑛)
 > }
 -}
 processSwitch :: P -> 𝛷 -> Stmt
 processSwitch pid =
-  let pc = π pid
+  let pc = 𝜋 pid
       iguard c = PCon (CNum c)
       cases = M.toList . M.mapKeys iguard
    in MatchStmt pc . cases
 
 {- | Case analysis for scheduled process at the given step
 over process ids.
-Depends on: 𝛱
+Depends on: 𝛯
 
 Produces:
 
 > switch S(step) {
->   ∀ π ∈ 𝛱. case π => processSwitch(π, 𝜙)
+>   ∀ p ∈ dom(𝛯). case p => processSwitch(p, 𝜙)
 > }
 -}
-scheduleSwitch :: 𝛱 -> Stmt
+scheduleSwitch :: 𝛯 -> Stmt
 scheduleSwitch =
   let iguard pid = PCon (CNum pid)
       cases = M.toList . M.mapKeys iguard . M.mapWithKey processSwitch
@@ -116,22 +118,24 @@ scheduleSwitch =
 
 {- | Constructs the central loop which emulates the execution
 of the concurrent program.
-Depends on: 𝜓, κ, 𝛱, nonloop(P), loop(P)
+Depends on: 𝜓, κ, 𝛯, nonloop(P), loop(P)
 
 Produces:
 
-> while enabledExp(κ, 𝛱)
-> ∀ (π, 𝜙) ∈ 𝛱. invariant counterInvariant(π, 𝜙)
+> while enabledExp(κ, 𝛯)
+> ∀ (p, 𝜙) ∈ 𝛯. invariant counterInvariant(p, 𝜙)
 > ∀ e ∈ channelMonitors(noloop(P), loop(P)). invariant e
 > ∀ ℓ ∈ loop(P). invariant loopMonitor(ℓ)
 > {
->   scheduleSwitch(𝛱)
+>   scheduleSwitch(𝛯)
 >   step := step + 1
 > }
 -}
-centralLoop :: 𝛹 -> K -> 𝛱 -> P ↦ (𝐶 ↦ 𝒪s) -> [ℐ] -> [ℒ] -> [ℛ] -> Stmt
-centralLoop 𝜓 κ ps atomicOps ifs ls rs =
-  let -- If statement invariants
+centralLoop :: 𝛹 -> K -> 𝛯 -> P ↦ (𝐶 ↦ 𝒪s) -> [𝒢] -> [ℐ] -> [ℒ] -> [ℛ] -> Stmt
+centralLoop 𝜓 κ ps atomicOps gs ifs ls rs =
+  let -- Go statement invariants
+      g = goMonitors 𝜓 gs
+      -- If statement invariants
       i = ifMonitors ifs
       -- Process loop invariants
       l = loopMonitors 𝜓 ls
@@ -155,7 +159,7 @@ centralLoop 𝜓 κ ps atomicOps ifs ls rs =
       enabled = hasFuel :&& enabledExp κ ps
    in While
         enabled
-        (concat [k, pc, rv, rvm, i, l, r, m])
+        (concat [k, pc, rv, rvm, g, i, l, r, m])
         []
         ( Block
             [ -- Central loop case analysis
@@ -166,17 +170,17 @@ centralLoop 𝜓 κ ps atomicOps ifs ls rs =
         )
 
 {- | Constructs an initial assignment for all program counters.
-Depends on: 𝛱
+Depends on: 𝛯
 
 Produces:
 
-> var pc(π)₁, ..., pc(π)ₙ = 0, ..., 0
+> var 𝜋(p₁), ..., 𝜋(pₙ) = 0, ..., 0
 -}
-counterDef :: 𝛱 -> Stmt
+counterDef :: 𝛯 -> Stmt
 counterDef ps =
   if M.size ps > 0
     then
-      let def p = ((p ⊲), (0 #))
+      let def p = ((p ⊲), ((if p == 0 then 0 else -1) #))
        in Assign . L.map def . M.keys $ ps
     else Assert (True ?)
 
@@ -198,13 +202,13 @@ loopVarDef = \case
 The variables are assigned the process termination point.
 Other expressions may indirectly reference process termination
 by proxy of these variables.
-Depends on: 𝛱
+Depends on: 𝛯
 
 Produces:
 
-> ∀ (π, 𝜙) ∈ 𝛱. var exit(π) = (max ∘ dom)(𝜙)
+> ∀ (p, 𝜙) ∈ 𝛯. var 𝜒(p) = (max ∘ dom)(𝜙)
 -}
-terminationVars :: 𝛱 -> Stmt
+terminationVars :: 𝛯 -> Stmt
 terminationVars ps =
   if M.size ps > 0
     then
@@ -233,29 +237,29 @@ isSchedule :: Exp
 isSchedule = Call "isSchedule" [("S" @)]
 
 {- | Constructs the main program encoding.
-Depends on: 𝜓, κ, 𝛱, nonloop(P), loop(P), fv(P)
+Depends on: 𝜓, κ, 𝛯, ℳ
 
 Produces:
 
 > method Program(S : nat -> nat, ∀ x ∈ fv(P). x : int)
-> returns (∀ (π, 𝜙) ∈ 𝛱. pc(π) : int)
+> returns (∀ (p, 𝜙) ∈ 𝛯. 𝜋(p) : int)
 > 
 > requires capPreconditions(κ)
-> requires preconditions(κ, nonloop(P), loop(P))
+> requires preconditions(κ, nonloop(ℳ), loop(ℳ))
 > 
-> ensures postconditions(𝛱)
+> ensures postconditions(𝜓, 𝛯, go(ℳ))
 > 
 > decreases * {
->   counterDef(𝛱);
+>   counterDef(𝛯);
+>   terminationVars(𝛯);
 >   chanDef(κ);
 >   loopVarDef(loop(P));
 >   step := 0;
->   centralLoop(κ, 𝛱, nonloop(P), loop(P))
+>   centralLoop(κ, 𝛯, ℳ)
 > }
-
 -}
-progEncoding :: 𝛹 -> 𝛴 -> [Type] -> K -> 𝛱 -> P ↦ (𝐶 ↦ 𝒪s) -> [ℐ] -> [ℒ] -> [ℛ] -> Method
-progEncoding 𝜓 𝜎 ts κ ps os ifs ls rs =
+progEncoding ::  𝛹 -> 𝛴 -> [Type] -> K -> 𝛯 -> P ↦ (𝐶 ↦ 𝒪s) -> [𝒢] -> [ℐ] -> [ℒ] -> [ℛ] -> Method
+progEncoding 𝜓 𝜎 ts κ ps os gs ifs ls rs =
   let commPreconditions = (preconditions 𝜓 κ os ls ...⋀)
    in Method
         { returns = ("step", TNat) : (L.map ((,TInt) . (⊲)) . M.keys) ps,
@@ -266,7 +270,7 @@ progEncoding 𝜓 𝜎 ts κ ps os ifs ls rs =
                 types = ts,
                 params = ("fuel", TNat) : ("S", TNat :-> TNat) : M.toList 𝜎,
                 ensures =
-                  [ (("step" @) :< ("fuel" @)) :==> (commPreconditions :<==> (postconditions ps ...⋀))
+                  [ (("step" @) :< ("fuel" @)) :==> (commPreconditions :<==> (postconditions 𝜓 ps gs ...⋀))
                   ],
                 decreases = [],
                 requires = isSchedule : capPreconditions κ
@@ -278,17 +282,17 @@ progEncoding 𝜓 𝜎 ts κ ps os ifs ls rs =
                 chanDef κ,
                 loopVarDef ls,
                 Assign [("step", (0 #))],
-                centralLoop 𝜓 κ ps os ifs ls rs
+                centralLoop 𝜓 κ ps os gs ifs ls rs
               ]
         }
 
 {- | Constructs the complete program specification, by emitting
 all the necessary functions, and the program encoding.
 -}
-wholeEncoding :: 𝛹 -> 𝛴 -> [Type] -> K -> 𝛱 -> P ↦ (𝐶 ↦ 𝒪s) -> [ℐ] -> [ℒ] -> [ℛ] -> Program
-wholeEncoding 𝜓 𝜎 ts κ ps os is ls rs =
+wholeEncoding :: 𝛹 -> 𝛴 -> [Type] -> K -> 𝛯 -> P ↦ (𝐶 ↦ 𝒪s) -> [𝒢] -> [ℐ] -> [ℒ] -> [ℛ] -> Program
+wholeEncoding 𝜓 𝜎 ts κ ps os gs is ls rs =
   Program
     [ FDecl iterationsFunc,
       FDecl (isScheduleFunc ps),
-      MDecl (progEncoding 𝜓 𝜎 ts κ ps os is ls rs)
+      MDecl (progEncoding 𝜓 𝜎 ts κ ps os gs is ls rs)
     ]

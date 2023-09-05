@@ -1,6 +1,6 @@
 module Pipeline.IRTranslation.Workflow (irToBackend) where
 
-import Backend.Ast (Program (Program))
+import Backend.Ast (Program)
 import Backend.Simplifier qualified as T (simplify)
 import IR.Ast
 import IR.Homogeneity (homogeneous)
@@ -11,6 +11,7 @@ import Pipeline.IRTranslation.Boilerplate (wholeEncoding)
 import Pipeline.IRTranslation.ChInstructions (noloopPsChanInsns)
 import Pipeline.IRTranslation.Channels (caps)
 import Pipeline.IRTranslation.FreeVars (fvs)
+import Pipeline.IRTranslation.Go (gos)
 import Pipeline.IRTranslation.If (ifs)
 import Pipeline.IRTranslation.Loop (loops)
 import Pipeline.IRTranslation.Processes (procs)
@@ -33,8 +34,9 @@ irToBackend p' = do
   let ls = loops p
   let is = ifs p
   let k = caps p
-  let ps = procs k p
+  let 𝜉 = procs k p
+  let gs = gos p
   let as = noloopPsChanInsns p
   let rs = returns p
-  let prog = wholeEncoding 𝜓 𝜎 ts k ps as is ls rs
+  let prog = wholeEncoding 𝜓 𝜎 ts k 𝜉 as gs is ls rs
   return $ T.simplify prog
