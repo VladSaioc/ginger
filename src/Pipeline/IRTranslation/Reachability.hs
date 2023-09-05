@@ -8,15 +8,8 @@ import Pipeline.IRTranslation.Exps
 import Pipeline.IRTranslation.Utilities
 import Utilities.Collection
 
-{- | Computes reachability conditions for all processes in the program.
--}
-reachability :: 𝑃 -> P ↦ (𝑁 ↦ T.Exp)
-reachability (𝑃 _ ps) =
-  let ps' = zip [0 ..] ps
-   in M.mapWithKey (const pointReachability) $ M.fromList ps'
-
-{- | Creates an intra-processual reachability condition
-map for every instruction point in a process.
+{- | Computes the reachability conditions forr every instruction point
+in every process.
 
 For individual statements, it produces a binding from program points
 to reachability conditions, given an instruction point.
@@ -48,41 +41,57 @@ Rules:
 >           |- ⟨e && e', 𝑛 : S₁⟩ -> ⟨𝑛₁, e₁ : 𝜓₁⟩
 >           |- ⟨e && !e', S₂⟩ -> ⟨𝑛₂, e₂ : 𝜓₂⟩
 -}
-pointReachability :: 𝑆 -> 𝑁 ↦ T.Exp
-pointReachability =
-  let pointReachability' e (𝑛, s) = case s of
-        -- Skip statements do not increment the program counter,
-        -- and do not result in an early return condition.
-        Skip -> (M.empty, 𝑛, (False ?))
-        -- Return statements depend
-        Return -> (M.insert 𝑛 e M.empty, 𝑛 + 1, e)
-        Seq s₁ s₂ ->
-          let (𝜓₁, 𝑛₁, e₁) = pointReachability' e (𝑛, s₁)
-              (𝜓₂, 𝑛₂, e₂) = pointReachability' (T.Not e₁ T.:&& e) (𝑛₁, s₂)
-           in (M.union 𝜓₁ 𝜓₂, 𝑛₂, e₁ T.:|| e₂)
-        For _ _ _ os ->
-          let addOp (𝑛'', 𝜓') o = (𝑛'' + ppOffset o, M.insert 𝑛'' e 𝜓')
-              (𝑛', 𝜓) = foldl addOp (𝑛 + 1, M.insert 𝑛 e M.empty) os
-           in (𝜓, 𝑛' + 1, (False ?))
-        Atomic {} -> (M.fromList [(𝑛, e)], 𝑛 + ppOffset s, (False ?))
-        -- If statements may add additional reachability conditions to
-        -- possibile return statements encountered along the branches.
-        If e0 s1 s2 ->
-          let e' = parseExp e0
-              -- The 'then' branch extends reachability with the guard condition.
-              (𝜓₁, 𝑛₁, e₁) = pointReachability' (e T.:&& e') (𝑛 + 1, s1)
-              -- The 'else' branch extends reachability with the negated guard condition.
-              (𝜓₂, 𝑛₂, e₂) = pointReachability' (e T.:&& T.Not e') (𝑛₁ + 1, s2)
-           in -- Augment 'then' points path reachability with a negation of
-              -- return statements from the else branch.
-              -- 𝜓₁' = M.map (e T.:&& T.Not e₂ T.:&&) 𝜓₁
-              -- 𝜓₂' = M.map (e T.:&& T.Not e₁ T.:&&) 𝜓₂
-
-              -- Program point reachability maps are joined.
-              -- The if exit point is the continuation point of the else branch.
-              -- Return conditions are a disjunction between return conditions
-              -- of the branches.
-              (M.union 𝜓₁ 𝜓₂, 𝑛₂, e₁ T.:|| e₂)
-   in (\(𝜓, _, _) -> 𝜓)
-        . pointReachability' (True ?)
-        . (0,)
+reachability :: 𝑃 -> 𝛹
+reachability (𝑃 _ s₀)=
+  let 𝜓₁ ⊎ 𝜓₂ = M.unionWith M.union 𝜓₁ 𝜓₂
+      stmtReachability' e 𝜆@𝛬 { 𝑛 = 𝑛₀, p = p₀ } s = 
+        let 𝜆' = 𝜆 { 𝑛 = 𝑛 𝜆 + ppOffset s }
+         in case s of
+            -- Skip statements do not increment the program counter,
+            -- and do not result in an early return condition.
+            Skip -> (M.empty, 𝜆', (False ?))
+            -- Return statements are conditional based on the previous statement.
+            -- They also stipulate an early return condition if their reachability
+            -- condition is satisfied.
+            Return -> (M.empty ⇒ (p 𝜆, M.empty ⇒ (𝑛 𝜆, e)), 𝜆', e)
+            Seq s₁ s₂ ->
+              let (𝜓₁, 𝜆₁, e₁) = stmtReachability' e 𝜆 s₁
+                  (𝜓₂, 𝜆₂, e₂) = stmtReachability' (T.Not e₁ T.:&& e) 𝜆₁ s₂
+               in (𝜓₁ ⊎ 𝜓₂, 𝜆₂, e₁ T.:|| e₂)
+            For _ _ _ os ->
+               let addOp (𝑛ᵢ, 𝜓ᵢ) o = 
+                     let 𝜓ᵢ' = 𝜓ᵢ ⇒ (𝑛ᵢ, e)
+                      in (𝑛ᵢ + ppOffset o, 𝜓ᵢ')
+                   (𝑛', 𝜓ₚ) = foldl addOp (𝑛₀ + 1, M.empty ⇒ (𝑛₀, e)) os
+               in  (M.fromList [(p₀, 𝜓ₚ)], 𝜆 { 𝑛 = 𝑛' + 1 }, (False ?))
+            Atomic {} -> (M.empty ⇒ (p₀, M.fromList [(𝑛₀, e)]), 𝜆', (False ?))
+            -- If statements may add additional reachability conditions to
+            -- possibile return statements encountered along the branches.
+            If e0 s₁ s₂ ->
+              let e' = parseExp e0
+                  -- The 'then' branch extends reachability with the guard condition.
+                  𝜆₀ = 𝜆 { 𝑛 = 𝑛₀ + 1 }
+                  (𝜓₁, 𝜆₁, e₁) = stmtReachability' (e T.:&& e') 𝜆₀ s₁
+                  -- The 'else' branch extends reachability with the negated guard condition.
+                  𝜆₁' = 𝜆₁ { 𝑛 = 𝑛 𝜆₁ + 1 }
+                  (𝜓₂, 𝜆₂, e₂) = stmtReachability' (e T.:&& T.Not e') 𝜆₁' s₂
+               in -- Program point reachability maps are joined.
+                  -- The if exit point is the continuation point of the else branch.
+                  -- Return conditions are a disjunction between return conditions
+                  -- of the branches.
+                  (𝜓₁ ⊎ 𝜓₂, 𝜆₂, e₁ T.:|| e₂)
+            Go s₁ ->
+              let -- Get next fresh process ID.
+                  p₁ = nextp 𝜆
+                  -- Create a new traversal context for goroutine body.
+                  𝜆₀ = 𝛬 { 𝑛 = 0, p = p₁, nextp = p₁ + 1 }
+                  -- Compute reachability for instructions inside goroutine.
+                  (𝜓₁, 𝜆₁, _) = stmtReachability' e 𝜆₀ s₁
+                  -- Add reachability of 'go' instruction itself.
+                  𝜓₁' = 𝜓₁ ⇒ (p₀, M.fromList [(𝑛₀, e)])
+               in -- 'go' instruction does not result in an early return condition.
+                  -- Traversal context for continuation only inherits the next
+                  -- available goroutine name.
+                  (𝜓₁', 𝜆' { nextp = nextp 𝜆₁ }, (False ?))
+      (𝜓, _, _) = stmtReachability' (True ?) 𝛬 { 𝑛 = 0, p = 0, nextp = 1} s₀
+  in 𝜓
