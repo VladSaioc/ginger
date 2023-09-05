@@ -65,7 +65,7 @@ data Stmt
     While Exp [Exp] [Exp] Stmt
   | -- | > return {e, ...}*
     Return [Exp]
-  deriving (Eq, Ord, Show, Read)
+  deriving (Eq, Ord, Read)
 
 -- | Back-end constants:
 -- > c ::= true | false | n
@@ -156,7 +156,7 @@ data Exp
     ECon Const
   | -- | > f({e, ...}*)
     Call String [Exp]
-  deriving (Eq, Ord, Show, Read)
+  deriving (Eq, Ord, Read)
 
 -- | Back-end record type definition:
 --
@@ -276,6 +276,15 @@ newtype Program = Program [Decl] deriving (Eq, Ord, Read)
    in trans e2
 
 instance Show Type where
+  show = prettyPrint 0
+
+instance Show Exp where
+  show = prettyPrint 0
+
+instance Show Program where
+  show = prettyPrint 0
+
+instance Show Stmt where
   show = prettyPrint 0
 
 -- Pretty printer
@@ -431,7 +440,7 @@ instance PrettyPrint Function where
           dec = prop "decreases" decreases
           props = intercalate "\n" (pre ++ post ++ dec)
           body = prettyPrint 1 funcBody
-          prop kw = map (((indent 1 kw) ++) . prettyPrint 2)
+          prop kw = map ((indent 1 kw ++) . prettyPrint 2)
        in intercalate "\n" [header, props ++ "{", body, "}"]
 
 instance PrettyPrint Method where
