@@ -25,9 +25,9 @@ getAst = pProgram . pProg . myLexer
 
 pProgram :: R''.Err R'.Prog -> Err 𝑃
 pProgram = \case
-  R''.Ok (R'.Prog chs ps) -> do
+  R''.Ok (R'.Prog chs _ s) -> do
     chs' <- composeSyntax pChan chs
-    ps' <- composeSyntax pProc ps
+    ps' <- pStms s
     return (𝑃 chs' ps')
   R''.Bad err -> Bad err
 
@@ -35,9 +35,6 @@ pChan :: R'.Chan -> Err Chan
 pChan (R'.Chan c e) = do
   e' <- pExp e
   return (Chan (c &) e')
-
-pProc :: R'.Proc -> Err 𝑆
-pProc (R'.Proc _ ss) = pStms ss
 
 pStms :: [R'.Stm] -> Err 𝑆
 pStms ss =
@@ -64,6 +61,9 @@ pStm = \case
     s1' <- pStms s1
     s2' <- pStms s2
     return (If e' s1' s2')
+  R'.Go _ s -> do
+    s' <- pStms s
+    return (Go s')
 
 pOp :: R'.Op -> Err Op
 pOp = \case

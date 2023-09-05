@@ -26,7 +26,7 @@ class ProgramPointOffset a where
   ppOffset :: a -> Int
 
 -- {c = [e]; ...}* {go { S } ...}*
-data 𝑃 = 𝑃 [Chan] [𝑆] deriving (Eq, Ord, Read)
+data 𝑃 = 𝑃 [Chan] 𝑆 deriving (Eq, Ord, Read)
 
 -- c = [e]
 data Chan = Chan String 𝐸 deriving (Eq, Ord, Read)
@@ -49,6 +49,8 @@ data 𝑆
     Return
   | -- | > for (x : 𝐸₁ .. 𝐸₂) { 𝑠 }
     For String 𝐸 𝐸 [Op]
+  | -- | > go { S }
+    Go 𝑆
   | -- | > 𝑐! | 𝑐?
     Atomic Op
   deriving (Eq, Ord, Read)
@@ -114,11 +116,9 @@ data 𝐸
   deriving (Eq, Ord, Read)
 
 instance Show 𝑃 where
-  show (𝑃 cs ps) =
-    let showp s = multiline ["go {", prettyPrint 1 s, "}"]
-        cs' = multiline (map show cs)
-        ps' = multiline (map showp ps)
-     in concat [cs', "\n", ps']
+  show (𝑃 cs s) =
+    let cs' = multiline (map show cs)
+     in concat [cs', "\n", multiline["go {", prettyPrint 1 s, "}"]]
 
 instance Show Chan where
   show (Chan c e) = unwords [c, "=", "[" ++ show e ++ "];"]
@@ -147,6 +147,12 @@ instance PrettyPrint 𝑆 where
           [ unwords [tab "for", x, ":", show e1, "..", show e2, "{"],
             multiline $ map (indent (n + 1) . (++ ";") . show) os,
             tab  "}"
+          ]
+      Go s ->
+        multiline
+          [ tab "go {",
+            prettyPrint (n + 1) s,
+            tab "}"
           ]
 
 instance Show 𝐸 where
@@ -178,7 +184,7 @@ instance Show Op where
     Recv c -> c ++ "?"
 
 instance ProgramPointOffset 𝑃 where
-  ppOffset (𝑃 _ ss) = sum $ map ppOffset ss
+  ppOffset (𝑃 _ s) = ppOffset s
 
 -- Computes the offset required, in terms of program points, to reach
 -- the instruction following the channel operation, based on its
@@ -191,9 +197,10 @@ instance ProgramPointOffset 𝑃 where
 -- 4. for x : 𝐸₁ .. 𝐸₂ { 𝑠 }: 2 + |𝑠|
 --      1 for the guard
 --      1 for the index incrementing operation
--- 5. if 𝐸 𝑆₁ 𝑆₂ -> 2 + |𝑆₁| + |𝑆₂|
+-- 5. if 𝐸 { 𝑆₁ } else { 𝑆₂ }: 2 + |𝑆₁| + |𝑆₂|
 --      1 for the guard
 --      1 for the continuation of the 'then' path
+-- 6. go { 𝑆 }: 1 for the start goroutine instruction.
 instance ProgramPointOffset 𝑆 where
   ppOffset = \case
     Skip -> 0
@@ -201,6 +208,7 @@ instance ProgramPointOffset 𝑆 where
     Seq s1 s2 -> ppOffset s1 + ppOffset s2
     For _ _ _ os -> 2 + sum (map ppOffset os)
     If _ s1 s2 -> 2 + ppOffset s1 + ppOffset s2
+    Go _ -> 1
     Atomic o -> ppOffset o
 
 -- Computes the offset required, in terms of program points, to reach
