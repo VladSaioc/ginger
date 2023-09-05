@@ -4,6 +4,7 @@ import Backend.Ast
 import Control.Monad (unless)
 import Data.Map qualified as M
 import Data.Maybe
+import IR.Ast qualified as I
 import IR.Utilities
 import Pipeline.IRTranslation.Utilities
 import Utilities.Collection
@@ -13,7 +14,7 @@ import Utilities.Collection
 type 𝐶 = String
 
 -- | The type of channel capacity environments, connecting channel names to capacity expressions.
-type K = 𝐶 ↦ Exp
+type 𝛫 = 𝐶 ↦ Exp
 
 -- | Mappings from channel operation directionality to a set of
 -- program points marking channel operations with that direction.
@@ -35,6 +36,45 @@ instance Show 𝒪 where
   show 𝒪 {oP = p, o𝐶, oDir, o𝑛 = n} =
     -- p: c{!,?} <n>
     unwords [show p ++ ":", o𝐶 ++ show oDir, "<" ++ show n ++ ">"]
+
+-- | Aggregates all non-loop channel operations across
+-- all processes of the program, including operation
+-- direction, program point, and channel name.
+noloopPsChanInsns :: I.𝑃 -> P ↦ (𝐶 ↦ 𝒪s)
+noloopPsChanInsns = programToCollection noloopPChanInsns
+
+{- | Aggregates all non-loop channel operations, including operation
+direction, program point, and channel name.
+Depends on: 𝑛, p, p', S
+
+Rules:
+
+> [SKIP]:    𝑛, p, p' ⊢ skip -> []
+
+> [RETURN]:  𝑛, p, p' ⊢ return -> []
+
+> [FOR]:     𝑛, p, p' ⊢ for (i : e .. e) { s } -> []
+
+> [SEND]:    𝑛, p, p' ⊢ c! -> p ↦ [c ↦ [! ↦ {𝑛}]]
+
+> [RECV]:    𝑛, p, p' ⊢ c? -> p ↦ [c ↦ [? ↦ {𝑛}]]
+
+> [SEQ]:     ⟨𝑛, 𝑆₁; 𝑆₂⟩ -> M₁ ⊔ M₂
+>            ↳ ⟨𝑛, 𝑆₁⟩ -> M₁
+>            ↳ ⟨𝑛', 𝑆₂⟩ -> M₂
+
+> [IF]:
+-}
+noloopPChanInsns :: 𝛬 -> I.𝑆 -> P ↦ (𝐶 ↦ 𝒪s)
+noloopPChanInsns 𝛬 { 𝑛, p } = \case
+   -- Atomic operations are added to the list of triples.
+   I.Atomic o ->
+     let (c, d) = (chName o, chDir o)
+         o' = 𝒪 {oP = p, o𝐶 = c, oDir = d, o𝑛 = 𝑛}
+      in M.empty ⇒ (p, o' +> M.empty)
+   -- All other statements return an empty map, or are traversed
+   -- recursively in inductive cases.
+   _ -> M.empty
 
 -- | Inserts a channel operation into a channel operation map.
 -- Given, a triple (c, d, n) where c is a channel name, d
@@ -110,8 +150,8 @@ pattern SyncRecv c p n =
 -- angle brackets correspond to code generated for send on the left side,
 -- and receive on the right side):
 -- 
--- > if 0 < κ(c) {
--- >    if c ⟨< κ(c) | > 0⟩ {
+-- > if 0 < 𝜅(c) {
+-- >    if c ⟨< 𝜅(c) | > 0⟩ {
 -- >       c := c ⟨+ | -⟩ 1;
 -- >       p := n;
 -- >    }
@@ -146,9 +186,9 @@ backendChannelOp =
         -- is buffered or unbuffered.
         --
         -- This requires an if statement of the form:
-        -- if 0 < κ(c) { asynchronous case } else { synchronous case }
+        -- if 0 < 𝜅(c) { asynchronous case } else { synchronous case }
         If capGuard async (Just sync) -> do
-          -- Check that the capacity guard is of the form: 0 < κ(c)
+          -- Check that the capacity guard is of the form: 0 < 𝜅(c)
           k <- case capGuard of
             ECon (CNum 0) :< k -> return k
             _ -> Nothing
@@ -165,7 +205,7 @@ backendChannelOp =
             -- For send, the guard checks that the channel is not full.
             -- It also checks that the capacity expression is consistent
             -- between the capacity and the operation guards:
-            -- c < κ(c)
+            -- c < 𝜅(c)
             EVar c :< k' -> do
               unless (k == k') Nothing
               send c

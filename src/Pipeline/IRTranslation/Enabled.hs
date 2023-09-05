@@ -10,26 +10,26 @@ import Pipeline.IRTranslation.Utilities
 
 {- | Composes the enabled predicates for all processes
 under disjunction.
-Depends on: κ, 𝛯
+Depends on: 𝜅, 𝛯
 
 Produces:
 
-> ⋁ (p, 𝜙) ∈ 𝛯. enabled(κ, p, 𝜙)
+> ⋁ (p, 𝜙) ∈ 𝛯. enabled(𝜅, p, 𝜙)
 -}
-enabledExp :: K -> 𝛯 -> Exp
-enabledExp κ = (...⋁) . M.elems . M.mapWithKey (enabled κ)
+enabledExp :: 𝛫 -> 𝛯 -> Exp
+enabledExp 𝜅 = (...⋁) . M.elems . M.mapWithKey (enabled 𝜅)
 
 {- | Computes an enabled predicate for a given process.
-Depends on: κ, p, 𝜙
+Depends on: 𝜅, p, 𝜙
 
 Let the following:
 
 > C! = ⋃ ∀ (c, !, 𝑛) ∈ chanOps(𝜙). [
->    𝑛 ↦ if 0 < κ(c) then c < κ(c) else c == 0,
+>    𝑛 ↦ if 0 < 𝜅(c) then c < 𝜅(c) else c == 0,
 >    (𝑛 + 1) ↦ c == -1
 >  ]
 > C? = ⋃ ∀ (c, !, 𝑛) ∈ chanOps(𝜙). [
->    𝑛 ↦ if 0 < κ(c) then c > 0 else c == 1
+>    𝑛 ↦ if 0 < 𝜅(c) then c > 0 else c == 1
 >  ]
 
 Produces:
@@ -39,8 +39,8 @@ Produces:
 > case _ => -1 < 𝜋(p) < (max ∘ dom)(𝜙)
 > }
 -}
-enabled :: K -> P -> 𝛷 -> Exp
-enabled κ p 𝜙 =
+enabled :: 𝛫 -> P -> 𝛷 -> Exp
+enabled 𝜅 p 𝜙 =
   let -- Process id variable
       pc = 𝜋 p
       -- Construct match over process id
@@ -48,7 +48,7 @@ enabled κ p 𝜙 =
       chsops = processChanOps p 𝜙
       -- Process has not reached termination point
       subExp 𝒪 {o𝐶 = cn, o𝑛 = 𝑛, oDir = d} =
-        let k = Mb.fromJust (M.lookup cn κ)
+        let k = Mb.fromJust (M.lookup cn 𝜅)
             c = (cn @)
 
             -- If the process is at instruction 𝑛', check e

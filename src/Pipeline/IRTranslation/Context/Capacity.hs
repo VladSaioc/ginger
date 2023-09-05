@@ -1,4 +1,4 @@
-module Pipeline.IRTranslation.Channels (caps) where
+module Pipeline.IRTranslation.Context.Capacity (caps) where
 
 import Data.Map qualified as M
 import IR.Ast
@@ -8,7 +8,7 @@ import Pipeline.IRTranslation.Meta.Channel
 {- | Extract capacity expressions from channel definitions in
   IR program.
 -}
-caps :: 𝑃 -> K
+caps :: 𝑃 -> 𝛫
 caps (𝑃 chs _) =
   let updateChanEnv env (Chan c e) = M.insert c (parseExp e) env
    in Prelude.foldl updateChanEnv M.empty chs

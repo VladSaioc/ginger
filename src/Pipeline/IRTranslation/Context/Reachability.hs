@@ -1,4 +1,4 @@
-module Pipeline.IRTranslation.Reachability (reachability) where
+module Pipeline.IRTranslation.Context.Reachability (reachability) where
 
 import Backend.Ast qualified as T
 import Backend.Utilities

@@ -11,16 +11,16 @@ import Pipeline.IRTranslation.Utilities
 import Utilities.Collection
 
 {- | Transforms a IR program intro a map from process ids to program points.
-Depends on: κ, P = S₁, ..., Sₙ
+Depends on: 𝜅, P = S₁, ..., Sₙ
 
 Produces: 
 
-> 𝛯 = [ pᵢ ↦ 𝜙ᵢ | 𝜙ᵢ = stmtsToPoints(κ, pᵢ, ⟨0, []⟩, Sᵢ) ]
+> 𝛯 = [ pᵢ ↦ 𝜙ᵢ | 𝜙ᵢ = stmtsToPoints(𝜅, pᵢ, ⟨0, []⟩, Sᵢ) ]
 -}
-procs :: K -> 𝑃 -> 𝛯
-procs κ (𝑃 _ s) =
+procs :: 𝛫 -> 𝑃 -> 𝛯
+procs 𝜅 (𝑃 _ s) =
   let -- Convert all the statements to program points.
-      (𝜆, 𝜉) = stmtToPoints κ (𝛬 { p = 0, nextp = 1, 𝑛 = 0 }, M.empty ⇒ (0, M.empty)) s
+      (𝜆, 𝜉) = stmtToPoints 𝜅 (𝛬 { p = 0, nextp = 1, 𝑛 = 0 }, M.empty ⇒ (0, M.empty)) s
       -- Get program points for entry process.
       𝜙 = 𝜉 M.! 0
       -- Add a termination program point for the entry process.
@@ -28,14 +28,14 @@ procs κ (𝑃 _ s) =
    in 𝜉 ⇒ (0, 𝜙')
 
 {- | Transform an IR statement into a map of program points.
-Depends on: κ, p, next(p), S
+Depends on: 𝜅, p, next(p), S
 
 Produces, based on S:
 
 > [SKIP]:     ⟨p, 𝑛, 𝜙, skip⟩ -> ⟨p, 𝑛, 𝜙⟩
 > [RETURN]:   ⟨p, 𝑛, 𝜙, return⟩ -> ⟨p, 𝑛 + 1, 𝜙'⟩
 >             𝜙' = 𝜙[𝑛 ↦ { 𝜋(p) := 𝜒(p) }]
-> [COMM]:     ⟨𝑛, 𝜙, c{!,?}⟩ -> opToPoints(κ, p, ⟨𝑛, 𝜙⟩, c{!,?})
+> [COMM]:     ⟨𝑛, 𝜙, c{!,?}⟩ -> opToPoints(𝜅, p, ⟨𝑛, 𝜙⟩, c{!,?})
 > [SEQ]:      ⟨𝑛, 𝜙, 𝑆₁; 𝑆₂⟩ -> ⟨𝑛', 𝜙'⟩
 >             |- ⟨𝑛, 𝜙, 𝑆₁⟩ -> ⟨𝑛'', 𝜙''⟩
 >             |- ⟨𝑛'', 𝜙'', 𝑆₂⟩ -> ⟨𝑛', 𝜙'⟩
@@ -50,7 +50,7 @@ Produces, based on S:
 >                 },
 >               𝑛₁ ↦ { pc := 𝑛' }]
 > [FOR]:      ⟨𝑛, 𝜙, for (i : e₁ .. e₂) { s }⟩ -> ⟨𝑛' + 1, 𝜙''⟩
->             |- ⟨𝑛', 𝜙'⟩ = opToPoints(κ, p, ⟨𝑛 + 1, 𝜙⟩, s)
+>             |- ⟨𝑛', 𝜙'⟩ = opToPoints(𝜅, p, ⟨𝑛 + 1, 𝜙⟩, s)
 >             |- 𝜙'' = 𝜙'[
 >               𝑛 ↦ if x < e₂ {
 >                   𝜋(p) := 𝑛 + 1
@@ -62,8 +62,8 @@ Produces, based on S:
 >                 𝜋(p) := 𝑛;
 >               }]
 -}
-stmtToPoints :: K -> (𝛬, 𝛯) -> 𝑆 -> (𝛬, 𝛯)
-stmtToPoints κ (𝜆@𝛬 { 𝑛 = 𝑛₀, p = p₀ }, 𝜉) s =
+stmtToPoints :: 𝛫 -> (𝛬, 𝛯) -> 𝑆 -> (𝛬, 𝛯)
+stmtToPoints 𝜅 (𝜆@𝛬 { 𝑛 = 𝑛₀, p = p₀ }, 𝜉) s =
   let 𝜆' = 𝜆 { 𝑛 = 𝑛₀ + ppOffset s }
       goto 𝜆₀ is =
         let p' = p 𝜆₀
@@ -76,17 +76,17 @@ stmtToPoints κ (𝜆@𝛬 { 𝑛 = 𝑛₀, p = p₀ }, 𝜉) s =
         Return ->
           let exit = T.Block [T.Assign [((p₀ ⊲), 𝜒 p₀)]]
            in (𝜆', 𝜉 ⇒ (p₀, 𝜉 M.! p₀ ⇒ (𝑛₀, exit)))
-        Atomic op -> opToPoint κ (𝜆, 𝜉) op
+        Atomic op -> opToPoint 𝜅 (𝜆, 𝜉) op
         Seq s1 s2 ->
-          let (𝜆₁, 𝜉') = stmtToPoints κ (𝜆, 𝜉) s1
-           in stmtToPoints κ (𝜆₁, 𝜉') s2
+          let (𝜆₁, 𝜉') = stmtToPoints 𝜅 (𝜆, 𝜉) s1
+           in stmtToPoints 𝜅 (𝜆₁, 𝜉') s2
         If e s1 s2 ->
           let -- Translate guard expression
               e' = parseExp e
               -- Translate then branch
-              (𝜆₁@𝛬 { 𝑛 = 𝑛₁ }, 𝜉₁) = stmtToPoints κ (𝜆 { 𝑛 = 𝑛₀ + 1 }, 𝜉) s1
+              (𝜆₁@𝛬 { 𝑛 = 𝑛₁ }, 𝜉₁) = stmtToPoints 𝜅 (𝜆 { 𝑛 = 𝑛₀ + 1 }, 𝜉) s1
               -- Translate else branch
-              (𝜆₂@𝛬 { 𝑛 = 𝑛₂ }, 𝜉₂) = stmtToPoints κ (𝜆₁ { 𝑛 = 𝑛₁ + 1 }, 𝜉₁) s2
+              (𝜆₂@𝛬 { 𝑛 = 𝑛₂ }, 𝜉₂) = stmtToPoints 𝜅 (𝜆₁ { 𝑛 = 𝑛₁ + 1 }, 𝜉₁) s2
               -- if e' { 𝜋(p) := 𝑛₀ + 1 } else { pc := 𝑛₁ }
               guard = T.If e' (pgoto (𝑛₀ + 1)) (return $ pgoto (𝑛₁ + 1))
               -- 𝜙 = 𝜉₂(p)[
@@ -101,7 +101,7 @@ stmtToPoints κ (𝜆@𝛬 { 𝑛 = 𝑛₀, p = p₀ }, 𝜉) s =
               -- Translate expression to back-end.
               e' = parseExp e
               -- Translate loop body to program points.
-              (𝜆₁@𝛬{ 𝑛 = 𝑛' }, 𝜉₁) = opsToPoints κ (𝜆 { 𝑛 = 𝑛₀ + 1 }, 𝜉) ops
+              (𝜆₁@𝛬{ 𝑛 = 𝑛' }, 𝜉₁) = opsToPoints 𝜅 (𝜆 { 𝑛 = 𝑛₀ + 1 }, 𝜉) ops
 
               -- if x < e { pc := 𝑛₀ + 1; } else { pc := 𝑛' + 1 }
               ifs = T.If ((x' @) T.:< e') (pgoto (𝑛₀ + 1)) (return $ pgoto $ 𝑛' + 1)
@@ -119,7 +119,7 @@ stmtToPoints κ (𝜆@𝛬 { 𝑛 = 𝑛₀, p = p₀ }, 𝜉) s =
               p₁ = nextp 𝜆
               -- Construct new traversal context and translate goroutine body
               -- into a binding of program points.
-              (𝜆₁, 𝜉₁) = stmtToPoints κ (𝛬 { 𝑛 = 0, p = p₁, nextp = p₁ + 1 }, 𝜉 ⇒ (p₁, M.empty)) s1
+              (𝜆₁, 𝜉₁) = stmtToPoints 𝜅 (𝛬 { 𝑛 = 0, p = p₁, nextp = p₁ + 1 }, 𝜉 ⇒ (p₁, M.empty)) s1
               -- Spawn goroutine instruction:
               -- Add go instruction to parent goroutine:
               -- 𝜙₀ = 𝜉₁(p₀)[
@@ -138,20 +138,20 @@ stmtToPoints κ (𝜆@𝛬 { 𝑛 = 𝑛₀, p = p₀ }, 𝜉) s =
 {- Updates a program point set with the translations of
   the operation in the provided sequence.
 -}
-opsToPoints :: K -> (𝛬, 𝛯) -> [Op] -> (𝛬, 𝛯)
-opsToPoints κ (𝜆, 𝜉) = Prelude.foldl (opToPoint κ) (𝜆, 𝜉)
+opsToPoints :: 𝛫 -> (𝛬, 𝛯) -> [Op] -> (𝛬, 𝛯)
+opsToPoints 𝜅 (𝜆, 𝜉) = Prelude.foldl (opToPoint 𝜅) (𝜆, 𝜉)
 
 {- Appends a set of program points with a new program point,
 based on the next available instruction.
-Depends on: κ, p, ⟨n, 𝜙⟩, o
+Depends on: 𝜅, p, ⟨n, 𝜙⟩, o
 
 Produces:
 
 1. If o = c!, then:
 
 >   ⟨n + 2, 𝜙 = [
->     n ↦ if 0 < κ(c) {
->         if c < κ(c) {
+>     n ↦ if 0 < 𝜅(c) {
+>         if c < 𝜅(c) {
 >           c := c + 1;
 >           𝜋(p) := n + 2;
 >         }
@@ -170,7 +170,7 @@ Produces:
 2. If o = c?, then:
 
 >  ⟨n + 1, 𝜙 = [
->    n ↦ if 0 < κ(c) {
+>    n ↦ if 0 < 𝜅(c) {
 >        if c > 0 {
 >          c := c - 1;
 >          𝜋(p) := n + 1;
@@ -183,17 +183,17 @@ Produces:
 >      }
 >  ]⟩
 -}
-opToPoint :: K -> (𝛬, 𝛯) -> Op -> (𝛬, 𝛯)
-opToPoint κ (𝜆@𝛬 { 𝑛 = 𝑛₀, p }, 𝜉) op =
+opToPoint :: 𝛫 -> (𝛬, 𝛯) -> Op -> (𝛬, 𝛯)
+opToPoint 𝜅 (𝜆@𝛬 { 𝑛 = 𝑛₀, p }, 𝜉) op =
   let -- Get channel name for the operation.
       c = chName op
       -- 𝜋(p) := 𝑛'
       nextInstruction 𝑛' = T.Assign [((p ⊲), (𝑛' #))]
       -- if e { s }
       ifNoElse e s = T.If e (T.Block s) Nothing
-      -- κ(c)
-      k = κ M.! c
-      -- if 0 < κ(c) { s1 } else { s2 }
+      -- 𝜅(c)
+      k = 𝜅 M.! c
+      -- if 0 < 𝜅(c) { s1 } else { s2 }
       syncPoint s1 s2 =
         let wrap = T.If ((0 #) T.:< k)
          in -- Ensure statements are wrapped in blocks
@@ -219,13 +219,13 @@ opToPoint κ (𝜆@𝛬 { 𝑛 = 𝑛₀, p }, 𝜉) op =
          in ifNoElse guard body
    in case op of
         Send _ ->
-          let -- c < κ(c)
+          let -- c < 𝜅(c)
               guard = (c @) T.:< k
-              -- if c < κ(c) { c := c + 1; 𝜋(p) := 𝑛 + 2 }
+              -- if c < 𝜅(c) { c := c + 1; 𝜋(p) := 𝑛 + 2 }
               asyncCase = async (𝑛₀ + 2) guard (T.:+)
               -- if c == 0 { c := 1; 𝜋(p) := 𝑛 + 1 }
               syncCase = sync (𝑛₀ + 1) 0 1
-              -- if 0 < κ(c) { <async case> } else { <sync case> }
+              -- if 0 < 𝜅(c) { <async case> } else { <sync case> }
               opPoint = syncPoint asyncCase syncCase
               -- if c == -1 { c := 0; 𝜋(p) := 𝑛 + 2 }
               rendezvousPoint = sync (𝑛₀ + 2) (-1) 0
@@ -242,7 +242,7 @@ opToPoint κ (𝜆@𝛬 { 𝑛 = 𝑛₀, p }, 𝜉) op =
               asyncCase = async (𝑛₀ + 1) guard (T.:-)
               -- if c == 1 { c := -1; 𝜋(p) := 𝑛 + 1 }
               syncCase = sync (𝑛₀ + 1) 1 (-1)
-              -- if 0 < κ(c) { <async case> } else { <sync case> }
+              -- if 0 < 𝜅(c) { <async case> } else { <sync case> }
               opPoint = syncPoint asyncCase syncCase
               -- Insert receive operation at program point 𝑛
               𝜙' = 𝜉 M.! p ⇒ (𝑛₀, opPoint)

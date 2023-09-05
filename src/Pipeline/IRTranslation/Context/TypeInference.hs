@@ -1,4 +1,4 @@
-module Pipeline.IRTranslation.FreeVars where
+module Pipeline.IRTranslation.Context.TypeInference (typesAndFvs) where
 
 import Backend.Ast qualified as T
 import Control.Monad (foldM)
@@ -108,8 +108,8 @@ unboundTypes Ctx {supply, tenv, venv} =
               _ -> Nothing
    in mapMaybe getUnboundType (M.elems venv)
 
-fvs :: 𝑃 -> Err (𝛴, [T.Type])
-fvs (𝑃 chs s) = do
+typesAndFvs :: 𝑃 -> Err (𝛴, [T.Type])
+typesAndFvs (𝑃 chs s) = do
   ctx <- foldM (\θ ch -> chanFVs $ ch >: θ) mkTCtx chs
   ctx' <- stmtFVs $ s >: ctx
   -- S.unions (map chanFVs chs ++ map stmtFVs procs)

@@ -194,7 +194,7 @@ data Function = Function
 --
 -- > M ::= H<lemma | method, returns ({ x : T, ...}*)> { {S; ...}* }
 data Method = Method
-  { returns :: [(String, Type)],
+  { methodReturns :: [(String, Type)],
     methodHoare :: HoareWrap,
     methodBody :: Stmt
   }
@@ -444,14 +444,14 @@ instance PrettyPrint Function where
        in intercalate "\n" [header, props ++ "{", body, "}"]
 
 instance PrettyPrint Method where
-  prettyPrint _ Method {returns, methodHoare, methodBody} = case methodHoare of
+  prettyPrint _ Method {methodReturns, methodHoare, methodBody} = case methodHoare of
     HoareWrap {ghost, name, types, params, decreases, requires, ensures} ->
       let ps = intercalate ", " (map (\(x, t) -> unwords [x, ":", prettyPrint 0 t]) params)
           ts =
             if null types
               then ""
               else "<" ++ intercalate ", " (map (prettyPrint 0) types) ++ ">"
-          rps = map (\(x, t) -> unwords [x, ":", prettyPrint 0 t]) returns
+          rps = map (\(x, t) -> unwords [x, ":", prettyPrint 0 t]) methodReturns
           method = if ghost then "lemma" else "method"
           header = unwords [method, name ++ ts ++ "(" ++ ps ++ ")", "returns", "(" ++ intercalate ", " rps ++ ")"]
           pre = prop "requires" requires

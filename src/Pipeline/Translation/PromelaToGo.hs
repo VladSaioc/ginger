@@ -33,7 +33,7 @@ data Ctxt a b = Ctxt
     chenv :: M.Map String String,
     -- | Channel capacity environment.
     -- Binds Go channel names to Go capacity expressions.
-    κ :: M.Map String P'.Exp,
+    𝜅 :: M.Map String P'.Exp,
     -- | Current object syntax translation tracker
     curr :: b
   }
@@ -95,7 +95,7 @@ getGo p@(P.Spec ms) =
                   -- Initial variable environment includes all top-level declarations
                   varenv = Prelude.foldl getEnv M.empty ms,
                   -- Capacity and variable name environments are initially empty
-                  κ = M.empty,
+                  𝜅 = M.empty,
                   chenv = M.empty,
                   -- No calls have yet been executed
                   calls = 0,
@@ -300,7 +300,7 @@ translateStatements ρ = case syntax ρ of
                           let obj' = (curr ρ) {decls = decls (curr ρ) ++ [chdecl]}
                           -- Insert channel in the capacity and variable environments,
                           -- with capacity expression and its own name.
-                          let ρ' = ρ {κ = M.insert x e' (κ ρ), chenv = M.insert x x (chenv ρ)}
+                          let ρ' = ρ {𝜅 = M.insert x e' (𝜅 ρ), chenv = M.insert x x (chenv ρ)}
                           -- Translate the remaining statements
                           translateStatements $ ss >: ρ' <: obj'
                         _ -> err $ "Channel " ++ x ++ " has no capacity."
@@ -366,7 +366,7 @@ translateStatements ρ = case syntax ρ of
                       varenv = Prelude.foldl addVarName (varenv ρ) ps,
                       -- Construct a fresh channel environment based on the parameters.
                       chenv = Prelude.foldl addCh M.empty pes,
-                      κ = κ ρ,
+                      𝜅 = 𝜅 ρ,
                       curr = Obj {decls = initializers, stmts = []}
                     }
             ρ2 <- translateStatements ρ1
@@ -379,7 +379,7 @@ translateStatements ρ = case syntax ρ of
             let obj' = Obj {decls = ods ++ ods', stmts = Pos p s' : oss}
             -- Absorb any chanel declarations and calls from the context
             -- produced by translating the callee.
-            let ρ3 = ρ {κ = κ ρ2, calls = calls ρ2}
+            let ρ3 = ρ {𝜅 = 𝜅 ρ2, calls = calls ρ2}
             -- Discard subsequent 'run receiver(c)' statements before
             -- continuing translation.
             let ss'' = skipReceiverRun ss
@@ -402,7 +402,7 @@ translateStatements ρ = case syntax ρ of
             -- Construct translation object and proceed with the
             -- rest of the translation.
             let obj' = Obj {decls = ods ++ ods', stmts = oss2}
-            let ρ₂ = ρ {calls = calls ρ₁, chenv = chenv ρ₁, κ = κ ρ₁}
+            let ρ₂ = ρ {calls = calls ρ₁, chenv = chenv ρ₁, 𝜅 = 𝜅 ρ₁}
             translateStatements $ ss >: ρ₂ <: obj'
           -- 'do' statements are not supported
           P.Do _ _ -> err "Unexpected 'do' statement with non-deterministic branches."

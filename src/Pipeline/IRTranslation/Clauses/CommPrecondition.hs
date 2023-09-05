@@ -21,8 +21,8 @@ iterations :: Exp -> Exp -> Exp
 iterations lo hi = Call "iter" [lo, hi]
 
 -- | Create all channel preconditions.
-preconditions :: 𝛹 -> K -> P ↦ (𝐶 ↦ 𝒪s) -> [ℒ] -> [Exp]
-preconditions 𝜓 κ noloops loops =
+preconditions :: 𝛹 -> 𝛫 -> P ↦ (𝐶 ↦ 𝒪s) -> [ℒ] -> [Exp]
+preconditions 𝜓 𝜅 noloops loops =
   let -- Gather precondition contributions for every channel for
       -- operations in loop statements.
       lR = M.unionsWith (M.unionWith (:+)) (L.map (loopToPre 𝜓) loops)
@@ -34,7 +34,7 @@ preconditions 𝜓 κ noloops loops =
       -- Construct a precondition for channel c.
       prc c =
         let -- Get channel capacity expression.
-            k = Mb.fromJust (M.lookup c κ)
+            k = Mb.fromJust (M.lookup c 𝜅)
             -- Get channel precondition sub-expressions from map.
             cR r = Mb.fromMaybe M.empty (M.lookup c r)
             -- Get precondition sub-expressions for channel operation direction.

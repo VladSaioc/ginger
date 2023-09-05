@@ -8,15 +8,11 @@ import IR.SanityCheck (sanityCheck)
 import IR.Simplifier (simplify)
 import IR.Stratification (stratified)
 import Pipeline.IRTranslation.Boilerplate (wholeEncoding)
-import Pipeline.IRTranslation.ChInstructions (noloopPsChanInsns)
-import Pipeline.IRTranslation.Channels (caps)
-import Pipeline.IRTranslation.FreeVars (fvs)
-import Pipeline.IRTranslation.Go (gos)
-import Pipeline.IRTranslation.If (ifs)
-import Pipeline.IRTranslation.Loop (loops)
+import Pipeline.IRTranslation.Context.Capacity (caps)
+import Pipeline.IRTranslation.Context.Reachability (reachability)
+import Pipeline.IRTranslation.Context.TypeInference (typesAndFvs)
 import Pipeline.IRTranslation.Processes (procs)
-import Pipeline.IRTranslation.Reachability (reachability)
-import Pipeline.IRTranslation.Return (returns)
+import Pipeline.IRTranslation.Meta.Meta (meta)
 import Utilities.Err
 
 -- | Convert IR program to back-end program. May fail.
@@ -29,14 +25,10 @@ irToBackend p' = do
   --   multiGuard
   --     [ (not (stratified p), "Program is not stratified")
   --     ]
-  (𝜎, ts) <- fvs p
+  (𝜎, ts) <- typesAndFvs p
+  let 𝜅 = caps p
   let 𝜓 = reachability p
-  let ls = loops p
-  let is = ifs p
-  let k = caps p
-  let 𝜉 = procs k p
-  let gs = gos p
-  let as = noloopPsChanInsns p
-  let rs = returns p
-  let prog = wholeEncoding 𝜓 𝜎 ts k 𝜉 as gs is ls rs
+  let 𝜉 = procs 𝜅 p
+  let 𝓂 = meta 𝜅 p
+  let prog = wholeEncoding 𝜓 𝜎 ts 𝜅 𝜉 𝓂
   return $ T.simplify prog

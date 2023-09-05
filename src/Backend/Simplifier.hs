@@ -27,9 +27,9 @@ fSimplify (Function {yields, funcHoare, funcBody}) =
 
 -- | Simplify method declaration. Affects Hoare clauses and the method body.
 mSimplify :: Method -> Method
-mSimplify (Method {returns, methodHoare, methodBody}) =
+mSimplify (Method {methodReturns, methodHoare, methodBody}) =
   Method
-    { returns = returns,
+    { methodReturns = methodReturns,
       methodHoare = hSimplify methodHoare,
       methodBody = sSimplify methodBody
     }
