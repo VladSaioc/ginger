@@ -2,8 +2,14 @@ module Pipeline.IRTranslation.Utilities where
 
 import Backend.Ast qualified as T
 import Backend.Utilities
+import Data.Maybe
+import IR.Ast
 import Data.Map qualified as M
 import Utilities.Collection
+import GHC.Stack (HasCallStack)
+
+(!!!) :: HasCallStack => Ord a => M.Map a b -> a -> b
+m !!! k = fromMaybe (error "WTF") $ M.lookup k m
 
 -- | An alias for variable names (as strings) to clarify type definitions
 type 𝑋 = String
@@ -24,10 +30,21 @@ type 𝑁 = Int
 type 𝛷 = 𝑁 ↦ T.Stmt
 
 -- | Bindings from process ids to program points.
-type 𝛱 = P ↦ 𝛷
+type 𝛯 = P ↦ 𝛷
 
 -- | Bindings from process ids to program point reachability conditions.
 type 𝛹 = P ↦ (𝑁 ↦ T.Exp)
+
+-- | A process traversal context. When performing traversal on the IR program
+-- such that it knows:
+-- 1. The current process ID.
+-- 2. The next fresh process ID.
+-- 3. The next program point.
+data 𝛬 = 𝛬 {
+  p :: P,
+  nextp :: P,
+  𝑛 :: 𝑁
+}
 
 -- | Program counter variable name. Produces the variable storing program
 -- counters for each process. Given process id p, the naming schema is
@@ -54,10 +71,14 @@ type 𝛹 = P ↦ (𝑁 ↦ T.Exp)
 (%) p x = (p ⊲) ++ "'" ++ x
 
 -- | Program id to program counter variable expression.
-π :: P -> T.Exp
-π p = ((p ⊲) @)
+--
+-- > P{p}
+𝜋 :: P -> T.Exp
+𝜋 p = ((p ⊲) @)
 
 -- | Program id to exit variable expression.
+--
+-- > X{p}
 𝜒 :: P -> T.Exp
 𝜒 p = ((p ▽) @)
 
@@ -66,11 +87,28 @@ type 𝛹 = P ↦ (𝑁 ↦ T.Exp)
 (-|) 𝜙 = case M.toDescList 𝜙 of
   [] -> (0 #)
   (𝑛, _) : _ -> (𝑛 #)
+  
+-- | Folds program to aggregate a certain collection.
+programToCollection :: Collection a => (𝛬 -> 𝑆 -> a) -> 𝑃 -> a
+programToCollection f (𝑃 _ s₀) =
+  let foldStatement 𝜆 s = 
+        let 𝜆' = 𝜆 { 𝑛 = 𝑛 𝜆 + ppOffset s } 
+            𝜎₀ = f 𝜆 s
+         in case s of
+            Skip -> (𝜆', 𝜎₀)
+            Return -> (𝜆', 𝜎₀)
+            Atomic {} -> (𝜆', 𝜎₀)
+            Seq s₁ s₂ -> 
+              let (𝜆₁, 𝜎₁) = foldStatement 𝜆 s₁
+                  (𝜆₂, 𝜎₂) = foldStatement 𝜆₁ s₂
+               in (𝜆₂, 𝜎₁ ∪ 𝜎₂ ∪ 𝜎₀)
+            If _ s₁ s₂ ->
+              let (𝜆₁, 𝜎₁) = foldStatement 𝜆 { 𝑛 = 𝑛 𝜆 + 1 } s₁
+                  (𝜆₂, 𝜎₂) = foldStatement 𝜆₁ { 𝑛 = 𝑛 𝜆₁ + 1 } s₂
+               in (𝜆₂ { 𝑛 = 𝑛 𝜆₂ }, 𝜎₀ ∪ 𝜎₁ ∪ 𝜎₂)
+            For {} -> (𝜆', 𝜎₀)
+            Go s₁ ->
+              let (𝜆₁, 𝜎₁) = foldStatement 𝛬 { 𝑛 = 0, p = nextp 𝜆, nextp = nextp 𝜆 + 1 } s₁
+               in (𝜆' { nextp = nextp 𝜆₁}, 𝜎₀ ∪ 𝜎₁)
+   in snd $ foldStatement 𝛬 { 𝑛 = 0, p = 0, nextp = 1} s₀
 
--- | Checks that a sequence of values are all equal, by performing pair-wise structural equality.
-equals :: Eq a => [a] -> Maybe a
-equals = \case
-  [] -> Nothing
-  [a] -> Just a
-  a' : a'' : as ->
-    if a' == a'' then equals (a'' : as) else Nothing
