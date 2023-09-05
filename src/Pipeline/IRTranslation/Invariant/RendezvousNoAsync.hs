@@ -36,14 +36,14 @@ chanopsToRendezvous κ =
 
 {- | Creates an invariant sub-expression stipulating that the program
 counter will never reach rendezvous points if the channel is buffered.
-Depends on: κ, 𝜙, π
+Depends on: κ, 𝜙, p
 
 Produces:
 
-> 0 < κ(c) => pc(π) != n + 1
+> 0 < κ(c) => 𝜋(p) != n + 1
 -}
 sendToNoRendezvous :: K -> 𝒪 -> Exp
-sendToNoRendezvous κ 𝒪 {oP = pid, o𝐶 = c, o𝑛 = 𝑛} =
-  let pc = π pid
+sendToNoRendezvous κ 𝒪 {oP = p, o𝐶 = c, o𝑛 = 𝑛} =
+  let pc = 𝜋 p
       k = Mb.fromMaybe (0 #) (M.lookup c κ)
    in ((0 #) :< k) :==> (pc :!= ((𝑛 + 1) #))

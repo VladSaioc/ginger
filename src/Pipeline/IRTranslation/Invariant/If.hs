@@ -10,17 +10,17 @@ import Pipeline.IRTranslation.Utilities
 ifMonitors :: [ℐ] -> [Exp]
 ifMonitors = map ifMonitor
 
-{- Constructs an if monitor invariant.
-Depends on: 𝒾 = (π, e, 𝑛₁, 𝑛₂, 𝑛₃)
+{- | Constructs an if monitor invariant.
+Depends on: 𝒾 = (p, e, 𝑛₁, 𝑛₂, 𝑛₃)
 
 Produces:
 
-> if e then ¬(𝑛₂ ≤ pc(π) < 𝑛₃) else ¬(𝑛₁ < pc(π) < 𝑛₂)
+> if e then ¬(𝑛₂ ≤ 𝜋(p) < 𝑛₃) else ¬(𝑛₁ < 𝜋(p) < 𝑛₂)
 -}
 ifMonitor :: ℐ -> Exp
-ifMonitor (ℐ {iP = pid, iGuard = b, i𝑛 = 𝑛₁, iElse = 𝑛₂, iExit = 𝑛₃}) =
+ifMonitor (ℐ {iP = p, iGuard = b, i𝑛 = 𝑛₁, iElse = 𝑛₂, iExit = 𝑛₃}) =
   let -- Program counter as a back-end variable
-      pc = π pid
+      pc = 𝜋 p
       -- If guard point as a fixed program point
       guard = (𝑛₁ #)
       -- If else point as a fixed program point

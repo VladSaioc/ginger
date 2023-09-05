@@ -18,10 +18,10 @@ over the capacity expression.
 Depends on:
 
 > 1. Reachability conditions for all processes:
->     𝜓 = [π ↦ [𝑛 ↦ e | 𝑛 ∈ dom(𝛱(π))] | π ∈ dom(𝛱)]𝛱)]
+>     𝜓 = [p ↦ [𝑛 ↦ e | 𝑛 ∈ dom(𝛯(p))] | p ∈ dom(𝛯)]
 > 2. All program loops: [ℓ]
 > 3. All non-loop operations:
->     O = {(π, 𝑛, o) | (𝑛, o) ∉ op(ℓ), ℓ ∈ [ℓ], (𝑛, o) ∈ 𝜙, (π, 𝜙) ∈ 𝛱 }
+>     O = {(p, 𝑛, o) | (𝑛, o) ∉ op(ℓ), ℓ ∈ [ℓ], (𝑛, o) ∈ 𝜙, (p, 𝜙) ∈ 𝛯 }
 > 4. Channel capacity environments: κ
 > 
 > ∀ c, e1 = syncChannelMonitor(𝜓, O, [ℓ])(c),

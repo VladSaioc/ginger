@@ -241,13 +241,13 @@ backendChannelOp =
         _ -> Nothing
 
 {- | Convert back-end instruction point to channel metadata.
-Depends on: π, 𝜙, 𝑛
+Depends on: p, 𝜙, 𝑛
 
 ! Metadata does not include path conditions.
 
 Produces:
 
-> 𝒪 {π, c, d, 𝑛}, where cd = 𝜙(𝑛)
+> 𝒪 {p, c, d, 𝑛}, where cd = 𝜙(𝑛)
 -}
 insnToChMetadata :: P -> 𝑁 -> Stmt -> Maybe 𝒪
 insnToChMetadata p 𝑛 s = do
@@ -291,7 +291,7 @@ processChanOpsMap p =
 {- | Aggregate all channel operation points from a given map of program points.
 Produces a list of channel operation metadata, including the channel name,
 process id, operation direction, program point.
-Depends on: π, 𝜙
+Depends on: p, 𝜙
 
 Produces:
 

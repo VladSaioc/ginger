@@ -18,18 +18,18 @@ on the size of the channel buffer.
 
 Depends on:
 1. Reachability conditions for all processes:
-    𝜓 = [π ↦ [𝑛 ↦ e | 𝑛 ∈ dom(𝛱(π))] | π ∈ dom(𝛱)]
+    𝜓 = [p ↦ [𝑛 ↦ e | 𝑛 ∈ dom(𝛯(p))] | p ∈ dom(𝛯)]
 2. All program loops: [ℓ]
 3. All non-loop operations:
-    O = {(π, 𝑛, o) | (𝑛, o) ∉ op(ℓ), ℓ ∈ [ℓ], (𝑛, o) ∈ 𝜙, (π, 𝜙) ∈ 𝛱 }
+    O = {(p, 𝑛, o) | (𝑛, o) ∉ op(ℓ), ℓ ∈ [ℓ], (𝑛, o) ∈ 𝜙, (p, 𝜙) ∈ 𝛯 }
 
 Produces:
 
-> [ c ↦ e1 - e2 | ∀ c. (𝑛, cd) ∈ 𝜙, (π, 𝜙) ∈ 𝛱,
+> [ c ↦ e1 - e2 | ∀ c. (𝑛, cd) ∈ 𝜙, (p, 𝜙) ∈ 𝛯,
 >    e1 =  𝛴 ∀ ℓ, (c, [! ↦ e']) ∈ loopMonitor(ℓ). e'
->        + 𝛴 (π, 𝑛, !) ∈ O, e' = noloopMonitor(π, 𝑛). e',
+>        + 𝛴 (p, 𝑛, !) ∈ O, e' = noloopMonitor(p, 𝑛). e',
 >    e2 =  𝛴 ∀ ℓ, (c, [? ↦ e']) ∈ loopMonitor(ℓ). e'
->        + 𝛴 (π, 𝑛, ?) ∈ O, e' = noloopMonitor(π, 𝑛). e' ]
+>        + 𝛴 (p, 𝑛, ?) ∈ O, e' = noloopMonitor(p, 𝑛). e' ]
 -}
 asyncChannelMonitors :: 𝛹 -> P ↦ (𝐶 ↦ 𝒪s) -> [ℒ] -> 𝐶 ↦ Exp
 asyncChannelMonitors 𝜓 noloopOps ls =
@@ -48,10 +48,10 @@ operated on in a loop.
 Depends on:
 
 I. Reachability conditions for all processes:
-    𝜓 = [π ↦ [𝑛 ↦ e | 𝑛 ∈ dom(𝛱(π))] | π ∈ dom(𝛱)]
+    𝜓 = [p ↦ [𝑛 ↦ e | 𝑛 ∈ dom(𝛯(p))] | p ∈ dom(𝛯)]
 
-II. ℓ = (π, O, x, e₁, e₂, 𝑛₀, 𝑛'), with the following properties:
-1. π is the process id of the loop
+II. ℓ = (p, O, x, e₁, e₂, 𝑛₀, 𝑛'), with the following properties:
+1. p is the process id of the loop
 2. O = {(𝑛₁, c₁{!,?}), ..., (𝑛ₘ, cₘ{!,?})} are loop channel operations.
 3. x is the loop index variable
 4. e₁ is the lower bound expression
@@ -62,22 +62,22 @@ II. ℓ = (π, O, x, e₁, e₂, 𝑛₀, 𝑛'), with the following properties:
 Produces:
 
 > [ c ↦ [
->   ! ↦ if 𝜓(π)(𝑛₀) then
+>   ! ↦ if 𝜓(p)(𝑛₀) then
 >           (x - e₁) * |{ c! | (𝑛, c!) ∈ O }|
 >         + (𝛴 ∀(𝑛, c!) ∈ O.
->             if 𝑛 < pc(π) < 𝑛' then 1 else 0)
+>             if 𝑛 < 𝜋(p) < 𝑛' then 1 else 0)
 >       else 0,
->   ? ↦ if 𝜓(π)(𝑛₀) then
+>   ? ↦ if 𝜓(p)(𝑛₀) then
 >           (x - e₁) * |{ c? | (𝑛, c?) ∈ O }|
 >         + (𝛴 ∀(𝑛, c?) ∈ O.
->             if 𝑛 < pc(π) < 𝑛' then 1 else 0)
+>             if 𝑛 < 𝜋(p) < 𝑛' then 1 else 0)
 >       else 0 ]
 >   | ∀ c, (𝑛, c{!,?}) ∈ O ]
 -}
 loopMonitor :: 𝛹 -> ℒ -> 𝐶 ↦ (OpDir ↦ Exp)
 loopMonitor 𝜓 ℒ {lP = p, l𝑋 = var, lower, l𝑛 = 𝑛, lExit = 𝑛', l𝒪s = chans} =
   let b = 𝜓 M.! p M.! 𝑛
-      pc = π p
+      pc = 𝜋 p
       x = (var @)
       singleOp ch =
         let 𝒪 {o𝑛 = 𝑛ᵢ} = ch
@@ -91,14 +91,14 @@ loopMonitor 𝜓 ℒ {lP = p, l𝑋 = var, lower, l𝑛 = 𝑛, lExit = 𝑛', l
 
 {- | Organize and compose under addition all non-loop monitor
 sub-expressions for every asynchronous channel for a given process.
-Depends on: π, 𝜙
+Depends on: p, 𝜙
 
 Produces:
 
 > ⋃ ∀ c.
 >   [c ↦ [
->     ! ↦ {if 𝑛 < pc(π) then 1 else 0) | ∀(𝑛, c!) ∈ 𝜙(π) },
->     ? ↦ {if 𝑛 < pc(π) then 1 else 0) | ∀(𝑛, c!) ∈ 𝜙(π) }
+>     ! ↦ {if 𝑛 < 𝜋(p) then 1 else 0) | ∀(𝑛, c!) ∈ 𝜙(p) },
+>     ? ↦ {if 𝑛 < 𝜋(p) then 1 else 0) | ∀(𝑛, c!) ∈ 𝜙(p) }
 >   ]]
 -}
 noloopMonitors :: 𝛹 -> 𝐶 ↦ 𝒪s -> 𝐶 ↦ (OpDir ↦ Exp)
@@ -109,15 +109,15 @@ noloopMonitors 𝜓 =
 
 {- | Monitor sub-expression for a non-loop single asynchronous channel operation.
 If the operation has occurred, its resource contribution is 1.
-Depends on: π, 𝑛, where n ∈ dom(𝛱(π)), b (reachability condition)
+Depends on: p, 𝑛, where n ∈ dom(𝛯(p)), b (reachability condition)
 
 Produces:
 
-> if b then if 𝑛 < pc(π) then 1 else 0 else 0
+> if b then if 𝑛 < 𝜋(p) then 1 else 0 else 0
 -}
 noloopMonitor :: 𝛹 -> 𝒪 -> Exp
 noloopMonitor 𝜓 𝒪 {oP = p, o𝑛 = 𝑛} =
   let b = 𝜓 M.! p M.! 𝑛
-      pc = π p
+      pc = 𝜋 p
       passed = (𝑛 #) :< pc
    in IfElse (b :&& passed) (1 #) (0 #)
