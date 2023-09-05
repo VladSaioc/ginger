@@ -109,9 +109,9 @@ unboundTypes Ctx {supply, tenv, venv} =
    in mapMaybe getUnboundType (M.elems venv)
 
 fvs :: 𝑃 -> Err (𝛴, [T.Type])
-fvs (𝑃 chs procs) = do
+fvs (𝑃 chs s) = do
   ctx <- foldM (\θ ch -> chanFVs $ ch >: θ) mkTCtx chs
-  ctx' <- foldM (\θ p -> stmtFVs $ p >: θ) ctx procs
+  ctx' <- stmtFVs $ s >: ctx
   -- S.unions (map chanFVs chs ++ map stmtFVs procs)
   let vs = makeTypeEnvironment ctx'
   let ts = unboundTypes ctx'
@@ -145,6 +145,7 @@ stmtFVs ctx@(Ctx {datum = s}) =
           ctx1 <- updateWithExp T.TBool ctx e
           ctx2 <- stmtFVs $ s1 >: ctx1
           stmtFVs $ s2 >: ctx2
+        Go s1 -> stmtFVs $ s1 >: ctx
 
 -- | Extract, and infer the types of, free variables in expressions.
 expFVs :: TCtx 𝐸 -> Err (TCtx T.Type)
