@@ -14,10 +14,6 @@ import Utilities.TransformationCtx
 data Ctxt a b = Ctxt
   { -- | Remaining syntax to translate.
     syntax :: a,
-    -- | Current process ID.
-    pid :: Int,
-    -- | Next available process ID.
-    nextpid :: Int,
     -- | Next available loop counter.
     loopcounter :: Int,
     -- | Next available select decision point counter.
@@ -26,8 +22,6 @@ data Ctxt a b = Ctxt
     varenv :: M.Map String 𝐸,
     -- | Environment from channel names in the scope to their declaration names.
     chenv :: M.Map String String,
-    -- | Binding from process IDs to IR statements.
-    procs :: M.Map Int 𝑆,
     -- | Binding from IR channel names to capacity
     chans :: M.Map String 𝐸,
     -- | Translation object so far.
@@ -48,10 +42,6 @@ getIR (P.Prog ss) =
         Ctxt
           { -- Begin translation with entry process statements.
             syntax = ss,
-            -- Current process ID is 0
-            pid = 0,
-            -- Next process ID is 1
-            nextpid = 1,
             -- Next loop counter is 0
             loopcounter = 0,
             -- Next case counter is 0
@@ -59,7 +49,6 @@ getIR (P.Prog ss) =
             -- All environments are empty
             varenv = M.empty,
             chenv = M.empty,
-            procs = M.empty,
             chans = M.empty,
             -- First object statement is a skip
             curr = Skip
@@ -69,10 +58,10 @@ getIR (P.Prog ss) =
         ρ' <- translateStatements ρ
         -- Get binding from channels to capacity expressions.
         let chs = M.elems $ M.mapWithKey Chan (chans ρ')
-        -- Obtain binding from process IDs to syntax.
-        let ps = M.elems $ procs ρ'
+        -- Obtain IR body statement.
+        let s = curr ρ'
         -- Construct IR program.
-        return $ 𝑃 chs ps
+        return $ 𝑃 chs s
 
 -- | Translate Go statements to IR.
 --
@@ -82,7 +71,7 @@ getIR (P.Prog ss) =
 -- >            |- ⟨ρ, S⟩ ==> ⟨ρ, S'⟩
 translateStatements :: Ctxt [Pos P.Stmt] 𝑆 -> Err (Ctxt () 𝑆)
 translateStatements ρ = case syntax ρ of
-  [] -> done (ρ {procs = M.insert (pid ρ) (curr ρ) (procs ρ)})
+  [] -> done ρ
   Pos p s : ss -> case s of
     -- Pass skip statements.
     P.Skip -> translateStatements (ss >: ρ)
@@ -147,12 +136,6 @@ translateStatements ρ = case syntax ρ of
           Ctxt
             { -- Syntax is the body of the go statement.
               syntax = ss',
-              -- Process map inherited from current context.
-              procs = procs ρ,
-              -- Current process ID is the next fresh process ID.
-              pid = nextpid ρ,
-              -- Next fresh process ID is incremented.
-              nextpid = nextpid ρ + 1,
               -- Case counter inherited from current context.
               casecounter = casecounter ρ,
               -- Loop counter inherited from current context.
@@ -168,27 +151,8 @@ translateStatements ρ = case syntax ρ of
             }
       -- Propagate persistent information from the resulting translation context
       -- to the context of the continuation.
-      let ρ₂ =
-            ρ
-              { -- Process environment is propagated because the child goroutine
-                -- could have created new processes.
-                procs = procs ρ₁,
-                -- Next process id is propagated because the child goroutine
-                -- could have created new processes.
-                nextpid = nextpid ρ₁,
-                -- Case counter is propagated because the child goroutine
-                -- could have had new branching paths.
-                casecounter = casecounter ρ₁,
-                -- Case counter is propagated because the child goroutine
-                -- could have had new loop.
-                loopcounter = loopcounter ρ₁,
-                -- Channel environments are propagated because the child goroutine
-                -- could have instantiated new channels.
-                chans = chans ρ₁,
-                chenv = chenv ρ₁
-              }
       -- Translate continuation.
-      translateStatements (ss >: ρ₂)
+      translateStatements (ss >: ρ₁ <: Seq (curr ρ) (Go (curr ρ₁)))
     P.For x e1 e2 diff ss' -> do
       -- Get variable environment.
       let venv = varenv ρ
