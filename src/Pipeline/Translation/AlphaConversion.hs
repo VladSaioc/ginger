@@ -219,7 +219,9 @@ alphaLVal env = \case
         -- as a parameter.
         -- Its absence from the name environment
         -- warrants a fatal exception.
-        x' = Data.Maybe.fromJust (M.lookup x env)
+        x' = case M.lookup x env of
+         Just x' -> x'
+         Nothing -> error $ unwords ["Variable", x, "missing during alpha conversion."]
      in Var x'
   -- Field names remain unchanged, but object names
   -- are recursively alpha converted.
