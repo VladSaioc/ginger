@@ -40,6 +40,7 @@ runPromelaExample () {
 runIRExample simple
 runIRExample complex
 runIRExample conditional
+runIRExample go
 runIRExample return
 
 runPromelaExample ast-transform
