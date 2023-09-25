@@ -55,35 +55,57 @@ data Obj a b = Obj
 type Go = Obj [Pos T.Stmt] [Pos T.Stmt]
 
 -- | Pattern for running a WaitGroup monitor.
-pattern WgMonitor :: P.Exp -> P.Stmt 
+--
+-- > run wg_monitor(x)
+pattern WgMonitor :: P.Exp -> P.Stmt
 pattern WgMonitor a = P.ExpS (P.Run "wg_monitor" [a])
 -- | Pattern for running a Mutex monitor.
+--
+-- > run mutex_monitor(x)
 pattern MuMonitor :: P.Exp -> P.Stmt
 pattern MuMonitor a = P.ExpS (P.Run "mutex_monitor" [a])
 
+-- | Pattern for sending over a struct field.
+--
+-- > o.f!e
 pattern FieldSend :: P.Ident -> P.LVal -> [P.Exp] -> P.Stmt
 pattern FieldSend f o x = P.Send (P.Field o f) x
 pattern FieldRecv :: P.Ident -> P.LVal -> [P.Exp] -> P.Stmt
 pattern FieldRecv f o x = P.Recv (P.Field o f) x
 
 -- | Pattern for adding to a WaitGroup
+--
+-- > o.update!x
 pattern WgAdd :: P.LVal -> [P.Exp] -> P.Stmt
 pattern WgAdd o x = FieldSend "update" o x
+-- | Pattern for acknowledging a WaitGroup add
+--
+-- > o.update_ack?x
 pattern WgAddAck :: P.LVal -> [P.Exp] -> P.Stmt
 pattern WgAddAck o x = FieldRecv "update_ack" o x
 -- | Pattern for waiting on a WaitGroup
+--
+-- > o.wait!x
 pattern WgWait :: P.LVal -> [P.Exp] -> P.Stmt
 pattern WgWait o x = FieldRecv "wait" o x
 -- | Pattern for locking a mutex
+--
+-- > o.Lock?x
 pattern MuLock :: P.LVal -> [P.Exp] -> P.Stmt
 pattern MuLock o x = FieldRecv "Lock" o x
 -- | Pattern for unlocking a mutex
+--
+-- > o.Unlock?e
 pattern MuUnlock :: P.LVal -> [P.Exp] -> P.Stmt
 pattern MuUnlock o x = FieldRecv "Unlock" o x
 -- | Pattern for read-locking a mutex
+--
+-- > o.RLock?e
 pattern MuRLock :: P.LVal -> [P.Exp] -> P.Stmt
 pattern MuRLock o x = FieldRecv "RLock" o x
 -- | Pattern for read-unlocking a mutex
+--
+-- > o.RUnlock?e
 pattern MuRUnlock :: P.LVal -> [P.Exp] -> P.Stmt
 pattern MuRUnlock o x = FieldRecv "RUnlock" o x
 
