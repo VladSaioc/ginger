@@ -80,6 +80,7 @@ allowedDeclarations ρ = case syntax ρ of
                       commParams = S.union (commParams ρ') cxs'
                     }
             allowedDeclarations ρ2
+          Block ss' -> allowedDeclarations (ρ {syntax = ss' ++ ss })
           _ -> do
             _ <- allowedGoroutines ρ'
             return ()
@@ -94,6 +95,7 @@ allowedGoroutines ρ = case syntax ρ of
           Go ss' -> do
             _ <- allowedGoroutines (ρ {syntax = ss'})
             allowedGoroutines ρ'
+          Block ss' -> allowedGoroutines (ρ {syntax = ss' ++ ss })
           _ -> allowedStmts ρ'
 
 -- | Check that all statements in a Go program consist strictly
