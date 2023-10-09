@@ -82,21 +82,8 @@ allowedDeclarations ρ = case syntax ρ of
             allowedDeclarations ρ2
           Block ss' -> allowedDeclarations (ρ {syntax = ss' ++ ss })
           _ -> do
-            _ <- allowedGoroutines ρ'
+            _ <- allowedStmts ρ'
             return ()
-
--- | Check that all goroutines in a Go program are allowed.
-allowedGoroutines :: Ctxt [Pos Stmt] -> Err (Ctxt ())
-allowedGoroutines ρ = case syntax ρ of
-  [] -> return (ρ {syntax = ()})
-  Pos _ s : ss ->
-    let ρ' = ρ {syntax = ss}
-     in case s of
-          Go ss' -> do
-            _ <- allowedGoroutines (ρ {syntax = ss'})
-            allowedGoroutines ρ'
-          Block ss' -> allowedGoroutines (ρ {syntax = ss' ++ ss })
-          _ -> allowedStmts ρ'
 
 -- | Check that all statements in a Go program consist strictly
 -- of allowed features.
@@ -157,7 +144,9 @@ allowedStmts ρ =
                   allowedStmts (ρ₁ {syntax = ss})
                 -- Goroutine spawns are not allowed after the spawning
                 -- phase is over.
-                Go {} -> err "Unexpected 'go' statement."
+                Go ss' -> do
+                  _ <- allowedDeclarations (ρ {syntax = ss'})
+                  allowedStmts ρ'
                 -- Atomic operations are always allowed at the top level.
                 -- Inside loops, they are only allowed if they may not be skipped
                 -- due to preceding 'continue' statements or loop body path conditions.

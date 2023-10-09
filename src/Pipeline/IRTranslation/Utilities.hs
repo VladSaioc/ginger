@@ -87,18 +87,18 @@ data 𝛬 = 𝛬 {
 (-|) 𝜙 = case M.toDescList 𝜙 of
   [] -> (0 #)
   (𝑛, _) : _ -> (𝑛 #)
-  
+
 -- | Folds program to aggregate a certain collection.
 programToCollection :: Collection a => (𝛬 -> 𝑆 -> a) -> 𝑃 -> a
 programToCollection f (𝑃 _ s₀) =
-  let foldStatement 𝜆 s = 
-        let 𝜆' = 𝜆 { 𝑛 = 𝑛 𝜆 + ppOffset s } 
+  let foldStatement 𝜆 s =
+        let 𝜆' = 𝜆 { 𝑛 = 𝑛 𝜆 + ppOffset s }
             𝜎₀ = f 𝜆 s
          in case s of
             Skip -> (𝜆', 𝜎₀)
             Return -> (𝜆', 𝜎₀)
             Atomic {} -> (𝜆', 𝜎₀)
-            Seq s₁ s₂ -> 
+            Seq s₁ s₂ ->
               let (𝜆₁, 𝜎₁) = foldStatement 𝜆 s₁
                   (𝜆₂, 𝜎₂) = foldStatement 𝜆₁ s₂
                in (𝜆₂, 𝜎₁ ∪ 𝜎₂ ∪ 𝜎₀)
@@ -111,4 +111,3 @@ programToCollection f (𝑃 _ s₀) =
               let (𝜆₁, 𝜎₁) = foldStatement 𝛬 { 𝑛 = 0, p = nextp 𝜆, nextp = nextp 𝜆 + 1 } s₁
                in (𝜆' { nextp = nextp 𝜆₁}, 𝜎₀ ∪ 𝜎₁)
    in snd $ foldStatement 𝛬 { 𝑛 = 0, p = 0, nextp = 1} s₀
-
