@@ -361,13 +361,14 @@ translateStatements ρ = case syntax ρ of
                         Just (P.Chan e) -> do
                           -- Translate capacity expression
                           e' <- translateExp (varenv ρ) e
+                          let cname = x ++ "'" ++ show (calls ρ)
                           -- Construct translated channel declaration
-                          let chdecl = Pos p $ T.Chan x e'
+                          let chdecl = Pos p $ T.Chan cname e'
                           -- Add channel declaration to context declarations
                           let obj' = (curr ρ) {decls = decls (curr ρ) ++ [chdecl]}
                           -- Insert channel in the capacity and variable environments,
                           -- with capacity expression and its own name.
-                          let ρ' = ρ {𝜅 = M.insert x e' (𝜅 ρ), chenv = M.insert x x (chenv ρ)}
+                          let ρ' = ρ {𝜅 = M.insert cname  e' (𝜅 ρ), chenv = M.insert x cname (chenv ρ)}
                           -- Translate the remaining statements
                           translateStatements $ ss >: ρ' <: obj'
                         _ -> err $ "Channel " ++ x ++ " has no capacity."
@@ -379,12 +380,13 @@ translateStatements ρ = case syntax ρ of
                   -- Accept mutex declarations as channel declarations.
                   P.TNamed "Mutexdef" -> do
                     -- Construct translated mutex declaration as a channel with capacity 1.
-                    let mudecl = Pos p $ T.Chan x (T.CNum 1)
+                    let cname = x ++ "'" ++ show (calls ρ)
+                    let mudecl = Pos p $ T.Chan cname (T.CNum 1)
                     -- Add mutex declaration to context declarations
                     let obj' = (curr ρ) {decls = decls (curr ρ) ++ [mudecl]}
                     -- Insert channel in the capacity and variable environments,
                     -- with capacity expression and its own name.
-                    let ρ' = ρ {𝜅 = M.insert x (T.CNum 1) (𝜅 ρ), chenv = M.insert x x (chenv ρ)}
+                    let ρ' = ρ {𝜅 = M.insert cname (T.CNum 1) (𝜅 ρ), chenv = M.insert x cname (chenv ρ)}
                     translateStatements $ ss >: ρ' <: obj'
                   -- FIXME: Ignore named types
                   P.TNamed _ -> translateStatements $ ss >: ρ
