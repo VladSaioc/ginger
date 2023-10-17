@@ -6,6 +6,7 @@ import Data.List qualified as L
 import Data.Map qualified as M
 import Data.Maybe
 import Data.UnionFind.IntMap
+import Data.Set qualified as S
 import IR.Ast
 import Pipeline.IRTranslation.Utilities
 import Utilities.Err
@@ -106,9 +107,9 @@ unboundTypes Ctx {supply, tenv, venv} =
                   then Just t'
                   else Nothing
               _ -> Nothing
-   in mapMaybe getUnboundType (M.elems venv)
+   in L.nub $ mapMaybe getUnboundType (M.elems venv)
 
-typesAndFvs :: 𝑃 -> Err (𝛴, [T.Type])
+typesAndFvs :: 𝑃 -> Err (𝛤, [T.Type])
 typesAndFvs (𝑃 chs s) = do
   ctx <- foldM (\θ ch -> chanFVs $ ch >: θ) mkTCtx chs
   ctx' <- stmtFVs $ s >: ctx

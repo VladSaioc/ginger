@@ -15,7 +15,7 @@ m !!! k = fromMaybe (error "WTF") $ M.lookup k m
 type 𝑋 = String
 
 -- | The type of type environments
-type 𝛴 = 𝑋 ↦ T.Type
+type 𝛤 = 𝑋 ↦ T.Type
 
 -- | An alias for the type of process ids. Its purpose is to provide
 -- clarity to type definitions involving process ids.

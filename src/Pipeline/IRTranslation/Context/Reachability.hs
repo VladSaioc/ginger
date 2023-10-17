@@ -43,8 +43,8 @@ Rules:
 -}
 reachability :: 𝑃 -> 𝛹
 reachability (𝑃 _ s₀)=
-  let 𝜓₁ ⊎ 𝜓₂ = M.unionWith M.union 𝜓₁ 𝜓₂
-      stmtReachability' e 𝜆@𝛬 { 𝑛 = 𝑛₀, p = p₀ } s = 
+  let (⊎) = M.unionWith M.union
+      stmtReachability' e 𝜆@𝛬 { 𝑛 = 𝑛₀, p = p₀ } s =
         let 𝜆' = 𝜆 { 𝑛 = 𝑛 𝜆 + ppOffset s }
          in case s of
             -- Skip statements do not increment the program counter,
@@ -59,7 +59,7 @@ reachability (𝑃 _ s₀)=
                   (𝜓₂, 𝜆₂, e₂) = stmtReachability' (T.Not e₁ T.:&& e) 𝜆₁ s₂
                in (𝜓₁ ⊎ 𝜓₂, 𝜆₂, e₁ T.:|| e₂)
             For _ _ _ os ->
-               let addOp (𝑛ᵢ, 𝜓ᵢ) o = 
+               let addOp (𝑛ᵢ, 𝜓ᵢ) o =
                      let 𝜓ᵢ' = 𝜓ᵢ ⇒ (𝑛ᵢ, e)
                       in (𝑛ᵢ + ppOffset o, 𝜓ᵢ')
                    (𝑛', 𝜓ₚ) = foldl addOp (𝑛₀ + 1, M.empty ⇒ (𝑛₀, e)) os

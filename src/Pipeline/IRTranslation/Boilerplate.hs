@@ -17,14 +17,10 @@ import Pipeline.IRTranslation.Invariant.RendezvousMutex (rendezvousMutexes)
 import Pipeline.IRTranslation.Invariant.RendezvousNoAsync (noAsyncRendezvous)
 import Pipeline.IRTranslation.Invariant.Return (returnMonitors)
 import Pipeline.IRTranslation.Meta.Channel
-import Pipeline.IRTranslation.Meta.Go
-import Pipeline.IRTranslation.Meta.If
 import Pipeline.IRTranslation.Meta.Loop
 import Pipeline.IRTranslation.Meta.Meta
-import Pipeline.IRTranslation.Meta.Return
 import Pipeline.IRTranslation.Clauses.Postcondition (postconditions)
 import Pipeline.IRTranslation.Utilities
-import Utilities.Collection
 
 {- | A function for computing the number of iterations that
 may be performed in a loop.
@@ -242,15 +238,14 @@ Depends on: 𝜓, 𝜅, 𝛯, ℳ
 
 Produces:
 
-> method Program(S : nat -> nat, ∀ x ∈ fv(P). x : int)
-> returns (∀ (p, 𝜙) ∈ 𝛯. 𝜋(p) : int)
-> 
+> lemma Program(S : nat -> nat, ∀ (x, t) ∈ fv(P). x : int)
+> returns (∀ p ∈ dom(𝛯). 𝜋(p) : int)
+>
 > requires capPreconditions(𝜅)
 > requires preconditions(𝜅, nonloop(ℳ), loop(ℳ))
-> 
+>
 > ensures postconditions(𝜓, 𝛯, go(ℳ))
-> 
-> decreases * {
+> {
 >   counterDef(𝛯);
 >   terminationVars(𝛯);
 >   chanDef(𝜅);
@@ -259,8 +254,8 @@ Produces:
 >   centralLoop(𝜅, 𝛯, ℳ)
 > }
 -}
-progEncoding ::  𝛹 -> 𝛴 -> [Type] -> 𝛫 -> 𝛯 -> ℳ -> Method
-progEncoding 𝜓 𝜎 ts 𝜅 𝜉 𝓂@ℳ { os, gs, ls } =
+progEncoding ::  𝛹 -> 𝛤 -> [Type] -> 𝛫 -> 𝛯 -> ℳ -> Method
+progEncoding 𝜓 𝛾 ts 𝜅 𝜉 𝓂@ℳ { os, gs, ls } =
   let commPreconditions = (preconditions 𝜓 𝜅 os ls ...⋀)
    in Method
         { methodReturns = ("step", TNat) : (L.map ((,TInt) . (⊲)) . M.keys) 𝜉,
@@ -269,7 +264,7 @@ progEncoding 𝜓 𝜎 ts 𝜅 𝜉 𝓂@ℳ { os, gs, ls } =
               { ghost = True,
                 name = "Program",
                 types = ts,
-                params = ("fuel", TNat) : ("S", TNat :-> TNat) : M.toList 𝜎,
+                params = ("fuel", TNat) : ("S", TNat :-> TNat) : M.toList 𝛾,
                 ensures =
                   [ (("step" @) :< ("fuel" @)) :==> (commPreconditions :<==> (postconditions 𝜓 𝜉 gs ...⋀))
                   ],
@@ -290,10 +285,10 @@ progEncoding 𝜓 𝜎 ts 𝜅 𝜉 𝓂@ℳ { os, gs, ls } =
 {- | Constructs the complete program specification, by emitting
 all the necessary functions, and the program encoding.
 -}
-wholeEncoding :: 𝛹 -> 𝛴 -> [Type] -> 𝛫 -> 𝛯 -> ℳ -> Program
-wholeEncoding 𝜓 𝜎 ts 𝜅 𝜉 𝓂 =
+wholeEncoding :: 𝛹 -> 𝛤 -> [Type] -> 𝛫 -> 𝛯 -> ℳ -> Program
+wholeEncoding 𝜓 𝛾 ts 𝜅 𝜉 𝓂 =
   Program
     [ FDecl iterationsFunc,
       FDecl (isScheduleFunc 𝜉),
-      MDecl (progEncoding 𝜓 𝜎 ts 𝜅 𝜉 𝓂)
+      MDecl (progEncoding 𝜓 𝛾 ts 𝜅 𝜉 𝓂)
     ]
