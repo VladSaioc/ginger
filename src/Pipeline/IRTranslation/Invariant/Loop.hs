@@ -5,22 +5,21 @@ import Backend.Utilities
 import Data.Map qualified as M
 import Pipeline.IRTranslation.Meta.Loop
 import Pipeline.IRTranslation.Utilities
-import Utilities.Collection
 
 {- | Get all loop monitors for every loop.
 -}
-loopMonitors :: P ↦ (𝑁 ↦ Exp) -> [ℒ] -> [Exp]
+loopMonitors :: 𝛹 -> [ℒ] -> [Exp]
 loopMonitors 𝜓 = map (loopMonitor 𝜓)
 
 {- | Constructs a loop monitor invariant.
 Depends on:
 
 I. Reachability conditions for all processes:
-    𝜓 = [π ↦ [𝑛 ↦ e | 𝑛 ∈ dom(𝛱(π))] | π ∈ dom(𝛱)]
+    𝜓 = [p ↦ [𝑛 ↦ e | 𝑛 ∈ dom(𝛯(p))] | p ∈ dom(𝛯)]
 
-II. ℓ = (π, x, 𝑛, 𝑛', e₁, e₂) with the following properties:
+II. ℓ = (p, x, 𝑛, 𝑛', e₁, e₂) with the following properties:
 
-1. π is the process id of the loop
+1. p is the process id of the loop
 2. x is the loop index variable
 3. e₁ is the lower bound expression
 4. e₂ is the upper bound expression
@@ -29,14 +28,14 @@ II. ℓ = (π, x, 𝑛, 𝑛', e₁, e₂) with the following properties:
 
 Produces:
 
-> if 𝜓(π)(𝑛) && e₁ ≤ e₂ then
+> if 𝜓(p)(𝑛) && e₁ ≤ e₂ then
 >   e₁ ≤ x ≤ e₂
->   pc(π) < 𝑛 => x = e₁ ∧
->   𝑛 < pc(π) < 𝑛' => x < e₂ ∧
->   𝑛' ≤ pc(π) => x = e₂
-> else x = e₁ ∧ ¬(𝑛 < pc(π) < 𝑛')
+>   𝜋(p) < 𝑛 => x = e₁ ∧
+>   𝑛 < 𝜋(p) < 𝑛' => x < e₂ ∧
+>   𝑛' ≤ 𝜋(p) => x = e₂
+> else x = e₁ ∧ ¬(𝑛 < 𝜋(p) < 𝑛')
 -}
-loopMonitor :: P ↦ (𝑁 ↦ Exp) -> ℒ -> Exp
+loopMonitor :: 𝛹 -> ℒ -> Exp
 loopMonitor 𝜓 (ℒ {l𝑋 = var, lP = p, l𝑛 = 𝑛, lExit = 𝑛', lower, upper}) =
   let b = 𝜓 M.! p M.! 𝑛
       -- Short-hand for lower bound
@@ -46,7 +45,7 @@ loopMonitor 𝜓 (ℒ {l𝑋 = var, lP = p, l𝑛 = 𝑛, lExit = 𝑛', lower, 
       -- Loop variable as a back-end variable
       x = (var @)
       -- Program counter as a back-end variable
-      pc = π p
+      pc = 𝜋 p
       -- Loop guard point as a fixed program point
       guard = (𝑛 #)
       -- Loop exit point as a fixed program point
@@ -62,11 +61,11 @@ loopMonitor 𝜓 (ℒ {l𝑋 = var, lP = p, l𝑛 = 𝑛, lExit = 𝑛', lower, 
       hasIter =
         let -- Loop counter is bounded: lo ≤ x ≤ hi
             bounded = (lo :<= x) :&& (x :<= hi)
-            -- Counter value before guard is reached: pc(π) < n => x = lo
+            -- Counter value before guard is reached: 𝜋(p) < n => x = lo
             before = (pc :< guard) :==> (x :== lo)
-            -- Counter value while loop is executing: n < pc(π) < n' => x < hi
+            -- Counter value while loop is executing: n < 𝜋(p) < n' => x < hi
             during = counterInLoop :==> (x :< hi)
-            -- Counter value after loop has executed: n' ≤ pc(π) => x = hi
+            -- Counter value after loop has executed: n' ≤ 𝜋(p) => x = hi
             after = (exit :<= pc) :==> (x :>= hi)
          in ([bounded, before, during, after] ...⋀)
       -- The clause modeling loop behaviour if the loop never enters.

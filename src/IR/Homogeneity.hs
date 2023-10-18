@@ -4,13 +4,12 @@ import Data.Map qualified as M
 import IR.Ast
 import IR.Utilities
 import Utilities.Err
-import Utilities.General
 
 type DirEnv = Err (M.Map String OpDir)
 
 homogeneous :: 𝑃 -> Err ()
 homogeneous (𝑃 _ gos) = do
-  _ <- results (Prelude.map homogeneousProc gos)
+  _ <- homogeneousProc gos
   return ()
 
 homogeneousProc :: 𝑆 -> Err ()
@@ -20,6 +19,8 @@ homogeneousProc s = do
 
 homogeneousStmt :: DirEnv -> 𝑆 -> DirEnv
 homogeneousStmt d = \case
+  Return -> d
+  Go s -> homogeneousStmt (return M.empty) s
   If _ s1 s2 -> do
     d' <- homogeneousStmt d s1
     homogeneousStmt (return d') s2

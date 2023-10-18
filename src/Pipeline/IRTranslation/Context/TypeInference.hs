@@ -1,4 +1,4 @@
-module Pipeline.IRTranslation.FreeVars where
+module Pipeline.IRTranslation.Context.TypeInference (typesAndFvs) where
 
 import Backend.Ast qualified as T
 import Control.Monad (foldM)
@@ -6,6 +6,7 @@ import Data.List qualified as L
 import Data.Map qualified as M
 import Data.Maybe
 import Data.UnionFind.IntMap
+import Data.Set qualified as S
 import IR.Ast
 import Pipeline.IRTranslation.Utilities
 import Utilities.Err
@@ -106,12 +107,12 @@ unboundTypes Ctx {supply, tenv, venv} =
                   then Just t'
                   else Nothing
               _ -> Nothing
-   in mapMaybe getUnboundType (M.elems venv)
+   in L.nub $ mapMaybe getUnboundType (M.elems venv)
 
-fvs :: 𝑃 -> Err (𝛴, [T.Type])
-fvs (𝑃 chs procs) = do
+typesAndFvs :: 𝑃 -> Err (𝛤, [T.Type])
+typesAndFvs (𝑃 chs s) = do
   ctx <- foldM (\θ ch -> chanFVs $ ch >: θ) mkTCtx chs
-  ctx' <- foldM (\θ p -> stmtFVs $ p >: θ) ctx procs
+  ctx' <- stmtFVs $ s >: ctx
   -- S.unions (map chanFVs chs ++ map stmtFVs procs)
   let vs = makeTypeEnvironment ctx'
   let ts = unboundTypes ctx'
@@ -145,6 +146,7 @@ stmtFVs ctx@(Ctx {datum = s}) =
           ctx1 <- updateWithExp T.TBool ctx e
           ctx2 <- stmtFVs $ s1 >: ctx1
           stmtFVs $ s2 >: ctx2
+        Go s1 -> stmtFVs $ s1 >: ctx
 
 -- | Extract, and infer the types of, free variables in expressions.
 expFVs :: TCtx 𝐸 -> Err (TCtx T.Type)

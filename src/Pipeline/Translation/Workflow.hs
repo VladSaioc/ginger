@@ -24,7 +24,6 @@ promelaToIR p = do
           in if g1 == g' then g' else zimplify g'
   let g1 = zimplify g
   let g' = goForCommute g1
-  _ <- trace (unlines ["", "Go represention of program:", "", show g1]) (return ())
   _ <- trace (unlines ["", "Go represention of program:", "", show g']) (return ())
   _ <- allowed g'
   ir <- getIR g'

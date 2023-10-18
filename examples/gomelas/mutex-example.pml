@@ -2,13 +2,13 @@
 // num_mand_comm_params=0
 // num_opt_comm_params=0
 
+#define default true
 typedef Mutexdef {
 	chan Lock = [0] of {bool};
 	chan Unlock = [0] of {bool};
 	chan RLock = [0] of {bool};
 	chan RUnlock = [0] of {bool};
 	int Counter = 0;}
-#define default true
 
 
 init {
@@ -26,6 +26,11 @@ proctype TestCreateBackupScheduleCollectionOverwrite988(chan child) {
 	int num_msgs;
 	Mutexdef th_cfg_Settings_Cache_mu;
 	run mutex_monitor(th_cfg_Settings_Cache_mu);
+
+	for (i : 0 .. 10) {
+		th_cfg_Settings_Cache_mu.Lock?ok;
+		th_cfg_Settings_Cache_mu.Unlock?ok;
+	};
 	stop_process: skip;
 	child!0
 }

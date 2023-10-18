@@ -6,31 +6,31 @@ import Data.Map qualified as M
 import Pipeline.IRTranslation.Meta.Channel
 
 {- | Composes all channel bound invariants.
-Depends on: κ
+Depends on: 𝜅
 
 Produces:
 
-> ∀ c ∈ dom(κ). channelBound(c, κ(c))
+> ∀ c ∈ dom(𝜅). channelBound(c, 𝜅(c))
 -}
-channelBounds :: K -> [Exp]
+channelBounds :: 𝛫 -> [Exp]
 channelBounds = map (uncurry channelBound) . M.toList
 
 {- | Constructs a channel bound invariant.
-Depends on: c, κ(c)
+Depends on: c, 𝜅(c)
 
 Produces:
 
-> (κ(c) > 0 ⇒ 0 ≤ c ∧ c ≤ κ(c)) ∧ (κ(c) = 0 ⇒ c ∈ {1, 0, -1})
+> (𝜅(c) > 0 ⇒ 0 ≤ c ∧ c ≤ 𝜅(c)) ∧ (𝜅(c) = 0 ⇒ c ∈ {1, 0, -1})
 -}
 channelBound :: String -> Exp -> Exp
 channelBound c k =
   let -- 0 ≤ c
       lower = (0 #) :<= (c @)
-      -- c ≤ κ(c)
+      -- c ≤ 𝜅(c)
       upper = (c @) :<= k
-      -- κ(c) = 0
+      -- 𝜅(c) = 0
       isSync = k :== (0 #)
-      -- 0 ≤ c ∧ c ≤ κ(c)
+      -- 0 ≤ c ∧ c ≤ 𝜅(c)
       asyncBound = lower :&& upper
       -- c ∈ {1, 0, -1}
       syncBound = In (c @) (ESet [(1 #), (0 #), ((-1) #)])

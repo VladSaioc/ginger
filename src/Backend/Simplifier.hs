@@ -27,9 +27,9 @@ fSimplify (Function {yields, funcHoare, funcBody}) =
 
 -- | Simplify method declaration. Affects Hoare clauses and the method body.
 mSimplify :: Method -> Method
-mSimplify (Method {returns, methodHoare, methodBody}) =
+mSimplify (Method {methodReturns, methodHoare, methodBody}) =
   Method
-    { returns = returns,
+    { methodReturns = methodReturns,
       methodHoare = hSimplify methodHoare,
       methodBody = sSimplify methodBody
     }
@@ -108,7 +108,7 @@ eSimplify pe =
         _ :&& ECon CFalse -> (False ?)
         -- b. false && e ==> false
         ECon CFalse :&& _ -> (False ?)
-        -- True is neutral in conjuction
+        -- True is neutral in conjunction
         -- a. e && true ==> e
         e :&& ECon CTrue -> eSimplify e
         -- b. true && e ==> e

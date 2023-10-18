@@ -18,22 +18,22 @@ over the capacity expression.
 Depends on:
 
 > 1. Reachability conditions for all processes:
->     𝜓 = [π ↦ [𝑛 ↦ e | 𝑛 ∈ dom(𝛱(π))] | π ∈ dom(𝛱)]𝛱)]
+>     𝜓 = [p ↦ [𝑛 ↦ e | 𝑛 ∈ dom(𝛯(p))] | p ∈ dom(𝛯)]
 > 2. All program loops: [ℓ]
 > 3. All non-loop operations:
->     O = {(π, 𝑛, o) | (𝑛, o) ∉ op(ℓ), ℓ ∈ [ℓ], (𝑛, o) ∈ 𝜙, (π, 𝜙) ∈ 𝛱 }
-> 4. Channel capacity environments: κ
+>     O = {(p, 𝑛, o) | (𝑛, o) ∉ op(ℓ), ℓ ∈ [ℓ], (𝑛, o) ∈ 𝜙, (p, 𝜙) ∈ 𝛯 }
+> 4. Channel capacity environments: 𝜅
 > 
 > ∀ c, e1 = syncChannelMonitor(𝜓, O, [ℓ])(c),
 >      e2 = asyncChannelMonitor(𝜓, O, [ℓ])(c).
->     c = if κ(c) > 0 then e2 else e1
+>     c = if 𝜅(c) > 0 then e2 else e1
 -}
-channelMonitors :: 𝛹 -> K -> P ↦ (𝐶 ↦ 𝒪s) -> [ℒ] -> [Exp]
-channelMonitors 𝜓 κ noloopOps ls =
+channelMonitors :: 𝛹 -> 𝛫 -> P ↦ (𝐶 ↦ 𝒪s) -> [ℒ] -> [Exp]
+channelMonitors 𝜓 𝜅 noloopOps ls =
   let syncMs = syncChannelMonitors 𝜓 noloopOps ls
       asyncMs = asyncChannelMonitors 𝜓 noloopOps ls
       combineMonitors c s a =
-        let cap = Mb.fromMaybe (0 #) (M.lookup c κ)
+        let cap = Mb.fromMaybe (0 #) (M.lookup c 𝜅)
             isAsync = cap :> (0 #)
          in (c @) :== IfElse isAsync a s
    in M.elems $ M.unionWithKey combineMonitors syncMs asyncMs

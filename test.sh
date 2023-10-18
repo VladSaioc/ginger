@@ -11,8 +11,10 @@ runIRExample () {
     then
       echo "Skipping Dafny file $FILE"
     else
+      echo "Now testing: $DIR/$FILE"
       EXT=$(echo "$DIR/$FILE" | sed "s/\//__/g")
       stack run -- -ir "$DIR/$FILE"
+      echo "Success: $DIR/$FILE"
     fi
   done
 }
@@ -26,8 +28,10 @@ runPromelaExample () {
     then
       echo "Skipping Dafny file $FILE"
     else
+      echo "Now testing: $DIR/$FILE"
       EXT=$(echo "$DIR/$FILE" | sed "s/\//__/g")
       stack run -- "$DIR/$FILE"
+      echo "Success: $DIR/$FILE"
     fi
   done
   # ./dafny/dafny "./$DIR/$EXT.dfy"
@@ -36,6 +40,7 @@ runPromelaExample () {
 runIRExample simple
 runIRExample complex
 runIRExample conditional
+runIRExample go
 runIRExample return
 
 runPromelaExample ast-transform

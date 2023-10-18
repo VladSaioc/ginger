@@ -5,13 +5,13 @@ case $1 in
   ;;
   "Trace")
   ;;
-  *) 
+  *)
     echo "Unrecognized grammar."
     exit 1
   ;;
-esac 
+esac
 
 bnfc --haskell --outputdir=src -p $1 src/$1.cf
-alex src/$1/Lex$1.x
-happy src/$1/Par$1.y
+stack run alex -- src/$1/Lex$1.x
+stack run happy -- src/$1/Par$1.y
 rm src/$1/Test$1.hs

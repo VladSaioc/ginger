@@ -65,7 +65,7 @@ data Stmt
     While Exp [Exp] [Exp] Stmt
   | -- | > return {e, ...}*
     Return [Exp]
-  deriving (Eq, Ord, Show, Read)
+  deriving (Eq, Ord, Read)
 
 -- | Back-end constants:
 -- > c ::= true | false | n
@@ -156,7 +156,7 @@ data Exp
     ECon Const
   | -- | > f({e, ...}*)
     Call String [Exp]
-  deriving (Eq, Ord, Show, Read)
+  deriving (Eq, Ord, Read)
 
 -- | Back-end record type definition:
 --
@@ -194,7 +194,7 @@ data Function = Function
 --
 -- > M ::= H<lemma | method, returns ({ x : T, ...}*)> { {S; ...}* }
 data Method = Method
-  { returns :: [(String, Type)],
+  { methodReturns :: [(String, Type)],
     methodHoare :: HoareWrap,
     methodBody :: Stmt
   }
@@ -276,6 +276,15 @@ newtype Program = Program [Decl] deriving (Eq, Ord, Read)
    in trans e2
 
 instance Show Type where
+  show = prettyPrint 0
+
+instance Show Exp where
+  show = prettyPrint 0
+
+instance Show Program where
+  show = prettyPrint 0
+
+instance Show Stmt where
   show = prettyPrint 0
 
 -- Pretty printer
@@ -431,18 +440,18 @@ instance PrettyPrint Function where
           dec = prop "decreases" decreases
           props = intercalate "\n" (pre ++ post ++ dec)
           body = prettyPrint 1 funcBody
-          prop kw = map (((indent 1 kw) ++) . prettyPrint 2)
+          prop kw = map ((indent 1 kw ++) . prettyPrint 2)
        in intercalate "\n" [header, props ++ "{", body, "}"]
 
 instance PrettyPrint Method where
-  prettyPrint _ Method {returns, methodHoare, methodBody} = case methodHoare of
+  prettyPrint _ Method {methodReturns, methodHoare, methodBody} = case methodHoare of
     HoareWrap {ghost, name, types, params, decreases, requires, ensures} ->
       let ps = intercalate ", " (map (\(x, t) -> unwords [x, ":", prettyPrint 0 t]) params)
           ts =
             if null types
               then ""
               else "<" ++ intercalate ", " (map (prettyPrint 0) types) ++ ">"
-          rps = map (\(x, t) -> unwords [x, ":", prettyPrint 0 t]) returns
+          rps = map (\(x, t) -> unwords [x, ":", prettyPrint 0 t]) methodReturns
           method = if ghost then "lemma" else "method"
           header = unwords [method, name ++ ts ++ "(" ++ ps ++ ")", "returns", "(" ++ intercalate ", " rps ++ ")"]
           pre = prop "requires" requires

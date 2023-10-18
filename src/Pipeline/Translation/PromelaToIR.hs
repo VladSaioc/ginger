@@ -17,7 +17,6 @@ data Ctxt a b = Ctxt
     cg :: M.Map String P.Module,
     varenv :: M.Map String 𝐸,
     chenv :: M.Map String String,
-    procs :: M.Map Int 𝑆,
     chans :: M.Map String 𝐸,
     curr :: b
   }
@@ -41,7 +40,6 @@ getIR p@(P.Spec ms) =
             nextpid = 1,
             cg = getCG p,
             varenv = Prelude.foldl getFV M.empty ms,
-            procs = M.empty,
             chans = M.empty,
             chenv = M.empty,
             curr = Skip
@@ -49,12 +47,11 @@ getIR p@(P.Spec ms) =
    in do
         ctx' <- translateStatements ctx
         let chs = M.elems $ M.mapWithKey Chan (chans ctx')
-        let ps = M.elems $ procs ctx'
-        return $ 𝑃 chs ps
+        return $ 𝑃 chs (curr ctx')
 
 translateStatements :: Ctxt [Pos P.Stmt] 𝑆 -> Err (Ctxt () 𝑆)
 translateStatements ctx = case syntax ctx of
-  [] -> done (ctx {procs = M.insert (pid ctx) (curr ctx) (procs ctx)})
+  [] -> done ctx
   Pos p s : ss -> do
     let addOp op = do
           ctx' <- translateOp (Pos p op >: ctx)
@@ -97,7 +94,6 @@ translateStatements ctx = case syntax ctx of
                       cg = cg ctx,
                       varenv = Prelude.foldl addVar (varenv ctx) pes,
                       chenv = Prelude.foldl addCh M.empty pes,
-                      procs = procs ctx,
                       chans = chans ctx,
                       curr = Skip
                     }
@@ -105,10 +101,9 @@ translateStatements ctx = case syntax ctx of
             let ctx3 =
                   ctx
                     { nextpid = nextpid ctx2,
-                      procs = procs ctx2,
                       chans = chans ctx2
                     }
-            translateStatements (ss >: ctx3)
+            translateStatements (ss >: ctx3 <: Seq (curr ctx) (Go (curr ctx2)))
           _ -> err $ "Function " ++ f ++ " not in call-graph."
       P.For r ss' -> do
         (x, e1', e2') <- translateRange (varenv ctx) r

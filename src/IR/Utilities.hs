@@ -35,7 +35,7 @@ instance Show OpDir where
 -- > [FOR]:       interesting(for x : e1 .. e2 { S })
 -- >              |- interesting(S)
 interesting :: 𝑃 -> Bool
-interesting (𝑃 _ ps) =
+interesting (𝑃 _ s) =
   let
     bin s1 s2 = interestingStmt s1 || interestingStmt s2
     interestingStmt = \case
@@ -43,5 +43,6 @@ interesting (𝑃 _ ps) =
         Seq s1 s2 -> bin s1 s2
         If _ s1 s2 -> bin s1 s2
         For _ _ _ os -> not (null os)
+        Go s1 -> interestingStmt s1
         _ -> False
-  in any interestingStmt ps
+  in interestingStmt s
