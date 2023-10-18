@@ -37,10 +37,10 @@ position token NUMBER (digit)+;
 position token ID (letter|["_"]) ((digit|letter|["_'"])*);
 
 -- Program
-Prog. Prog ::= [Chan] GO "{" [Stm] "}";
+Prog. Prog ::= [Chan] [Stm];
 
 -- Channel declaration
-separator Chan ";";
+terminator Chan ";";
 Chan. Chan ::= ID "=" "[" Exp "]";
 
 -- Statement
