@@ -1,6 +1,4 @@
-c = [1]
-go {
-  c!;
-  return;
-  c?
-}
+c = [1];
+c!;
+return;
+c?

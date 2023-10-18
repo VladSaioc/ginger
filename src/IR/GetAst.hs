@@ -25,7 +25,7 @@ getAst = pProgram . pProg . myLexer
 
 pProgram :: R''.Err R'.Prog -> Err 𝑃
 pProgram = \case
-  R''.Ok (R'.Prog chs _ s) -> do
+  R''.Ok (R'.Prog chs s) -> do
     chs' <- composeSyntax pChan chs
     ps' <- pStms s
     return (𝑃 chs' ps')
