@@ -21,10 +21,7 @@ Depends on: 𝜓, g = (p, p', 𝑛)
 
 Produces:
 
-> if 𝜓(p)(𝑛) then (𝑛 < 𝜋(p) => -1 < 𝜋(p')) else 𝜋(p') == -1
+> 𝜓(p)(𝑛) ∧ 𝑛 < 𝜋(p) <==> -1 < 𝜋(p')
 -}
 goMonitor :: 𝛹 -> 𝒢 -> Exp
-goMonitor 𝜓 (𝒢 { gP = p, gP' = p', g𝑛 = 𝑛 }) =
-  let running = (𝜋 p :> (𝑛 #)) :<==> (((-1) #) :< 𝜋 p')
-      notRunning = 𝜋 p' :== ((-1) #)
-   in IfElse (𝜓 M.! p M.! 𝑛) running notRunning
+goMonitor 𝜓 (𝒢 { gP = p, gP' = p', g𝑛 = 𝑛 }) = ((𝜓 M.! p M.! 𝑛) :&& (𝜋 p :> (𝑛 #))) :<==> (((-1) #) :< 𝜋 p')

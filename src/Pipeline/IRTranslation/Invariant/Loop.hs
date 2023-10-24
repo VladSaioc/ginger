@@ -29,10 +29,10 @@ II. ℓ = (p, x, 𝑛, 𝑛', e₁, e₂) with the following properties:
 Produces:
 
 > if 𝜓(p)(𝑛) && e₁ ≤ e₂ then
->   e₁ ≤ x ≤ e₂
->   𝜋(p) < 𝑛 => x = e₁ ∧
->   𝑛 < 𝜋(p) < 𝑛' => x < e₂ ∧
->   𝑛' ≤ 𝜋(p) => x = e₂
+>     e₁ ≤ x ≤ e₂
+>   ∧ 𝜋(p) < 𝑛 => x = e₁ ∧
+>   ∧ 𝑛 < 𝜋(p) < 𝑛' => x < e₂ ∧
+>   ∧ 𝑛' ≤ 𝜋(p) => x = e₂
 > else x = e₁ ∧ ¬(𝑛 < 𝜋(p) < 𝑛')
 -}
 loopMonitor :: 𝛹 -> ℒ -> Exp
