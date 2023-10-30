@@ -23,15 +23,15 @@ Depends on:
 > 3. All non-loop operations:
 >     O = {(p, 𝑛, o) | (𝑛, o) ∉ op(ℓ), ℓ ∈ [ℓ], (𝑛, o) ∈ 𝜙, (p, 𝜙) ∈ 𝛯 }
 > 4. Channel capacity environments: 𝜅
-> 
+>
 > ∀ c, e1 = syncChannelMonitor(𝜓, O, [ℓ])(c),
 >      e2 = asyncChannelMonitor(𝜓, O, [ℓ])(c).
 >     c = if 𝜅(c) > 0 then e2 else e1
 -}
 channelMonitors :: 𝛹 -> 𝛫 -> P ↦ (𝐶 ↦ 𝒪s) -> [ℒ] -> [Exp]
-channelMonitors 𝜓 𝜅 noloopOps ls =
-  let syncMs = syncChannelMonitors 𝜓 noloopOps ls
-      asyncMs = asyncChannelMonitors 𝜓 noloopOps ls
+channelMonitors 𝜓 𝜅 os ls =
+  let syncMs = syncChannelMonitors 𝜓 os ls
+      asyncMs = asyncChannelMonitors 𝜓 os ls
       combineMonitors c s a =
         let cap = Mb.fromMaybe (0 #) (M.lookup c 𝜅)
             isAsync = cap :> (0 #)

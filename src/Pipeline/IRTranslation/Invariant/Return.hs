@@ -12,11 +12,11 @@ returnMonitors :: 𝛹 -> [ℛ] -> [Exp]
 returnMonitors 𝜓 = map $ returnMonitor 𝜓
 
 {- | Constructs a return monitor invariant.
-Depends on: 𝑟 = (p, n, e)
+Depends on: 𝜓, 𝑟 = (p, 𝑛)
 
 Produces:
 
-> e ==> !(n < 𝜋(p) && 𝜋(p) < 𝜒(𝜋))
+> 𝜓(p)(𝑛) ==> !(𝑛 < 𝜋(p) && 𝜋(p) < 𝜒(𝜋))
 -}
 returnMonitor :: 𝛹 -> ℛ -> Exp
 returnMonitor 𝜓 (ℛ {rP = p, r𝑛 = 𝑛}) =

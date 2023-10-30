@@ -32,8 +32,8 @@ Produces:
 >        + 𝛴 (p, 𝑛, ?) ∈ O, e' = noloopMonitor(p, 𝑛). e' ]
 -}
 asyncChannelMonitors :: 𝛹 -> P ↦ (𝐶 ↦ 𝒪s) -> [ℒ] -> 𝐶 ↦ Exp
-asyncChannelMonitors 𝜓 noloopOps ls =
-  let noloopSubexps = L.map snd (M.toList (M.map (noloopMonitors 𝜓) noloopOps))
+asyncChannelMonitors 𝜓 os ls =
+  let noloopSubexps = L.map snd (M.toList (M.map (noloopMonitors 𝜓) os))
       loopSubexps = L.map (loopMonitor 𝜓) ls
       subexps = M.unionsWith (M.unionWith (:+)) (noloopSubexps ++ loopSubexps)
       chanMonitor dir =
@@ -113,7 +113,7 @@ Depends on: p, 𝑛, where n ∈ dom(𝛯(p)), b (reachability condition)
 
 Produces:
 
-> if b then if 𝑛 < 𝜋(p) then 1 else 0 else 0
+> if 𝜓(p)(𝑛) ∧ 𝑛 < 𝜋(p) then 1 else 0
 -}
 noloopMonitor :: 𝛹 -> 𝒪 -> Exp
 noloopMonitor 𝜓 𝒪 {oP = p, o𝑛 = 𝑛} =

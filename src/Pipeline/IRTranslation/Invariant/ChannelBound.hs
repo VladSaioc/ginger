@@ -20,7 +20,7 @@ Depends on: c, 𝜅(c)
 
 Produces:
 
-> (𝜅(c) > 0 ⇒ 0 ≤ c ∧ c ≤ 𝜅(c)) ∧ (𝜅(c) = 0 ⇒ c ∈ {1, 0, -1})
+> if 𝜅(c) > 0 then 0 ≤ c ∧ c ≤ 𝜅(c) else c in {1, 0, -1}
 -}
 channelBound :: String -> Exp -> Exp
 channelBound c k =
