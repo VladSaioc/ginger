@@ -118,7 +118,7 @@ data 𝐸
 instance Show 𝑃 where
   show (𝑃 cs s) =
     let cs' = multiline (map show cs)
-     in concat [cs', "\n", multiline["go {", prettyPrint 1 s, "}"]]
+     in unlines [cs', prettyPrint 0 s]
 
 instance Show Chan where
   show (Chan c e) = unwords [c, "=", "[" ++ show e ++ "];"]

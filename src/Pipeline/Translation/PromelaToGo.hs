@@ -5,6 +5,7 @@ import Data.List qualified as L
 import Data.Map qualified as M
 import Data.Maybe qualified as Mb
 import Go.Ast qualified as T
+import Go.Cyclomatic
 import Go.Utilities (flipIfs)
 import Pipeline.Callgraph (getCG)
 import Promela.Ast qualified as P
@@ -239,8 +240,9 @@ translateStatements ρ = case syntax ρ of
           -- Reduce Gomela for statements non-determinstic wrapping
           -- to underlying for statement:
           --
-          -- if :: _ -> for (i : e1 .. e2) { S }; ...
-          --    :: _ -> do :: _ -> S; ...
+          -- if
+          -- :: _ -> for (i : e1 .. e2) { S }; ...
+          -- :: else -> do :: _ -> S; ...
           -- fi
           P.If
             ((_, for@((Pos _ (P.For _ _)) : _)) : _)
@@ -459,7 +461,7 @@ translateStatements ρ = case syntax ρ of
             let Obj {stmts = oss'} = curr ρ2
             let (ods', s') =
                   if isSequential ss
-                    then (decls $ curr ρ2, T.Block oss')
+                    then (decls $ curr ρ2, T.Block $ stripReturns oss')
                     else ([], T.Go $ ods' ++ oss')
             let Obj {decls = ods, stmts = oss} = curr ρ
             let obj' = Obj {decls = ods ++ ods', stmts = Pos p s' : oss}
