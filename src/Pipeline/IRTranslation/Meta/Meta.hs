@@ -9,22 +9,22 @@ import Pipeline.IRTranslation.Meta.Return
 import Pipeline.IRTranslation.Utilities
 import Utilities.Collection
 
--- | All statement metadata in the program.
+-- | All statement summaries in the program.
 data ℳ = ℳ
-  { -- | Channel operation metadata
+  { -- | Channel operation summaries
     os :: P ↦ (𝐶 ↦ 𝒪s),
-    -- | Go statement metadata
+    -- | Go statement summaries
     gs :: [𝒢],
-    -- | If statement metadata
+    -- | If statement summaries
     is :: [ℐ],
-    -- | Loop metadata
+    -- | Loop summaries
     ls :: [ℒ],
-    -- | Return statement metadata
+    -- | Return statement summaries
     rs :: [ℛ]
   }
 
-meta :: 𝛫 -> 𝑃 -> ℳ
-meta 𝜅 p =
+getSummaries :: 𝑃 -> ℳ
+getSummaries p =
   ℳ
     {
       os = noloopPsChanInsns p,

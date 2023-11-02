@@ -149,7 +149,7 @@ pattern SyncRecv c p n =
 -- receives. Channel operations have the following pattern (members between
 -- angle brackets correspond to code generated for send on the left side,
 -- and receive on the right side):
--- 
+--
 -- > if 0 < 𝜅(c) {
 -- >    if c ⟨< 𝜅(c) | > 0⟩ {
 -- >       c := c ⟨+ | -⟩ 1;
@@ -280,17 +280,17 @@ backendChannelOp =
         -- The statement does not conform to any channel operation pattern.
         _ -> Nothing
 
-{- | Convert back-end instruction point to channel metadata.
+{- | Convert back-end instruction point to channel operation summary.
 Depends on: p, 𝜙, 𝑛
 
-! Metadata does not include path conditions.
+! Summary does not include path conditions.
 
 Produces:
 
 > 𝒪 {p, c, d, 𝑛}, where cd = 𝜙(𝑛)
 -}
-insnToChMetadata :: P -> 𝑁 -> Stmt -> Maybe 𝒪
-insnToChMetadata p 𝑛 s = do
+insnToChSummary :: P -> 𝑁 -> Stmt -> Maybe 𝒪
+insnToChSummary p 𝑛 s = do
   op <- backendChannelOp s
   let (c, d) = either (,S) (,R) op
   return
@@ -302,7 +302,7 @@ insnToChMetadata p 𝑛 s = do
       }
 
 {- | Aggregate all channel operation points from all processes, indexed.
-Produces a map of channel operation metadata indexed by the channel name.
+Produces a map of channel operation summaries indexed by the channel name.
 Depends on: p, 𝜙
 
 Produces:
@@ -313,7 +313,7 @@ chanOpsMap :: 𝛯 -> P ↦ (𝐶 ↦ [𝒪])
 chanOpsMap = M.mapWithKey processChanOpsMap
 
 {- | Aggregate all channel operation points from a given process and its program points.
-Produces a map of channel operation metadata indexed by the channel name.
+Produces a map of channel operation summaries indexed by the channel name.
 Depends on: p, 𝜙
 
 Produces:
@@ -323,13 +323,13 @@ Produces:
 processChanOpsMap :: P -> 𝛷 -> 𝐶 ↦ [𝒪]
 processChanOpsMap p =
   let addChanOp 𝑛 i cops =
-        case insnToChMetadata p 𝑛 i of
+        case insnToChSummary p 𝑛 i of
           Just o@(𝒪 {o𝐶 = c}) -> M.insertWith (++) c [o] cops
           Nothing -> cops
    in M.foldrWithKey addChanOp M.empty
 
 {- | Aggregate all channel operation points from a given map of program points.
-Produces a list of channel operation metadata, including the channel name,
+Produces a list of channel operation summaries, including the channel name,
 process id, operation direction, program point.
 Depends on: p, 𝜙
 
@@ -338,4 +338,4 @@ Produces:
 > { 𝒪 {p, c, d, 𝑛} | (𝑛, cd) ∈ 𝜙. d ∈ {!, ?} }
 -}
 processChanOps :: P -> 𝛷 -> [𝒪]
-processChanOps p = catMaybes . M.elems . M.mapWithKey (insnToChMetadata p)
+processChanOps p = catMaybes . M.elems . M.mapWithKey (insnToChSummary p)

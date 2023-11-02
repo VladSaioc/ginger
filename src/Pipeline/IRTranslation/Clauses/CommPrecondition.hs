@@ -1,43 +1,43 @@
-module Pipeline.IRTranslation.Clauses.CommPrecondition (preconditions) where
+module Pipeline.IRTranslation.Clauses.CommPrecondition (projectedCommunication) where
 
 import Backend.Ast
 import Backend.Utilities
 import Data.List qualified as L
 import Data.Map qualified as M
 import Data.Maybe qualified as Mb
-import Debug.Trace
 import IR.Utilities
 import Pipeline.IRTranslation.Meta.Channel
 import Pipeline.IRTranslation.Meta.Loop
+import Pipeline.IRTranslation.Meta.Meta
 import Pipeline.IRTranslation.Utilities
 import Utilities.Collection
 
 -- | Creates a call to the "iter" function on loop bounds.
 --
--- Produces: 
+-- Produces:
 --
 -- > iter(lo,hi)
 iterations :: Exp -> Exp -> Exp
 iterations lo hi = Call "iter" [lo, hi]
 
--- | Create all channel preconditions.
-preconditions :: 𝛹 -> 𝛫 -> P ↦ (𝐶 ↦ 𝒪s) -> [ℒ] -> [Exp]
-preconditions 𝜓 𝜅 noloops loops =
-  let -- Gather precondition contributions for every channel for
+-- | Creates a binding from channels to expressions projecting the number of channel operations,
+-- from which channel preconditions may be constructed.
+projectedCommunication :: 𝛹 -> ℳ -> 𝐶 ↦ (OpDir ↦ Exp)
+projectedCommunication 𝜓 ℳ { ls, os }=
+  let
+      -- Gather precondition contributions for every channel for
       -- operations in loop statements.
-      lR = M.unionsWith (M.unionWith (:+)) (L.map (loopToPre 𝜓) loops)
+      lR = M.unionsWith (M.unionWith (:+)) (L.map (loopToPre 𝜓) ls)
       -- Gather precondition contributions for every channel for
       -- operations outside loops.
-      nR = noloopOpToPre 𝜓 noloops
+      nR = noloopOpToPre 𝜓 os
       -- Combine the sets of channel names.
       cs = L.union (M.keys lR) (M.keys nR)
       -- Construct a precondition for channel c.
       prc c =
-        let -- Get channel capacity expression.
-            k = Mb.fromJust (M.lookup c 𝜅)
-            -- Get channel precondition sub-expressions from map.
+        let -- Get channel precondition sub-expressions from map.
             cR r = Mb.fromMaybe M.empty (M.lookup c r)
-            -- Get precondition sub-expressions for channel operation direction.
+            -- Get precondition sub-expressions for channel operation orientation.
             cdR d r = Mb.fromMaybe (0 #) (M.lookup d r)
             -- Get loop and non-loop precondition sub-expressions.
             (clR, cnR) = (cR lR, cR nR)
@@ -45,19 +45,12 @@ preconditions 𝜓 𝜅 noloops loops =
             -- Get send sub-expressions.
             sends = cdR S clR :+ cdR S cnR
             -- Get receive sub-expressions.
-            rcvs = cdR R clR :+ cdR R cnR
+            recvs = cdR R clR :+ cdR R cnR
 
-            -- Construct receive unblock precondition.
-            -- Receives unblock if there are more sends.
-            rcvsUnblock = rcvs :<= sends
-            -- Construct send unblock precondition.
-            -- Sends unblock if there are more receive operations and
-            -- capacity combined.
-            sndsUnblock = sends :<= (rcvs :+ k)
-         in -- The final precondition requires that both the receives and
-            -- sends unblock. 
-            rcvsUnblock :&& sndsUnblock
-   in L.map prc cs
+         in -- Bind the channel to the number of receive and send operations it
+            -- is projected to compute.
+            (c, M.fromList [(R, recvs), (S, sends)])
+   in M.fromList $ L.map prc cs
 
 {- | Constructs the resource contribution resulting from
 loop channel operations.

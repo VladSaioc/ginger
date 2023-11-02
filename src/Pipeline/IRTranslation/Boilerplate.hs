@@ -1,12 +1,12 @@
-module Pipeline.IRTranslation.Boilerplate (wholeEncoding) where
+module Pipeline.IRTranslation.Boilerplate (encodingToDafny) where
 
 import Backend.Ast
 import Backend.Utilities
 import Data.List qualified as L
 import Data.Map qualified as M
 import Pipeline.IRTranslation.Clauses.CapPrecondition (capPreconditions)
-import Pipeline.IRTranslation.Clauses.CommPrecondition (preconditions)
 import Pipeline.IRTranslation.Enabled (enabledExp)
+import Pipeline.IRTranslation.Encoding
 import Pipeline.IRTranslation.Invariant.ChannelBound (channelBounds)
 import Pipeline.IRTranslation.Invariant.ChannelMonitor (channelMonitors)
 import Pipeline.IRTranslation.Invariant.CounterBound (counterInvariants)
@@ -19,7 +19,6 @@ import Pipeline.IRTranslation.Invariant.Return (returnMonitors)
 import Pipeline.IRTranslation.Meta.Channel
 import Pipeline.IRTranslation.Meta.Loop
 import Pipeline.IRTranslation.Meta.Meta
-import Pipeline.IRTranslation.Clauses.Postcondition (postconditions)
 import Pipeline.IRTranslation.Utilities
 
 {- | A function for computing the number of iterations that
@@ -128,8 +127,12 @@ Produces:
 >   step := step + 1
 > }
 -}
-centralLoop :: 𝛹 -> 𝛫 -> 𝛯 -> ℳ -> Stmt
-centralLoop 𝜓 𝜅 𝜉 ℳ { os, gs, is, ls, rs } =
+centralLoop :: Encoding -> Stmt
+centralLoop Encoding {
+  conditions = 𝜓,
+  capacities = 𝜅,
+  processes = 𝜉,
+  summaries = ℳ { os, gs, is, ls, rs }} =
   let -- Go statement invariants
       g = goMonitors 𝜓 gs
       -- If statement invariants
@@ -254,10 +257,15 @@ Produces:
 >   centralLoop(𝜅, 𝛯, ℳ)
 > }
 -}
-progEncoding ::  𝛹 -> 𝛤 -> [Type] -> 𝛫 -> 𝛯 -> ℳ -> Method
-progEncoding 𝜓 𝛾 ts 𝜅 𝜉 𝓂@ℳ { os, gs, ls } =
-  let commPreconditions = (preconditions 𝜓 𝜅 os ls ...⋀)
-   in Method
+progEncoding ::  Encoding -> Method
+progEncoding encoding@Encoding {
+  typeenv = 𝛾,
+  typevars = ts,
+  capacities = 𝜅,
+  processes = 𝜉,
+  summaries = ℳ { ls },
+  post} =
+    Method
         { methodReturns = ("step", TNat) : (L.map ((,TInt) . (⊲)) . M.keys) 𝜉,
           methodHoare =
             HoareWrap
@@ -266,7 +274,7 @@ progEncoding 𝜓 𝛾 ts 𝜅 𝜉 𝓂@ℳ { os, gs, ls } =
                 types = ts,
                 params = ("fuel", TNat) : ("S", TNat :-> TNat) : M.toList 𝛾,
                 ensures =
-                  [ (("step" @) :< ("fuel" @)) :==> (commPreconditions :<==> (postconditions 𝜓 𝜉 gs ...⋀))
+                  [ (("step" @) :< ("fuel" @)) :==> (pre encoding :<==> post)
                   ],
                 decreases = [],
                 requires = isSchedule : capPreconditions 𝜅
@@ -278,17 +286,17 @@ progEncoding 𝜓 𝛾 ts 𝜅 𝜉 𝓂@ℳ { os, gs, ls } =
                 chanDef 𝜅,
                 loopVarDef ls,
                 Assign [("step", (0 #))],
-                centralLoop 𝜓 𝜅 𝜉 𝓂
+                centralLoop encoding
               ]
         }
 
-{- | Constructs the complete program specification, by emitting
+{- | Constructs the complete CoreDafny program, by emitting
 all the necessary functions, and the program encoding.
 -}
-wholeEncoding :: 𝛹 -> 𝛤 -> [Type] -> 𝛫 -> 𝛯 -> ℳ -> Program
-wholeEncoding 𝜓 𝛾 ts 𝜅 𝜉 𝓂 =
+encodingToDafny :: Encoding -> Program
+encodingToDafny encoding@Encoding { processes = 𝜉 } =
   Program
     [ FDecl iterationsFunc,
       FDecl (isScheduleFunc 𝜉),
-      MDecl (progEncoding 𝜓 𝛾 ts 𝜅 𝜉 𝓂)
+      MDecl (progEncoding encoding)
     ]
