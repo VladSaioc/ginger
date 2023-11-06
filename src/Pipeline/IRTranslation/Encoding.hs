@@ -4,6 +4,7 @@ import Backend.Ast
 import Backend.Utilities
 import Data.Maybe qualified as Mb
 import Data.Map qualified as M
+import IR.Ast qualified as S
 import IR.Utilities
 import Pipeline.IRTranslation.Meta.Channel
 import Pipeline.IRTranslation.Meta.Meta
@@ -13,7 +14,9 @@ import Utilities.Collection
 {- | An abstract representation of the encoding.
 -}
 data Encoding = Encoding
-  { -- | Reachability conditions of program points in the encoding.
+  { -- | Original VIRGo program
+    prog :: S.𝑃,
+    -- | Reachability conditions of program points in the encoding.
     conditions :: 𝛹,
     -- | Channel capacities
     capacities :: 𝛫,
@@ -31,6 +34,7 @@ data Encoding = Encoding
     post :: Exp
   }
 
+-- | Get 'balanced-flow' precondition from the encoding.
 pre :: Encoding -> Exp
 pre Encoding { capacities = 𝜅, comprojection = p } =
    let prc c os =
