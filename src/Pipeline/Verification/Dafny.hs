@@ -1,7 +1,8 @@
-module Pipeline.IRTranslation.Boilerplate (encodingToDafny) where
+module Pipeline.Verification.Dafny (encodingToDafny) where
 
 import Backend.Ast
 import Backend.Utilities
+import Backend.Simplifier
 import Data.List qualified as L
 import Data.Map qualified as M
 import Pipeline.IRTranslation.Clauses.CapPrecondition (capPreconditions)
@@ -20,6 +21,7 @@ import Pipeline.IRTranslation.Meta.Channel
 import Pipeline.IRTranslation.Meta.Loop
 import Pipeline.IRTranslation.Meta.Meta
 import Pipeline.IRTranslation.Utilities
+import Pipeline.Verification.Oracle
 
 {- | A function for computing the number of iterations that
 may be performed in a loop.
@@ -257,14 +259,13 @@ Produces:
 >   centralLoop(𝜅, 𝛯, ℳ)
 > }
 -}
-progEncoding ::  Encoding -> Method
-progEncoding encoding@Encoding {
+progEncoding :: Oracle -> Encoding -> Method
+progEncoding Oracle { makePrecondition, makePostcondition } encoding@Encoding {
   typeenv = 𝛾,
   typevars = ts,
   capacities = 𝜅,
   processes = 𝜉,
-  summaries = ℳ { ls },
-  post} =
+  summaries = ℳ { ls } } =
     Method
         { methodReturns = ("step", TNat) : (L.map ((,TInt) . (⊲)) . M.keys) 𝜉,
           methodHoare =
@@ -274,10 +275,13 @@ progEncoding encoding@Encoding {
                 types = ts,
                 params = ("fuel", TNat) : ("S", TNat :-> TNat) : M.toList 𝛾,
                 ensures =
-                  [ (("step" @) :< ("fuel" @)) :==> (pre encoding :<==> post)
+                  [ (("step" @) :< ("fuel" @)) :==> makePostcondition encoding
                   ],
                 decreases = [],
-                requires = isSchedule : capPreconditions 𝜅
+                requires =
+                  isSchedule :
+                  makePrecondition encoding :
+                  capPreconditions 𝜅
               },
           methodBody =
             Block
@@ -293,10 +297,10 @@ progEncoding encoding@Encoding {
 {- | Constructs the complete CoreDafny program, by emitting
 all the necessary functions, and the program encoding.
 -}
-encodingToDafny :: Encoding -> Program
-encodingToDafny encoding@Encoding { processes = 𝜉 } =
-  Program
+encodingToDafny :: Oracle -> Encoding -> Program
+encodingToDafny oracle encoding@Encoding { processes = 𝜉 } =
+  simplify $ Program
     [ FDecl iterationsFunc,
       FDecl (isScheduleFunc 𝜉),
-      MDecl (progEncoding encoding)
+      MDecl (progEncoding oracle encoding)
     ]
