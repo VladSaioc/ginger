@@ -1,7 +1,7 @@
 module Utilities.Args
   (hasIRFlag,
   hasColor,
-  hasNoVerificationFlag,
+  skipVerification,
   getFilePath,
   getResultDir,
   getDafnyPath) where
@@ -37,10 +37,10 @@ hasFlag f args =case args of
 hasColor :: [String] -> Bool
 hasColor = hasFlag "color"
 
--- | Checks whether `-no-verification` was provided as a command line argument.
+-- | Checks whether `-skip-verification` was provided as a command line argument.
 -- When set, the tool skips verification attempts, and instead only prints the output file.
-hasNoVerificationFlag :: [String] -> Bool
-hasNoVerificationFlag = hasFlag "no-verification"
+skipVerification :: [String] -> Bool
+skipVerification = hasFlag "skip-verification"
 
 -- | Check whether `-ir` was provided as a command line argument.
 -- When set, the tool uses the intermediate representation parser instead of the Promela parser.
