@@ -25,16 +25,21 @@ getAst = pProgram . pProg . myLexer
 
 pProgram :: R''.Err R'.Prog -> Err 𝑃
 pProgram = \case
-  R''.Ok (R'.Prog chs s) -> do
-    chs' <- composeSyntax pChan chs
+  R''.Ok (R'.Prog s) -> do
+    let getChannels f rs = do
+          os' <- foldMonad f [] (++) rs
+          return (reverse os')
+    chs' <- getChannels pChan s
     ps' <- pStms s
     return (𝑃 chs' ps')
   R''.Bad err -> Bad err
 
-pChan :: R'.Chan -> Err Chan
-pChan (R'.Chan c e) = do
-  e' <- pExp e
-  return (Chan (c &) e')
+pChan :: R'.Stm -> Err [Chan]
+pChan = \case
+  (R'.Chan c e) -> do
+    e' <- pExp e
+    return [Chan (c &) e']
+  _ -> return []
 
 pStms :: [R'.Stm] -> Err 𝑆
 pStms ss =
@@ -64,6 +69,7 @@ pStm = \case
   R'.Go _ s -> do
     s' <- pStms s
     return (Go s')
+  _ -> return Skip
 
 pOp :: R'.Op -> Err Op
 pOp = \case

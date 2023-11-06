@@ -16,7 +16,6 @@ position token RCV {"?"};
 -- Expression tokens
 position token AND {"&"};
 position token OR {"|"};
-position token NOT {"!"};
 position token EQL {"=="};
 position token NEQ {"/="};
 position token GE {">="};
@@ -37,14 +36,11 @@ position token NUMBER (digit)+;
 position token ID (letter|["_"]) ((digit|letter|["_'"])*);
 
 -- Program
-Prog. Prog ::= [Chan] [Stm];
-
--- Channel declaration
-terminator Chan ";";
-Chan. Chan ::= ID "=" "[" Exp "]";
+Prog. Prog ::= [Stm];
 
 -- Statement
 separator Stm ";";
+Chan. Stm ::= ID "=" "[" Exp "]";
 Skip. Stm ::= SKIP;
 Return. Stm ::= RETURN;
 SOp. Stm ::= Op;
@@ -73,7 +69,7 @@ Mult. Exp4 ::= Exp4 MULT Exp5;
 Div. Exp4 ::= Exp4 DIV Exp5;
 Var. Exp5 ::= ID;
 Const. Exp5 ::= NUMBER;
-Not. Exp5 ::= NOT Exp5;
+Not. Exp5 ::= SND Exp5;
 Tru. Exp5 ::= TRUE;
 Fal. Exp5 ::= FALSE;
 
