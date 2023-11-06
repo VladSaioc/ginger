@@ -30,7 +30,7 @@ formatPath fallback path =
 hasFlag :: String -> [String] -> Bool
 hasFlag f args =case args of
   [] -> False
-  a : as -> "-" ++ f == a || hasColor as
+  a : as -> "-" ++ f == a || hasFlag f as
 
 -- | Check whether `-color` was provided as a command line argument.
 -- When set, the tool prints colorful output (useful for the console).
