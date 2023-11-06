@@ -1,4 +1,4 @@
-module Backend.Simplifier (simplify) where
+module Backend.Simplifier (simplify, clausesSimplify, eSimplify) where
 
 import Backend.Ast
 import Backend.Utilities

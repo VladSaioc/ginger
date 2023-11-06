@@ -220,7 +220,7 @@ data Decl
 -- > P ::= {D \n D}*
 newtype Program = Program [Decl] deriving (Eq, Ord, Read)
 
--- | Unparser precedence order helper for binary operations. 
+-- | Unparser precedence order helper for binary operations.
 -- Does not wrap sub-tree expressions operations
 (<.|.>) :: Exp -> Either Exp Exp -> String
 (<.|.>) e1 lre2 =
