@@ -1,4 +1,10 @@
-module Utilities.Args where
+module Utilities.Args
+  (hasIRFlag,
+  hasColor,
+  hasNoVerificationFlag,
+  getFilePath,
+  getResultDir,
+  getDafnyPath) where
 
 import Data.List (intercalate, isPrefixOf)
 import Data.List.Split (splitOn)
@@ -10,7 +16,7 @@ _DAFNY :: String
 _DAFNY = "./dafny/dafny"
 
 -- | Prefixes a file path with ".\/" if it is not absolute.
-formatPath :: String -> [Char] -> [Char]
+formatPath :: String -> String -> String
 formatPath fallback path =
   let isAbs = "/" `isPrefixOf` path
    in if "-" `isPrefixOf` path
@@ -19,13 +25,27 @@ formatPath fallback path =
       then path
       else "./" ++ path
 
+-- | Check whether `f` was provided as a command line flag.
+-- When set, the tool prints colorful output (useful for the console).
+hasFlag :: String -> [String] -> Bool
+hasFlag f args =case args of
+  [] -> False
+  a : as -> "-" ++ f == a || hasColor as
+
+-- | Check whether `-color` was provided as a command line argument.
+-- When set, the tool prints colorful output (useful for the console).
+hasColor :: [String] -> Bool
+hasColor = hasFlag "color"
+
+-- | Checks whether `-no-verification` was provided as a command line argument.
+-- When set, the tool skips verification attempts, and instead only prints the output file.
+hasNoVerificationFlag :: [String] -> Bool
+hasNoVerificationFlag = hasFlag "no-verification"
+
 -- | Check whether `-ir` was provided as a command line argument.
 -- When set, the tool uses the intermediate representation parser instead of the Promela parser.
 hasIRFlag :: [String] -> Bool
-hasIRFlag args = case args of
-  [] -> False
-  "-ir" : _ -> True
-  _ : as -> hasIRFlag as
+hasIRFlag = hasFlag "ir"
 
 getFilePath :: [String] -> Err String
 getFilePath = \case
