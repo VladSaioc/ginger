@@ -5,7 +5,7 @@ import Utilities.PrettyPrint
 
 -- | Back-end type syntax:
 --
--- > T ::= int | nat | bool | x | T -> T | ({T, ...}*)
+-- > T ::= int | nat | bool | x | set<T> | T -> T | ({T, ...}*)
 data Type
   = TBad
   | -- int
@@ -14,6 +14,8 @@ data Type
     TNat
   | -- bool
     TBool
+  |  -- set<T>
+    TSet Type
   | -- T
     TVar String
   | -- Type -> Type
@@ -284,6 +286,12 @@ instance Show Exp where
 instance Show Program where
   show = prettyPrint 0
 
+instance Show Method where
+  show = prettyPrint 0
+
+instance Show Function where
+  show = prettyPrint 0
+
 instance Show Stmt where
   show = prettyPrint 0
 
@@ -296,6 +304,7 @@ instance PrettyPrint Type where
           TInt -> "int"
           TNat -> "nat"
           TBool -> "bool"
+          TSet t -> "set<" ++ pp t ++ ">"
           TVar x -> x
           t1 :-> t2 -> concat ["(" ++ pp t1 ++ ")", " -> ", "(" ++ pp t2 ++ ")"]
           Tuple ts -> "(" ++ intercalate ", " (map pp ts) ++ ")"

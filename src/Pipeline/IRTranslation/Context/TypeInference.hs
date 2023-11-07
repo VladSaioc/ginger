@@ -1,14 +1,13 @@
 module Pipeline.IRTranslation.Context.TypeInference (typesAndFvs) where
 
 import Backend.Ast qualified as T
+import Backend.Utilities
 import Control.Monad (foldM)
 import Data.List qualified as L
 import Data.Map qualified as M
 import Data.Maybe
 import Data.UnionFind.IntMap
-import Data.Set qualified as S
 import IR.Ast
-import Pipeline.IRTranslation.Utilities
 import Utilities.Err
 import Utilities.TransformationCtx
 

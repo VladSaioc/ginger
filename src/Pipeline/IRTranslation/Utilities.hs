@@ -11,12 +11,6 @@ import GHC.Stack (HasCallStack)
 (!!!) :: HasCallStack => Ord a => M.Map a b -> a -> b
 m !!! k = fromMaybe (error "WTF") $ M.lookup k m
 
--- | An alias for variable names (as strings) to clarify type definitions
-type 𝑋 = String
-
--- | The type of type environments
-type 𝛤 = 𝑋 ↦ T.Type
-
 -- | An alias for the type of process ids. Its purpose is to provide
 -- clarity to type definitions involving process ids.
 type P = Int
