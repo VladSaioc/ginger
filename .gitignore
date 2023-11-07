@@ -53,3 +53,4 @@ examples__*
 # Dafny
 dafny-*.zip
 dafny/
+<stdin>.*
