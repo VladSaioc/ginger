@@ -449,8 +449,8 @@ instance PrettyPrint Function where
           dec = prop "decreases" decreases
           props = intercalate "\n" (pre ++ post ++ dec)
           body = prettyPrint 1 funcBody
-          prop kw = map ((indent 1 kw ++) . prettyPrint 2)
-       in intercalate "\n" [header, props ++ "{", body, "}"]
+          prop kw = map (\e -> indent 1 $ unwords [kw, prettyPrint 2 e])
+       in unlines [header, props ++ " {", body, "}"]
 
 instance PrettyPrint Method where
   prettyPrint _ Method {methodReturns, methodHoare, methodBody} = case methodHoare of
