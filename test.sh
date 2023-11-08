@@ -3,73 +3,85 @@
 set -e fail
 
 verifyIRExample () {
-  DIR=examples/$1
+  local dir=examples/$1
+  local curr=$1
 
-  for FILE in $(ls $DIR);
+  for file in $(ls $dir);
   do
-    if [[ $FILE = "examples__"* ]];
+    if [ -d $dir/$file ];
     then
-      echo "Skipping Dafny file $FILE"
+      # echo "Directory $dir/$file"
+      verifyIRExample $curr/$file
     else
-      echo "Now testing: $DIR/$FILE"
-      EXT=$(echo "$DIR/$FILE" | sed "s/\//__/g")
-      stack run -- -ir -color "$DIR/$FILE"
-      echo "Success: $DIR/$FILE"
+      if [[ $file = "examples__"* ]];
+      then
+        echo "Skipping Dafny file $file"
+      else
+        # echo "File $dir/$file"
+        echo "Now testing: $dir/$file"
+        EXT=$(echo "$dir/$file" | sed "s/\//__/g")
+        stack run -- -ir -color "$dir/$file"
+        echo "Success: $dir/$file"
+      fi
     fi
   done
 }
 
 translateIRExample () {
-  DIR=examples/$1
+  local dir=examples/$1
+  local curr=$1
 
-  for FILE in $(ls $DIR);
+  for file in $(ls $dir);
   do
-    if [[ $FILE = "examples__"* ]];
+    if [ -d $dir/$file ];
     then
-      echo "Skipping Dafny file $FILE"
+      translateIRExample $curr/$file
     else
-      echo "Now testing: $DIR/$FILE"
-      EXT=$(echo "$DIR/$FILE" | sed "s/\//__/g")
-      stack run -- -ir -color -skip-verification "$DIR/$FILE"
-      echo "Success: $DIR/$FILE"
+      if [[ $file = "examples__"* ]];
+      then
+        echo "Skipping Dafny file $file"
+      else
+        echo "Now testing: $dir/$file"
+        EXT=$(echo "$dir/$file" | sed "s/\//__/g")
+        stack run -- -ir -color -skip-verification "$dir/$file"
+        echo "Success: $dir/$file"
+      fi
     fi
   done
 }
 
 verifyPromelaExample () {
-  DIR=examples/gomelas/$1
+  local dir=examples/gomelas/$1
+  local curr=$1
 
-  for FILE in $(ls $DIR);
+  for file in $(ls $dir);
   do
-    if [[ $FILE = "examples__"* ]];
+    if [ -d $dir/$file ];
     then
-      echo "Skipping Dafny file $FILE"
+      verifyPromelaExample $curr/$file
     else
-      echo "Now testing: $DIR/$FILE"
-      EXT=$(echo "$DIR/$FILE" | sed "s/\//__/g")
-      stack run -- -color "$DIR/$FILE"
-      echo "Success: $DIR/$FILE"
+      if [[ $file = "examples__"* ]];
+      then
+        echo "Skipping Dafny file $file"
+      else
+        echo "Now testing: $dir/$file"
+        EXT=$(echo "$dir/$file" | sed "s/\//__/g")
+        stack run -- -color "$dir/$file"
+        echo "Success: $dir/$file"
+      fi
     fi
   done
-  # ./dafny/dafny "./$DIR/$EXT.dfy"
+  # ./dafny/dafny "./$dir/$EXT.dfy"
 }
 
 # Translation and verification of VIRGo
-verifyIRExample simple
-verifyIRExample complex
-verifyIRExample conditional
-verifyIRExample return
-verifyIRExample sync-comm
+verifyIRExample good
 
 # VIRGo translation only
-translateIRExample go
+translateIRExample translatable
 
 # Translation and verification of Promela
-verifyPromelaExample ast-transform
-verifyPromelaExample conditional
-verifyPromelaExample loop-body
-verifyPromelaExample return
-verifyPromelaExample simple
+verifyPromelaExample good
 
 # Promela translation only
 # --- Nothing here yet
