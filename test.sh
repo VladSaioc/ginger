@@ -19,7 +19,6 @@ verifyIRExample () {
       else
         # echo "File $dir/$file"
         echo "Now testing: $dir/$file"
-        EXT=$(echo "$dir/$file" | sed "s/\//__/g")
         stack run -- -ir -color "$dir/$file"
         echo "Success: $dir/$file"
       fi
@@ -42,7 +41,6 @@ translateIRExample () {
         echo "Skipping Dafny file $file"
       else
         echo "Now testing: $dir/$file"
-        EXT=$(echo "$dir/$file" | sed "s/\//__/g")
         stack run -- -ir -color -skip-verification "$dir/$file"
         echo "Success: $dir/$file"
       fi
@@ -65,13 +63,11 @@ verifyPromelaExample () {
         echo "Skipping Dafny file $file"
       else
         echo "Now testing: $dir/$file"
-        EXT=$(echo "$dir/$file" | sed "s/\//__/g")
         stack run -- -color "$dir/$file"
         echo "Success: $dir/$file"
       fi
     fi
   done
-  # ./dafny/dafny "./$dir/$EXT.dfy"
 }
 
 # Translation and verification of VIRGo

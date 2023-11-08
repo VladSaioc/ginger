@@ -49,6 +49,7 @@ src/IR/ErrM.hs
 output
 examples\#*
 examples__*
+*__examples__*
 
 # Dafny
 dafny-*.zip

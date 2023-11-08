@@ -1,14 +1,12 @@
 c = [x];
+if x <= 0 {
+  return
+} else {
+  skip
+};
 go {
-  if x <= 0 {
-    return
-  } else {
-    skip
-  };
-  go {
-    for i : 0 .. x {
-      c!
-    }
-  };
-  c?
-}
+  for i : 0 .. x {
+    c!
+  }
+};
+c?
