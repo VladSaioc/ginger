@@ -1,4 +1,4 @@
-module Pipeline.Verification.Dafny (encodingToDafny) where
+module Pipeline.Verification.Dafny (encodingToDafny, iterationsFunc) where
 
 import Backend.Ast
 import Backend.Utilities
