@@ -6,6 +6,7 @@ import Data.Set qualified as S
 
 import Backend.Ast
 import Utilities.Collection
+import Utilities.PrettyPrint
 
 -- | An alias for variable names (as strings) to clarify type definitions
 type 𝑋 = String
@@ -147,3 +148,62 @@ typeOfConst = \case
   CTrue -> TBool
   CFalse -> TBool
   CNum _ -> TInt
+
+propositionalPrintType :: Type -> String
+propositionalPrintType = \case
+  TBad -> error "!<Invalid type>!"
+  TInt -> "ℤ"
+  TNat -> "ℕ"
+  TBool -> "𝔹"
+  TSet t -> "℘(" ++ propositionalPrintType t ++ ")"
+  TVar t -> t
+  t1 :-> t2 -> propositionalPrintType t1 ++ "⟹" ++ propositionalPrintType t2
+  Tuple ts -> L.intercalate " × " (map propositionalPrintType ts)
+
+-- | Pretty prints a proposition.
+propositionalPrintExp :: Exp -> String
+propositionalPrintExp e =
+  let pp = propositionalPrintExp
+      quantifier q xs e' =
+        let def (x, mt) =
+              let t' = case mt of
+                    Just t -> " ∈ " ++ propositionalPrintType t
+                    Nothing -> ""
+               in x ++ t'
+            xs' = L.intercalate ", " $ map def xs
+         in unwords [q, xs', ".", pp e']
+      bin e1 op e2 = unwords [(<.|.>) pp e (Left e1), op, (<.|.>) pp e (Right e2)]
+      un op e' = unwords [op ++ e <.> e']
+  in case e of
+    Any -> "_"
+    ETuple es -> "(" ++ L.intercalate ", " (map pp es) ++ ")"
+    EVar x -> x
+    ECon c -> prettyPrint 0 c
+    In e1 e2 -> bin e1 "∈" e2
+    ESet es -> unwords ["{", L.intercalate ", " $ map pp es, "}"]
+    Exists xs e' -> quantifier "∃" xs e'
+    Forall xs e' -> quantifier "∀" xs e'
+    e1 :<==> e2 -> bin e1 "⟺" e2
+    e1 :==> e2 -> bin e1 "⟹" e2
+    e1 :&& e2 -> bin e1 "∧" e2
+    e1 :|| e2 -> bin e1 "∨" e2
+    Not e' -> un "¬" e'
+    e1 :== e2 -> bin e1 "=" e2
+    e1 :!= e2 -> bin e1 "≠" e2
+    e1 :>= e2 -> bin e1 "≥" e2
+    e1 :> e2 -> bin e1 ">" e2
+    e1 :<= e2 -> bin e1 "≤" e2
+    e1 :< e2 -> bin e1 "<" e2
+    e1 :+ e2 -> bin e1 "+" e2
+    e1 :- e2 -> bin e1 "-" e2
+    e1 :* e2 -> bin e1 "⋅" e2
+    e1 :/ e2 -> bin e1 "/" e2
+    e1 :% e2 -> bin e1 "%" e2
+    IfElse e1 e2 e3 -> unwords ["if", pp e1, "then", pp e2, "else", pp e3]
+    Match e' cs ->
+      let def (p, e'') = unwords ["case", prettyPrint 0 p, "=>", pp e'']
+          cs' = map def cs
+       in unwords ["match", pp e', "{\n"]
+            ++ unlines cs'
+            ++ ("\n" ++ "}")
+    Call f es -> f ++ "(" ++ L.intercalate ", " (map pp es) ++ ")"

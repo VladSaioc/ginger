@@ -224,8 +224,8 @@ newtype Program = Program [Decl] deriving (Eq, Ord, Read)
 
 -- | Unparser precedence order helper for binary operations.
 -- Does not wrap sub-tree expressions operations
-(<.|.>) :: Exp -> Either Exp Exp -> String
-(<.|.>) e1 lre2 =
+(<.|.>) :: (Exp -> String) -> Exp -> Either Exp Exp -> String
+(<.|.>) f e1 lre2 =
   let needParens =
         ( case (e1, lre2) of
             (_ :<==> _, Right (_ :<==> _)) -> False
@@ -264,7 +264,7 @@ newtype Program = Program [Decl] deriving (Eq, Ord, Read)
             (_ :% _, Right (_ :% _)) -> True
             _ -> e1 > either id id lre2
         )
-      trans = (if needParens then ("(" ++) . (++ ")") else id) . prettyPrint 0
+      trans = (if needParens then ("(" ++) . (++ ")") else id) . f
    in either trans trans lre2
 
 (<.>) :: Exp -> Exp -> String
@@ -377,17 +377,17 @@ instance PrettyPrint Const where
 instance PrettyPrint Exp where
   prettyPrint i e =
     let pp = prettyPrint i
-        (tab, ind) = (indent i, indent i "")
+        tab = indent i
         quantifier q xs e' =
           let def (x, mt) =
                 let t' = case mt of
-                      Just t -> " " ++ prettyPrint i t
+                      Just t -> " : " ++ prettyPrint i t
                       Nothing -> ""
                  in x ++ t'
               xs' = intercalate ", " $ map def xs
               e'' = pp e'
            in unwords [q, xs', "::", e'']
-        bin e1 op e2 = unwords [e <.|.> Left e1, op, e <.|.> Right e2]
+        bin e1 op e2 = unwords [(<.|.>) pp e (Left e1), op, (<.|.>) pp e (Right e2)]
         un op e' = unwords [op ++ e <.> e']
      in case e of
           Any -> "*"
@@ -395,7 +395,7 @@ instance PrettyPrint Exp where
           EVar x -> x
           ECon c -> prettyPrint 0 c
           In e1 e2 -> bin e1 "in" e2
-          ESet es -> unwords ["{", intercalate ", " $ map (prettyPrint i) es, "}"]
+          ESet es -> unwords ["{", intercalate ", " $ map pp es, "}"]
           Exists xs e' -> quantifier "exists" xs e'
           Forall xs e' -> quantifier "forall" xs e'
           e1 :==> e2 -> bin e1 "==>" e2
@@ -419,7 +419,7 @@ instance PrettyPrint Exp where
             let def (p, e'') = unwords [tab "case", prettyPrint i p, "=>", pp e'']
                 cs' = map def cs
              in unwords ["match", pp e', "{\n"]
-                  ++ intercalate ("\n" ++ ind) cs'
+                  ++ unlines cs'
                   ++ ("\n" ++ tab "}")
           Call f es -> f ++ "(" ++ intercalate ", " (map pp es) ++ ")"
 
