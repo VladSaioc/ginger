@@ -2,7 +2,7 @@
 
 set -e fail
 
-runIRExample () {
+verifyIRExample () {
   DIR=examples/$1
 
   for FILE in $(ls $DIR);
@@ -13,13 +13,30 @@ runIRExample () {
     else
       echo "Now testing: $DIR/$FILE"
       EXT=$(echo "$DIR/$FILE" | sed "s/\//__/g")
-      stack run -- -ir "$DIR/$FILE"
+      stack run -- -ir -color "$DIR/$FILE"
       echo "Success: $DIR/$FILE"
     fi
   done
 }
 
-runPromelaExample () {
+translateIRExample () {
+  DIR=examples/$1
+
+  for FILE in $(ls $DIR);
+  do
+    if [[ $FILE = "examples__"* ]];
+    then
+      echo "Skipping Dafny file $FILE"
+    else
+      echo "Now testing: $DIR/$FILE"
+      EXT=$(echo "$DIR/$FILE" | sed "s/\//__/g")
+      stack run -- -ir -color -skip-verification "$DIR/$FILE"
+      echo "Success: $DIR/$FILE"
+    fi
+  done
+}
+
+verifyPromelaExample () {
   DIR=examples/gomelas/$1
 
   for FILE in $(ls $DIR);
@@ -30,24 +47,32 @@ runPromelaExample () {
     else
       echo "Now testing: $DIR/$FILE"
       EXT=$(echo "$DIR/$FILE" | sed "s/\//__/g")
-      stack run -- "$DIR/$FILE"
+      stack run -- -color "$DIR/$FILE"
       echo "Success: $DIR/$FILE"
     fi
   done
   # ./dafny/dafny "./$DIR/$EXT.dfy"
 }
 
-runIRExample simple
-runIRExample complex
-runIRExample conditional
-runIRExample go
-runIRExample return
+# Translation and verification of VIRGo
+verifyIRExample simple
+verifyIRExample complex
+verifyIRExample conditional
+verifyIRExample return
+verifyIRExample sync-comm
 
-runPromelaExample ast-transform
-runPromelaExample conditional
-runPromelaExample loop-body
-runPromelaExample return
-runPromelaExample simple
+# VIRGo translation only
+translateIRExample go
+
+# Translation and verification of Promela
+verifyPromelaExample ast-transform
+verifyPromelaExample conditional
+verifyPromelaExample loop-body
+verifyPromelaExample return
+verifyPromelaExample simple
+
+# Promela translation only
+# --- Nothing here yet
 
 echo ""
 echo "All tests executed successfully"
