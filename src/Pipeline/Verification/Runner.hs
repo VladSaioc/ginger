@@ -77,17 +77,17 @@ verify args sourceFile p = do
             -- Exit code 1 means command-line argument error
             colorPrint Red $ "Failed verification with Oracle " ++ oname oracle ++ "\n"
             putStrLn $ "Invalid command-line arguments: " ++ errMsg
-            return False
+            ioError $ userError "Unexpected command-line argument failure"
           ExitFailure 2 -> do
             -- Exit code 2 means Dafny syntax error
             colorPrint Red $ "Failed verification with Oracle " ++ oname oracle ++ "\n"
             putStrLn $ "Syntax error: " ++ outMsg
-            return False
+            ioError $ userError "Unexpected syntax error"
           ExitFailure 3 -> do
             -- Exit code 3 means Dafny compilation error
             colorPrint Red $ "Failed verification with Oracle " ++ oname oracle ++ "\n"
             putStrLn $ "Compilation error: " ++ outMsg
-            return False
+            ioError $ userError "Unexpected compilation error"
           ExitFailure 4 -> do
             -- Exit code 4 means Dafny verification error
             colorPrint Red $ "Failed verification with Oracle " ++ oname oracle ++ "\n"
