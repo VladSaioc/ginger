@@ -54,9 +54,17 @@ simplifyStatements = \case
           -- - Reduce empty select to itself. No continuation is possible.
           -- - Remove redundant empty non-blocking select.
           Select [] Nothing -> [Pos p $ Select [] Nothing]
+          -- Inline blocking single send case select statements
+          Select [(Pos p' (Send c), ss')] Nothing -> simplifyStatements (Pos p' (Atomic (Send c)) : ss' ++ ss)
+          -- Inline blocking single receive case select statements
+          Select [(Pos p' (Recv c), ss')] Nothing -> simplifyStatements (Pos p' (Atomic (Recv c)) : ss' ++ ss)
+          -- Inline blocking single star case select statements
+          Select [(Pos _ Star, ss')] Nothing -> simplifyStatements $ ss' ++ ss
+          -- Inline default statement.
           Select [] (Just ss') -> simplifyStatements $ ss' ++ ss
           Select cs ds ->
             if not (relevantSelect s) && all (null . snd) cs && maybe True null ds
+            -- Remove select statement if nothing interesting happens
             then simplifyStatements ss
             else
                 let cs' = map (second simplifyStatements) cs
