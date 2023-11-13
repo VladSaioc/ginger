@@ -9,7 +9,6 @@ import System.Process (readProcessWithExitCode)
 import System.Console.ANSI
 
 import IR.Ast
-import IR.Utilities (interesting)
 import Pipeline.Verification.Dafny
 import Pipeline.Verification.Oracle
 import Pipeline.IRTranslation.Workflow (irToBackend)
@@ -44,10 +43,6 @@ verify args sourceFile p = do
           balancedFlowWP,
           balancedFlow
         ]
-  -- Skip uninteresting examples
-  _ <- if interesting p
-    then return True
-    else ioError $ userError "Example is not interesting."
   -- Abort early due to translation to back-end failure.
   encoding <- case irToBackend p of
     Ok encoding -> do
