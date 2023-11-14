@@ -1,4 +1,4 @@
-module Utilities.General (results, foldMonad, binaryCons, unaryCons) where
+module Utilities.General (results, foldMonad, binaryCons, unaryCons, fix) where
 
 import Control.Monad
 import Data.Functor ( (<&>) )
@@ -26,3 +26,6 @@ unaryCons :: Monad m => (a -> m b) -> (b -> c) -> a -> m c
 unaryCons p cons e = do
   e' <- p e
   return (cons e')
+
+fix :: Eq a => (a -> a) -> a -> a
+fix f a = let a' = f a in if a' == a then a else fix f a'
