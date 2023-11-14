@@ -2,11 +2,12 @@ module Pipeline.Verification.Oracle where
 
 import Backend.Ast
 import Backend.Utilities
+import Backend.Simplifier (eSimplify)
 import Pipeline.IRTranslation.Encoding
 import Pipeline.IRTranslation.Meta.Meta
 import Pipeline.IRTranslation.Clauses.Postcondition (postcondition)
 import Pipeline.IRTranslation.Clauses.CapPrecondition (capPreconditions)
-import Backend.Simplifier (eSimplify)
+import Utilities.PrettyPrint
 
 -- | Oracles contextualize how verification is performed. They are provided with pre/post condition construction.
 data Oracle = Oracle {
@@ -38,7 +39,7 @@ generateConstraintMessage comPrecon encoding@Encoding { capacities = κ } =
   -- If the message is trivially tautological, do not generate the message
   let messagesFromTerm msg e = if e == (True ?)
         then []
-        else [msg, "\t" ++ propositionalPrintExp e]
+        else [msg, "\t" ++ prettyPrint 0 e]
       -- Get simplified capacity constraints
       capExp = eSimplify (capPreconditions κ ...⋀)
       -- Get simplified communication constraints
@@ -60,8 +61,8 @@ trivial = Oracle {
     "If the encoding verifies, the model is partial deadlock-free for all concurrency parameter values."
   ],
   successMessage = \encoding -> unlines [
-     generateConstraintMessage (const (True ?)) encoding,
-     "The program has been validated as partial deadlock-free for all inputs."
+    generateConstraintMessage (const (True ?)) encoding,
+    "The program has been validated as partial deadlock-free for all inputs."
   ],
   -- Precondition is the weakest possible
   makePrecondition = const (True ?),
