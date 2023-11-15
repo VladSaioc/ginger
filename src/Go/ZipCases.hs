@@ -14,7 +14,7 @@ zipCases (Prog s) =
       else zipCases (Prog s')
 
 -- | Zip together the branches of cases in statements, if
--- for all common operations.
+-- all side-effect operations observe the same sequence.
 zipCasesStmts :: [Pos Stmt] -> [Pos Stmt]
 zipCasesStmts = \case
   [] -> []
