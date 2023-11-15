@@ -1,13 +1,16 @@
 module IR.Simplifier (simplify) where
 
+import Data.List qualified as L
+
 import IR.Ast
+import Utilities.General
 
 (#) :: Int -> 𝐸
 (#) = Const
 
 -- | Simplify IR statements.
 simplify :: 𝑃 -> 𝑃
-simplify (𝑃 cs s) = 𝑃 (map cOptimize cs) (sSimplify s)
+simplify (𝑃 cs s) = 𝑃 (map cOptimize cs) (fix (stripOuterPaths . stripReturns True . sSimplify) s)
 
 -- | Simplify IR channel definitions.
 cOptimize :: Chan -> Chan
@@ -16,33 +19,55 @@ cOptimize (Chan c e) = Chan c (eSimplify e)
 -- | Simplify IR statements.
 sSimplify :: 𝑆 -> 𝑆
 sSimplify s =
-  let s' = case s of
-        -- return; S ==> return
-        Seq Return _ -> Return
-        -- skip; S ==> S
-        Seq Skip s2 -> sSimplify s2
-        -- S; skip ==> S
-        Seq s1 Skip -> sSimplify s1
-        Seq s1 s2 -> Seq (sSimplify s1) (sSimplify s2)
-        -- for (x : e1 .. e2) {} ==> skip
-        For _ _ _ [] -> Skip
-        For x e1 e2 os -> For x (eSimplify e1) (eSimplify e2) os
-        -- if true then S1 else S2 ==> S1
-        If BTrue s1 _ -> s1
-        -- if false then S1 else S2 ==> S2
-        If BFalse _ s2 -> s2
-        If e s1 s2 ->
-          let e' = eSimplify e
-           in if e' /= e
-                then sSimplify (If e' s1 s2)
-                else If e' (sSimplify s1) (sSimplify s2)
-        -- go { skip } ==> skip
-        Go Skip -> Skip
-        Go s1 -> Go (sSimplify s1)
-        _ -> s
-   in if s' == s
-        then s'
-        else sSimplify s'
+  let bin c s1 s2 = c (sSimplify s1) (sSimplify s2)
+  in case s of
+    -- return; S ==> return
+    Seq Return _ -> Return
+    -- skip; S ==> S
+    Seq Skip s2 -> sSimplify s2
+    -- S; skip ==> S
+    Seq s1 Skip -> sSimplify s1
+    -- if S'i then return else skip; if S'j then return else skip ==> if S'i then return else skip
+    Seq (If (Var x) Return Skip) (If (Var y) Return Skip) | all ("S'" `L.isPrefixOf`) [x, y] -> If (Var x) Return Skip
+    -- if S'i then return else skip; if S'j then return else skip ==> if S'i then return else skip
+    Seq (If (Var x) Return Skip) s1 | "S'" `L.isPrefixOf` x -> If (Var x) Return (sSimplify s1)
+    Seq s1 s2 -> Seq (sSimplify s1) (sSimplify s2)
+    -- for (x : e1 .. e2) {} ==> skip
+    For _ _ _ [] -> Skip
+    For x e1 e2 os -> For x (eSimplify e1) (eSimplify e2) os
+    -- if _ then skip else skip ==> skip
+    If _ Skip Skip -> Skip
+    -- if true then S1 else S2 ==> S1
+    If BTrue s1 _ -> sSimplify s1
+    -- if false then S1 else S2 ==> S2
+    If BFalse _ s2 -> sSimplify s2
+    -- if S'i then (if S'j then S1 else return) else return ==> if S'i then S1 else return
+    If (Var x) (If (Var y) s1 Return) Return | all ("S'" `L.isPrefixOf`) [x, y] -> If (Var y) (sSimplify s1) Return
+    -- if S'i then (if S'j then S1 else return) else return ==> if S'i then S1 else return
+    If (Var x) (If (Var y) Return s1) Return | all ("S'" `L.isPrefixOf`) [x, y] -> If (Var x) (sSimplify s1) Return
+    -- if S'i then (if S'j then S1 else return) else return ==> if S'i then S1 else return
+    If (Var x) Return (If (Var y) s1 Return) | all ("S'" `L.isPrefixOf`) [x, y] -> If (Var x) (sSimplify s1) Return
+    -- if S'i then (if S'j then S1 else return) else return ==> if S'i then S1 else return
+    If (Var x) Return (If (Var y) Return s1) | all ("S'" `L.isPrefixOf`) [x, y] -> If (Var y) Return (sSimplify s1)
+    -- if S'i then skip else (if S'j then S1 else S2) ==> if S'j then S1 else S2
+    If (Var x) Skip (If (Var y) s1 s2) | all ("S'" `L.isPrefixOf`) [x, y] -> bin (If (Var y)) s1 s2
+    -- if S'i then (if S'j then S1 else S2) else skip ==> if S'i then S1 else S2
+    If (Var x) (If (Var y) s1 s2) Skip | all ("S'" `L.isPrefixOf`) [x, y] -> bin (If (Var x)) s1 s2
+    -- if S'i then skip else (if S'j then S1 else S2) ==> if S'j then S1 else S2
+    If (Var x) Skip (If (Var y) s1 s2) | all ("S'" `L.isPrefixOf`) [x, y] -> bin (If (Var y)) s1 s2
+    -- if S'i then (if S'j then return else S1) else S2 ==> if S'j then return else (if S'i then S1 else S2)
+    If (Var x) (If (Var y) Return s1) s2 | all ("S'" `L.isPrefixOf`) [x, y] -> If (Var y) Return (bin (If (Var x)) s1 s2)
+    -- if S'i then (if S'j then return else S1) else S2 ==> if S'j then return else (if S'i then S1 else S2)
+    If (Var x) (If (Var y) s1 Return) s2 | all ("S'" `L.isPrefixOf`) [x, y] -> If (Var y) Return (bin (If (Var x)) s1 s2)
+    If e s1 s2 ->
+      let e' = eSimplify e
+       in if e' /= e
+        then sSimplify (If e' s1 s2)
+        else bin (If e') s1 s2
+    -- go { skip } ==> skip
+    Go Skip -> Skip
+    Go s1 -> Go (sSimplify s1)
+    _ -> s
 
 -- | Simplify IR expressions.
 eSimplify :: 𝐸 -> 𝐸
@@ -80,3 +105,17 @@ eSimplify pe =
    in if pe == e'
         then e'
         else eSimplify e'
+
+stripReturns :: Bool -> 𝑆 -> 𝑆
+stripReturns tail = \case
+  Seq s1 s2 -> Seq (stripReturns False s1) (stripReturns tail s2)
+  If e s1 s2 -> If e (stripReturns tail s1) (stripReturns tail s2)
+  Go s -> Go (stripReturns True s)
+  Return -> if tail then Skip else Return
+  s -> s
+
+stripOuterPaths :: 𝑆 -> 𝑆
+stripOuterPaths = \case
+  If (Var _) Skip s1 -> stripOuterPaths s1
+  If (Var _) s1 Skip -> stripOuterPaths s1
+  s -> s
