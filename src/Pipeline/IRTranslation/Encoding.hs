@@ -2,6 +2,7 @@ module Pipeline.IRTranslation.Encoding where
 
 import Backend.Ast
 import Backend.Utilities
+import Backend.Simplifier (eSimplify)
 import Data.Maybe qualified as Mb
 import Data.Map qualified as M
 import IR.Ast qualified as S
@@ -53,3 +54,17 @@ pre Encoding { capacities = 𝜅, comprojection = p } =
             sndsUnblock = sends :<= (recvs :+ k)
          in rcvsUnblock :&& sndsUnblock
     in ((M.elems $ M.mapWithKey prc p)  ...⋀)
+
+-- | noSendsFound checks whether there are any channels without send operations.
+-- If there are no send operations and partial deadlocks are considered guaranteed,
+-- likely the channel escapes the fragment scope, or is used as a free variable in a thunk,
+-- (i.e. we are dealing with a false positive).
+noSendsFound :: Encoding -> Bool
+noSendsFound Encoding { comprojection = p } = any (\os -> eSimplify (os M.! S) == (0 #)) (M.elems p)
+
+-- | noReceivesFound checks whether there are any channels without receive operations.
+-- If there are no receive operations and partial deadlocks are considered guaranteed,
+-- likely the channel escapes the fragment scope, or is used as a free variable in a thunk,
+-- (i.e. we are dealing with a false positive).
+noReceivesFound :: Encoding -> Bool
+noReceivesFound Encoding { comprojection = p } = any (\os -> eSimplify (os M.! R) == (0 #)) (M.elems p)
