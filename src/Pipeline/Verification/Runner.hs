@@ -8,16 +8,18 @@ import System.Directory (createDirectory, doesDirectoryExist)
 import System.Process (readProcessWithExitCode)
 import System.Console.ANSI
 
+import Backend.Simplifier (eSimplify)
 import IR.Ast
+import IR.Profiler (profileVirgo)
+import Pipeline.IRTranslation.Encoding
+import Pipeline.IRTranslation.Workflow (irToBackend)
 import Pipeline.Verification.Dafny
 import Pipeline.Verification.Oracle
-import Pipeline.IRTranslation.Workflow (irToBackend)
 import Pipeline.Verification.TermVerifier (unsatExpression)
 import Utilities.Args (getResultDir, getDafnyPath, skipVerification)
 import Utilities.Color
 import Utilities.Err 
-import Backend.Simplifier (eSimplify)
-import Backend.Utilities (propositionalPrintExp)
+import Utilities.PrettyPrint
 
 -- | Make a directory. Acts as no-op if directory already exists.
 mkdir :: [Char] -> IO ()
@@ -25,6 +27,14 @@ mkdir dir = do
   putStrLn ("Checking directory " ++ dir ++ "...")
   dirExists <- doesDirectoryExist dir
   unless dirExists $ createDirectory dir
+
+-- | Print results in a tabular format.
+printTabular :: 𝑃 -> Oracle -> String -> IO ()
+printTabular p oracle res = do
+  putStrLn ""
+  putStrLn "Final results (short)"
+  putStrLn $ unwords ["[", res, "|", shortName oracle, "|", profileVirgo p, "]"]
+  return ()
 
 -- | Verify a VIRGo program encoding using Dafny.
 verify :: [String] -> String -> 𝑃 -> IO ()
@@ -62,6 +72,8 @@ verify args sourceFile p = do
         return outputFile
   -- Run one oracle
   let verifyOne oracle = do
+        -- Prepare results
+        let printResults = printTabular p oracle
         -- Write Dafny to output file
         putStrLn $ "\nAttempting to run oracle " ++ oname oracle
         outputFile <- printDafny oracle
@@ -72,16 +84,19 @@ verify args sourceFile p = do
             -- Exit code 1 means command-line argument error
             colorPrint Red $ "Failed verification with Oracle " ++ oname oracle ++ "\n"
             putStrLn $ "Invalid command-line arguments: " ++ errMsg
+            printResults  "CLI ARGUMENT ERROR"
             ioError $ userError "Unexpected command-line argument failure"
           ExitFailure 2 -> do
             -- Exit code 2 means Dafny syntax error
             colorPrint Red $ "Failed verification with Oracle " ++ oname oracle ++ "\n"
             putStrLn $ "Syntax error: " ++ outMsg
+            printResults "SYNTAX ERROR"
             ioError $ userError "Unexpected syntax error"
           ExitFailure 3 -> do
             -- Exit code 3 means Dafny compilation error
             colorPrint Red $ "Failed verification with Oracle " ++ oname oracle ++ "\n"
             putStrLn $ "Compilation error: " ++ outMsg
+            printResults "COMPILATION ERROR"
             ioError $ userError "Unexpected compilation error"
           ExitFailure 4 -> do
             -- Exit code 4 means Dafny verification error
@@ -105,12 +120,23 @@ verify args sourceFile p = do
                 unsat <- unsatExpression dafnyBin encoding (realPrecondition oracle encoding)
                 if unsat then do
                   -- If the precondition is unsatisfiable, partial deadlocks are guaranteed
-                  colorPrint Red "Preconditions are unsatisfiable. Partial deadlock is guaranteed.\n"
-                  putStrLn $ "Precondition: " ++ propositionalPrintExp (eSimplify $ realPrecondition oracle encoding)
+                  let msg = "Preconditions are unsatisfiable. Partial deadlock is guaranteed.\n"
+                  let (msg', fp) =
+                        if noSendsFound encoding
+                          then ("Preconditions are unsatisfiable. LIKELY FP! NO SENDS FOUND\n", "(FP) ")
+                          else (msg, "")
+                  let (msg'', fp') =
+                        if noReceivesFound encoding
+                          then ("Preconditions are unsatisfiable. LIKELY FP! NO RECEIVES FOUND\n", "(FP) ")
+                          else (msg', fp)
+                  colorPrint Red msg''
+                  putStrLn $ "Precondition: " ++ prettyPrint 0 (eSimplify $ realPrecondition oracle encoding)
+                  printResults (fp' ++ "UNSAT")
                   return True
                 else do
                   -- Otherwise, print the oracle success message, which includes the precondition for the non-trivial oracle.
                   putStrLn $ successMessage oracle encoding
+                  printResults "SUCCESS"
                   return True
               else do
                 -- Sometimes a 0 exit code does not mean success, but is caused by other issues.
@@ -120,17 +146,20 @@ verify args sourceFile p = do
                     "OUT: " ++ outMsg,
                     "ERR: " ++ errMsg
                   ]
+                printResults "PIPE FAILURE"
                 return False
   -- Iterate over every oracle in ascending order of strength
   let iterateOracles = \case
-        [] -> ioError $ userError "Verification failed for all oracles."
+        [] -> do
+          printTabular p Oracle { shortName = "-" } "VERIFICATION ERROR"
+          ioError $ userError "Verification failed for all oracles."
         oracle : oracles' -> do
           verificationResult <- verifyOne oracle
           if verificationResult then return () else iterateOracles oracles'
   -- Skip verification if the `-skip-verification` flag was provided.
   if skipVerification args
     then do
-      putStrLn "Emitting back-end without verification under the `WP Balanced Flow` strategy."
+      putStrLn "Emitting back-end without verification, under the `WP Balanced Flow` strategy."
       _ <- printDafny balancedFlowWP
       return ()
     else iterateOracles oracles

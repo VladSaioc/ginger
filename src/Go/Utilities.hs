@@ -60,3 +60,27 @@ relevantSelect = \case
     let starCase o = case (o @^) of { Star -> True; _ -> False }
      in not (all (starCase . fst) cs)
   _ -> True
+
+interesting :: Prog -> Bool
+interesting (Prog ss) = any interestingStmt ss
+
+interestingStmt :: Pos Stmt -> Bool
+interestingStmt (Pos _ s) =
+  let
+    bin s1 s2 = any interestingStmt s1 || any interestingStmt s2
+  in case s of
+    Atomic Star -> False
+    Atomic _ -> True
+    If _ ss1 ss2 -> bin ss1 ss2
+    While _ ss -> any interestingStmt ss
+    For _ _ _ _ ss -> any interestingStmt ss
+    Go s1 -> any interestingStmt s1
+    Close _ -> True
+    Block ss -> any interestingStmt ss
+    Select cs def ->
+      let
+        caseOp o = case (o @^) of { Star -> False; _ -> True }
+        def' = maybe False (any interestingStmt) def
+        cs' = any (any interestingStmt . snd) cs
+      in any (caseOp . fst) cs || def' || cs'
+    _ -> False

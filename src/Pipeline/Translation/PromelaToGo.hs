@@ -462,7 +462,7 @@ translateStatements ρ = case syntax ρ of
             let (ods', s') =
                   if isSequential ss
                     then (decls $ curr ρ2, T.Block $ stripReturns oss')
-                    else ([], T.Go $ ods' ++ oss')
+                    else ([], T.Go $ decls (curr ρ2) ++ oss')
             let Obj {decls = ods, stmts = oss} = curr ρ
             let obj' = Obj {decls = ods ++ ods', stmts = Pos p s' : oss}
             -- Absorb any chanel declarations and calls from the context
