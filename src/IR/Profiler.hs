@@ -9,15 +9,15 @@ data Parametricity = Looping | Capacity | PathCondition
 
 instance Show Parametricity where
   show = \case
-    Looping -> "loop parametric"
-    Capacity -> "capacity parametric"
-    PathCondition -> "path condition parametric"
+    Looping -> "loop"
+    Capacity -> "capacity"
+    PathCondition -> "path condition"
 
 profileVirgo :: 𝑃 -> String
 profileVirgo p =
   let parametricity = getParametricity p
-   in if null parametricity then "Program is not parametric."
-      else "Program is " ++ L.intercalate " and " (map show parametricity)
+   in if null parametricity then "not parametric."
+      else L.intercalate "; " (map show parametricity)
 
 getParametricity :: 𝑃 -> [Parametricity]
 getParametricity p =
