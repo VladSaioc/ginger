@@ -1,5 +1,6 @@
 module Pipeline.Translation.AlphaConversion (alphaConvert) where
 
+import Data.List qualified as L
 import Data.Map as M
 import Data.Maybe
 import Promela.Ast
@@ -32,7 +33,7 @@ alphaDeclareVar :: (Env, Int) -> Ident -> (Env, Int)
 alphaDeclareVar (env, idx) x =
   let -- | Append the index to the variable name and insert into
       -- the variable declaration.
-      x' = x ++ "'" ++ show idx
+      x' = ['\'' | "_"  `L.isPrefixOf` x] ++ x ++ "'" ++ show idx
    in (M.insert x x' env, idx + 1)
 
 -- | Alpha conversion of top-level declarations, performed in a first pass.
