@@ -34,7 +34,7 @@ pProgram = \case
     return (𝑃 chs' ps')
   R''.Bad err -> Bad err
 
-pChan :: R'.Stm -> Err [Chan]
+pChan :: R'.Stm -> Err [𝐷]
 pChan = \case
   (R'.Chan c e) -> do
     e' <- pExp e
@@ -75,6 +75,10 @@ pOp :: R'.Op -> Err Op
 pOp = \case
   R'.Snd c _ -> return (Send (c &))
   R'.Rcv c _ -> return (Recv (c &))
+  R'.Add w e -> do
+    e' <- pExp e
+    return (Add (w &) e')
+  R'.Wait w -> return (Wait (w &))
 
 pExp :: R'.Exp -> Err 𝐸
 pExp =
