@@ -30,6 +30,12 @@ simplifyStatements = \case
           Decl x e -> pos (Decl x e) : simplifyStatements ss
           -- Channel declaration statement: No change.
           Chan c e -> pos (Chan c e) : simplifyStatements ss
+          -- WaitGroup declaration statement: No change.
+          Wgdef w -> pos (Wgdef w) : simplifyStatements ss
+          -- WaitGroup add: No change.
+          Add e w -> pos (Add e w) : simplifyStatements ss
+          -- WaitGroup wait: No change.
+          Wait w -> pos (Wait w) : simplifyStatements ss
           -- Channel operation statement: No change.
           Atomic o -> pos (Atomic o) : simplifyStatements ss
           -- Skip statement: Remove redundant Skip.
