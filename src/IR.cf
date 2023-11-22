@@ -41,6 +41,7 @@ Prog. Prog ::= [Stm];
 -- Statement
 separator Stm ";";
 Chan. Stm ::= ID "=" "[" Exp "]";
+Wgdef. Stm ::= ID "=" "sync.WaitGroup";
 Skip. Stm ::= SKIP;
 Return. Stm ::= RETURN;
 SOp. Stm ::= Op;
@@ -52,6 +53,8 @@ Go.  Stm ::= GO "{" [Stm] "}";
 separator Op ";";
 Snd. Op ::= ID SND;
 Rcv. Op ::= ID RCV;
+Add. Op ::= ID ".Add(" Exp ")";
+Wait. Op ::= ID ".Wait()";
 
 -- Expressions
 coercions Exp 5;

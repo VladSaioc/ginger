@@ -25,19 +25,27 @@ import Utilities.PrettyPrint (PrettyPrint (prettyPrint), indent, multiline)
 class ProgramPointOffset a where
   ppOffset :: a -> Int
 
--- {c = [e]; ...}* {go { S } ...}*
-data 𝑃 = 𝑃 [Chan] 𝑆 deriving (Eq, Ord, Read)
+-- | Production rule for VIRGo programs:
+-- > 𝑃 ::= {𝐷; ...}* {go { 𝑆 } ...}*
+data 𝑃 = 𝑃 [𝐷] 𝑆 deriving (Eq, Ord, Read)
 
--- c = [e]
-data Chan = Chan String 𝐸 deriving (Eq, Ord, Read)
+-- | Production rules for VIRGo definitions:
+-- > 𝐷 ::= c = [e]
+-- >  | x = sync.WaitGroup
+data 𝐷
+  = -- | > c = [e]
+    Chan String 𝐸
+  | -- | > x = sync.WaitGroup
+    Wg String
+  deriving (Eq, Ord, Read)
 
--- | Production rule for IR statements:
+-- | Production rule for VIRGo statements:
 -- > 𝑆 ::= 𝑆₁; 𝑆₂
 -- >  | if 𝐸 then 𝑆₁ else 𝑆₂
 -- >  | skip
 -- >  | return
 -- >  | for (x : 𝐸₁ .. 𝐸₂) { 𝑠 }
--- >  | 𝑐! | 𝑐?
+-- >  | 𝑐! | 𝑐? | 𝑤.Add(𝐸) | 𝑤.Wait()
 data 𝑆
   = -- | > 𝑆₁; 𝑆₂
     Seq 𝑆 𝑆
@@ -51,17 +59,21 @@ data 𝑆
     For String 𝐸 𝐸 [Op]
   | -- | > go { S }
     Go 𝑆
-  | -- | > 𝑐! | 𝑐?
+  | -- | > 𝑐! | 𝑐? | 𝑤.Add(𝐸) | 𝑤.Wait()
     Atomic Op
   deriving (Eq, Ord, Read)
 
 -- | Production rules for loop IR operations
 --  > 𝑠 ::= 𝑠₁; 𝑠₂ | 𝑐! | 𝑐?
 data Op
-  = -- | 𝑐!
+  = -- | > 𝑐!
     Send String
-  | -- | 𝑐?
+  | -- | > 𝑐?
     Recv String
+  | -- | > 𝑤.Add(𝐸)
+    Add String 𝐸
+  | -- | > 𝑤.Wait()
+    Wait String
   deriving (Eq, Ord, Read)
 
 -- | Production rules for IR expressions
@@ -120,8 +132,10 @@ instance Show 𝑃 where
     let cs' = multiline (map show cs)
      in unlines [cs', prettyPrint 0 s]
 
-instance Show Chan where
-  show (Chan c e) = unwords [c, "=", "[" ++ show e ++ "];"]
+instance Show 𝐷 where
+  show = \case
+    Chan c e -> unwords [c, "=", "[" ++ show e ++ "];"]
+    Wg x -> unwords [x, "=", "sync.WaitGroup"]
 
 instance Show 𝑆 where
   show = prettyPrint 0
@@ -182,6 +196,8 @@ instance Show Op where
   show = \case
     Send c -> c ++ "!"
     Recv c -> c ++ "?"
+    Add w e -> w ++ ".Add(" ++ show e ++ ")"
+    Wait w -> w ++ ".Wait()"
 
 instance ProgramPointOffset 𝑃 where
   ppOffset (𝑃 _ s) = ppOffset s
@@ -222,3 +238,5 @@ instance ProgramPointOffset Op where
   ppOffset = \case
     Send _ -> 2
     Recv _ -> 1
+    Add _ _ -> 1
+    Wait _ -> 1
