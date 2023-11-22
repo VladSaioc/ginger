@@ -9,9 +9,12 @@ newtype Prog = Prog [Pos Stmt] deriving (Eq, Ord, Read)
 --
 -- > S ::= skip
 -- >    | return
--- >    | chan c = [E]
+-- >    | c := make(chan, E)
+-- >    | w := sync.WaitGroup
 -- >    | break
 -- >    | continue
+-- >    | w.Add(E)
+-- >    | w.Wait()
 -- >    | C
 -- >    | x := E
 -- >    | x = E
@@ -23,17 +26,21 @@ newtype Prog = Prog [Pos Stmt] deriving (Eq, Ord, Read)
 -- >    | while Exp { {S; ...}* }
 -- >    | go { {S; ...}* }
 data Stmt -- | Represents a skip statement
-  -- 
+  --
   -- > skip
   = Skip
   -- | Represents a return statement
   --
   -- > return
   | Return
-  -- | Represents a channel operation with a channel name and an expression
+  -- | Represents a channel declaration with a channel name and an expression for the channel capacity
   --
-  -- > chan "myChannel" = [E]
+  -- > chan c = [E]
   | Chan String Exp
+  -- | Represents a WaitGroup declaration
+  --
+  -- > sync.WaitGroup w
+  | Wgdef String
   -- | Represents a break statement
   --
   -- > break
@@ -42,6 +49,14 @@ data Stmt -- | Represents a skip statement
   --
   -- > continue
   | Continue
+  -- | Represents an addition to a WaitGroup counter
+  --
+  -- > w.Add(E)
+  | Add Exp String
+  -- | Represents waiting until a WaitGroup reaches 0
+  --
+  -- > w.Wait()
+  | Wait String
   -- | Represents an atomic channel operation
   --
   -- > C
@@ -224,6 +239,9 @@ instance PrettyPrint Stmt where
           Decl x e -> tab x ++ " := " ++ show e
           As x e -> tab x ++ " = " ++ show e
           Chan c e -> unwords [tab c, ":=", "make(chan,", show e ++ ")"]
+          Wgdef w -> unwords [tab w, ":=", "sync.WaitGroup"]
+          Add e w -> tab $ w ++ ".Add(" ++ show e ++ ")"
+          Wait w -> tab $ w ++ ".Wait()"
           Atomic o -> tab $ show o
           Close c -> tab "close(" ++ c ++ ")"
           Block ss -> block 0 ss
