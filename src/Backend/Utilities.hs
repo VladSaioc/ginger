@@ -23,12 +23,12 @@ Produces:
   if |E| > 0. ⨁ eᵢ ≠ 𝟎. eᵢ
 -}
 (⨁) :: Exp -> (Exp -> Exp -> Exp) -> [Exp] -> Exp
-(⨁) zero cons = \case
-  [] -> zero
+(⨁) zero' cons = \case
+  [] -> zero'
   e : es ->
-    if e == zero
-      then (zero ⨁ cons) es
-      else cons e ((zero ⨁ cons) es)
+    if e == zero'
+      then (zero' ⨁ cons) es
+      else cons e ((zero' ⨁ cons) es)
 
 -- | Compose lists of expressions under syntactic conjunction (&&).
 (...⋀) :: [Exp] -> Exp
