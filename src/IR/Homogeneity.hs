@@ -5,40 +5,42 @@ import IR.Ast
 import IR.Utilities
 import Utilities.Err
 
-type DirEnv = Err (M.Map String OpDir)
+homogeneous = 0
 
-homogeneous :: 𝑃 -> Err ()
-homogeneous (𝑃 _ gos) = do
-  _ <- homogeneousProc gos
-  return ()
+-- type DirEnv = Err (M.Map String OpType)
 
-homogeneousProc :: 𝑆 -> Err ()
-homogeneousProc s = do
-  _ <- homogeneousStmt (return M.empty) s
-  return ()
+-- homogeneous :: 𝑃 -> Err ()
+-- homogeneous (𝑃 _ gos) = do
+--   _ <- homogeneousProc gos
+--   return ()
 
-homogeneousStmt :: DirEnv -> 𝑆 -> DirEnv
-homogeneousStmt d = \case
-  Return -> d
-  Go s -> homogeneousStmt (return M.empty) s
-  If _ s1 s2 -> do
-    d' <- homogeneousStmt d s1
-    homogeneousStmt (return d') s2
-  Seq s1 s2 -> do
-    d' <- homogeneousStmt d s1
-    homogeneousStmt (return d') s2
-  Atomic o -> homogeneousOp d o
-  For _ _ _ os -> foldl homogeneousOp d os
-  Skip -> d
+-- homogeneousProc :: 𝑆 -> Err ()
+-- homogeneousProc s = do
+--   _ <- homogeneousStmt (return M.empty) s
+--   return ()
 
-homogeneousOp :: DirEnv -> Op -> DirEnv
-homogeneousOp menv o =
-  let (c, d) = (chName o, chDir o)
-   in do
-        env <- menv
-        case M.lookup c env of
-          Just o' ->
-            if o' == d
-              then return env
-              else Bad ("Operations of channel " ++ c ++ " are not homogeneous.")
-          Nothing -> return (M.insert c d env)
+-- homogeneousStmt :: DirEnv -> 𝑆 -> DirEnv
+-- homogeneousStmt d = \case
+--   Return -> d
+--   Go s -> homogeneousStmt (return M.empty) s
+--   If _ s1 s2 -> do
+--     d' <- homogeneousStmt d s1
+--     homogeneousStmt (return d') s2
+--   Seq s1 s2 -> do
+--     d' <- homogeneousStmt d s1
+--     homogeneousStmt (return d') s2
+--   Atomic o -> homogeneousOp d o
+--   For _ _ _ os -> foldl homogeneousOp d os
+--   Skip -> d
+
+-- homogeneousOp :: DirEnv -> Op -> DirEnv
+-- homogeneousOp menv o =
+--   let (c, d) = (primName o, opType o)
+--    in do
+--         env <- menv
+--         case M.lookup c env of
+--           Just o' ->
+--             if o' == d
+--               then return env
+--               else Bad ("Operations of channel " ++ c ++ " are not homogeneous.")
+--           Nothing -> return (M.insert c d env)
