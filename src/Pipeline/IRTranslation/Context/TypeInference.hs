@@ -118,11 +118,13 @@ typesAndFvs (𝑃 chs s) = do
   return (vs, ts)
 
 -- | Collect and unify types in channel capacity expressions.
-chanFVs :: TCtx Chan -> Err (TCtx ())
-chanFVs ctx@(Ctx {datum = Chan _ e}) = do
-  ctx'@(Ctx {datum = t}) <- expFVs $ e >: ctx
-  ctx'' <- unifyTypes ctx' T.TInt t
-  done ctx''
+chanFVs :: TCtx 𝐷 -> Err (TCtx ())
+chanFVs ctx = case datum ctx of
+  Chan _ e -> do
+    ctx'@(Ctx {datum = t}) <- expFVs $ e >: ctx
+    ctx'' <- unifyTypes ctx' T.TInt t
+    done ctx''
+  _ -> done ctx
 
 -- | Collect and unify types across IR statements.
 stmtFVs :: TCtx 𝑆 -> Err (TCtx ())
@@ -134,6 +136,7 @@ stmtFVs ctx@(Ctx {datum = s}) =
    in case s of
         Skip -> done ctx
         Return -> done ctx
+        Atomic (Add _ e) -> updateWithExp T.TInt ctx e
         Atomic _ -> done ctx
         Seq s1 s2 -> do
           ctx' <- stmtFVs $ s1 >: ctx
