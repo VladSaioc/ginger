@@ -4,12 +4,14 @@ import IR.Ast
 import Data.List qualified as L
 import Data.Monoid
 
-data Parametricity = Looping | Capacity | PathCondition
+data Parametricity = ChLooping | WgLooping | WgAdd | Capacity | PathCondition
   deriving (Read)
 
 instance Show Parametricity where
   show = \case
-    Looping -> "loop"
+    ChLooping -> "chan-loop"
+    WgLooping -> "wg-loop"
+    WgAdd -> "wg-add"
     Capacity -> "capacity"
     PathCondition -> "path condition"
 
@@ -21,9 +23,11 @@ profileVirgo p =
 
 getParametricity :: 𝑃 -> [Parametricity]
 getParametricity p =
-  let looping =  ([Looping | Any True == loopParametric p])
-      capping = ([Capacity | Any True == capParametric p])
-    in looping ++ capping
+  let chlooping =  ([ChLooping | Any True == chLoopParametric p])
+      wglooping =  ([WgLooping | Any True == wgLoopParametric p])
+      add =  ([WgAdd | Any True == wgAddParametric p])
+      cap = ([Capacity | Any True == capParametric p])
+    in chlooping ++ wglooping ++ add ++ cap
 
 traverseStmt :: Monoid a => Monoid b => (a -> 𝑆 -> a) -> (a -> 𝑆 -> b) -> a -> 𝑆 -> b
 traverseStmt makecontext makeresult ctx s =
@@ -41,8 +45,8 @@ traverseStmt makecontext makeresult ctx s =
 traverseOp :: (a -> Op -> b) -> a -> Op -> b
 traverseOp makeresult = makeresult
 
-loopParametric :: 𝑃 -> Any
-loopParametric (𝑃 _ s) =
+chLoopParametric :: 𝑃 -> Any
+chLoopParametric (𝑃 _ s) =
   let makecontext looping = \case
         For _ e1 e2 _ -> Any (parametricExp e1) <> Any (parametricExp e2)
         _ -> looping
@@ -52,8 +56,31 @@ loopParametric (𝑃 _ s) =
         _ -> Any False
     in traverseStmt makecontext makeresult (Any False) s
 
+wgLoopParametric :: 𝑃 -> Any
+wgLoopParametric (𝑃 _ s) =
+  let makecontext looping = \case
+        For _ e1 e2 _ -> Any (parametricExp e1) <> Any (parametricExp e2)
+        _ -> looping
+      makeresult looping = \case
+        Atomic (Add _ _) -> looping
+        Atomic (Wait _) -> looping
+        _ -> Any False
+    in traverseStmt makecontext makeresult (Any False) s
+
+wgAddParametric :: 𝑃 -> Any
+wgAddParametric (𝑃 _ s) =
+  let makecontext _ _ = Any False
+      makeresult _ = \case
+        Atomic (Add _ e) -> Any $ parametricExp e
+        _ -> Any False
+    in traverseStmt makecontext makeresult (Any False) s
+
 capParametric :: 𝑃 -> Any
-capParametric (𝑃 cs _) = mconcat (map (\(Chan _ e) -> Any $ parametricExp e) cs)
+capParametric (𝑃 cs _) =
+  let checkCap = \case
+        Chan _ e -> Any $ parametricExp e
+        _ -> Any False
+   in mconcat (map checkCap cs)
 
 parametricExp :: 𝐸 -> Bool
 parametricExp =
