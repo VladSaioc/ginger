@@ -55,6 +55,9 @@ zipCasesStmts = \case
         As {} -> s0 : ss'
         Chan {} -> s0 : ss'
         Decl {} -> s0 : ss'
+        Wgdef {} -> s0 : ss'
+        Add {} -> s0 : ss'
+        Wait {} -> s0 : ss'
         Atomic {} -> s0 : ss'
         -- Close statement: No change.
         Close {} -> s0 : ss'
