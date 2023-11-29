@@ -339,18 +339,14 @@ instance PrettyPrint Stmt where
                   ++ "}"
           VarDef g xs ->
             let def (x, mt, e) =
-                  let t = case mt of
-                        Just t' -> [":", prettyPrint (i + 1) t']
-                        Nothing -> []
+                  let t = maybe [] (\t' -> [ ":", prettyPrint (i + 1) t']) mt
                    in (unwords $ x : t, prettyPrint (i + 1) e)
                 defs = map def xs
                 (xs', es') = (intercalate ", " (map fst defs), intercalate ", " (map snd defs))
                 g' = (["ghost" | g])
              in unwords (g' ++ ["var", xs', ":=", es' ++ ";"])
           If e s1 ms2 ->
-            let s2 = case ms2 of
-                  Just s2' -> "\n" ++ ind ++ unwords ["else", pp s2']
-                  Nothing -> ""
+            let s2 = maybe "" (\s2' -> "\n" ++ ind ++ unwords ["else", pp s2']) ms2
              in unwords ["if", prettyPrint 0 e, prettyPrint i s1]
                   ++ s2
           Assert e -> unwords ["assert", prettyPrint 0 e] ++ ";"
@@ -380,9 +376,7 @@ instance PrettyPrint Exp where
         tab = indent i
         quantifier q xs e' =
           let def (x, mt) =
-                let t' = case mt of
-                      Just t -> " : " ++ prettyPrint i t
-                      Nothing -> ""
+                let t' = maybe "" ((" : " ++) . prettyPrint i) mt
                  in x ++ t'
               xs' = intercalate ", " $ map def xs
               e'' = pp e'
