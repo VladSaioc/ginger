@@ -1,11 +1,13 @@
 module Pipeline.IRTranslation.Enabled (enabledExp) where
 
-import Backend.Ast
-import Backend.Utilities
 import Data.Map qualified as M
 import Data.Maybe qualified as Mb
+
+import Backend.Ast
+import Backend.Utilities
 import IR.Utilities
-import Pipeline.IRTranslation.Meta.Channel
+import Pipeline.IRTranslation.Meta.CommOp
+import Pipeline.IRTranslation.Meta.WgOp
 import Pipeline.IRTranslation.Utilities
 
 {- | Composes the enabled predicates for all processes
@@ -31,6 +33,12 @@ Let the following:
 > C? = ⋃ ∀ (c, !, 𝑛) ∈ chanOps(𝜙). [
 >    𝑛 ↦ if 0 < 𝜅(c) then c > 0 else c == 1
 >  ]
+> Add(W) = ⋃ ∀ (w, Add(e), 𝑛) ∈ wgOps(𝜙). [
+>    𝑛 ↦ w + e >= 0
+>  ]
+> Wait(W) = ⋃ ∀ (w, Wait, 𝑛) ∈ wgOps(𝜙). [
+>    𝑛 ↦ w == 0
+>  ]
 
 Produces:
 
@@ -46,14 +54,15 @@ enabled 𝜅 p 𝜙 =
       -- Construct match over process id
       match cs = Match pc (cs ++ [(Wildcard, ((-1) #) :< pc :< 𝜒 p)])
       chsops = processChanOps p 𝜙
+      wgops = processWgOps p 𝜙
       -- Process has not reached termination point
-      subExp 𝒪 {o𝐶 = cn, o𝑛 = 𝑛, oDir = d} =
+      subExpCh 𝒪 {o𝐶 = cn, o𝑛 = 𝑛, oDir = d} =
         let k = Mb.fromJust (M.lookup cn 𝜅)
             c = (cn @)
 
             -- If the process is at instruction 𝑛', check e
             -- case 𝑛' => e
-            executing 𝑛' e = (PCon (CNum 𝑛'), e)
+            executing 𝑛' e' = (PCon (CNum 𝑛'), e')
             -- Check for the buffered case for capacity k:
             -- if 0 < k then e1 else e2
             bufCase = IfElse ((0 #) :< k)
@@ -75,4 +84,22 @@ enabled 𝜅 p 𝜙 =
                 [ executing 𝑛 $ bufCase (c :> (0 #)) (c :== (1 #))
                 ]
          in opEnabled
-   in match (concatMap subExp chsops)
+      -- Process has not reached termination point
+      subExpWg 𝒲 {w𝐶 = cn, w𝑛 = 𝑛, wDir = d, wE = e} =
+        let c = (cn @)
+            -- If the process is at instruction 𝑛', check e
+            -- case 𝑛' => e
+            executing 𝑛' e' = (PCon (CNum 𝑛'), e')
+            opEnabled = case d of
+              -- Wait operations are enabled if the WaitGroup counter is 0.
+              W ->
+                [ executing 𝑛 (c :== (0 #))
+                ]
+              -- FIXME: Add operations are always enabled no matter what.
+              -- WaitGroup panics are not modeled temporarily, so adds are modeled
+              -- as blocking until the resulting expression is non-negative.
+              A ->
+                [ executing 𝑛 (c :+ e :>= (0 #))
+                ]
+         in opEnabled
+   in match $ concatMap subExpCh chsops ++ concatMap subExpWg wgops
