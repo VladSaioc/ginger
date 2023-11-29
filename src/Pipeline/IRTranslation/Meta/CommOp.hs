@@ -1,4 +1,4 @@
-module Pipeline.IRTranslation.Meta.Channel where
+module Pipeline.IRTranslation.Meta.CommOp where
 
 import Backend.Ast
 import Control.Monad (unless)
@@ -9,25 +9,25 @@ import IR.Utilities
 import Pipeline.IRTranslation.Utilities
 import Utilities.Collection
 
--- | An alias for the type of channel names, denoted as strings.
--- Its purpose is to shorten type definitions involving channel names.
+-- | An alias for the type of concurrency primitive names, denoted as strings.
+-- Its purpose is to shorten type definitions involving concurrency primitives.
 type 𝐶 = String
 
 -- | The type of channel capacity environments, connecting channel names to capacity expressions.
 type 𝛫 = 𝐶 ↦ Exp
 
--- | Mappings from channel operation directionality to a set of
+-- | Mappings from concurrent operation type to a set of
 -- program points marking channel operations with that direction.
-type 𝒪s = OpDir ↦ [𝒪]
+type 𝒪s = CommOpType ↦ [𝒪]
 
--- | (Meta)data about channel operations.
+-- | (Meta)data about concurrency operations.
 data 𝒪 = 𝒪
   { -- | Process of channel operation
     oP :: P,
-    -- | Channel name
+    -- | Concurrency primitive name
     o𝐶 :: 𝐶,
-    -- | Channel operation
-    oDir :: OpDir,
+    -- | Concurrent operation
+    oDir :: CommOpType,
     -- | Program point
     o𝑛 :: 𝑁
   } deriving (Eq, Read)
@@ -68,10 +68,13 @@ Rules:
 noloopPChanInsns :: 𝛬 -> I.𝑆 -> P ↦ (𝐶 ↦ 𝒪s)
 noloopPChanInsns 𝛬 { 𝑛, p } = \case
    -- Atomic operations are added to the list of triples.
-   I.Atomic o ->
-     let (c, d) = (chName o, chDir o)
-         o' = 𝒪 {oP = p, o𝐶 = c, oDir = d, o𝑛 = 𝑛}
-      in M.empty ⇒ (p, o' +> M.empty)
+   I.Atomic o -> case opType o of
+      -- Only focus on channel operations.
+      CommO d ->
+        let c = primName o
+            o' = 𝒪 {oP = p, o𝐶 = c, oDir = d, o𝑛 = 𝑛}
+         in M.empty ⇒ (p, o' +> M.empty)
+      _ -> M.empty
    -- All other statements return an empty map, or are traversed
    -- recursively in inductive cases.
    _ -> M.empty
@@ -289,8 +292,8 @@ Produces:
 
 > 𝒪 {p, c, d, 𝑛}, where cd = 𝜙(𝑛)
 -}
-insnToChSummary :: P -> 𝑁 -> Stmt -> Maybe 𝒪
-insnToChSummary p 𝑛 s = do
+insnToChOpSummary :: P -> 𝑁 -> Stmt -> Maybe 𝒪
+insnToChOpSummary p 𝑛 s = do
   op <- backendChannelOp s
   let (c, d) = either (,S) (,R) op
   return
@@ -323,7 +326,7 @@ Produces:
 processChanOpsMap :: P -> 𝛷 -> 𝐶 ↦ [𝒪]
 processChanOpsMap p =
   let addChanOp 𝑛 i cops =
-        case insnToChSummary p 𝑛 i of
+        case insnToChOpSummary p 𝑛 i of
           Just o@(𝒪 {o𝐶 = c}) -> M.insertWith (++) c [o] cops
           Nothing -> cops
    in M.foldrWithKey addChanOp M.empty
@@ -338,4 +341,4 @@ Produces:
 > { 𝒪 {p, c, d, 𝑛} | (𝑛, cd) ∈ 𝜙. d ∈ {!, ?} }
 -}
 processChanOps :: P -> 𝛷 -> [𝒪]
-processChanOps p = catMaybes . M.elems . M.mapWithKey (insnToChSummary p)
+processChanOps p = catMaybes . M.elems . M.mapWithKey (insnToChOpSummary p)
