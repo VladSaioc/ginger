@@ -5,10 +5,11 @@ import Backend.Utilities
 import Backend.Simplifier (eSimplify)
 import Data.Maybe qualified as Mb
 import Data.Map qualified as M
-import IR.Ast qualified as S
+import IR.Ast qualified as I
 import IR.Utilities
-import Pipeline.IRTranslation.Meta.Channel
+import Pipeline.IRTranslation.Meta.CommOp
 import Pipeline.IRTranslation.Meta.Meta
+import Pipeline.IRTranslation.Meta.WgOp
 import Pipeline.IRTranslation.Utilities
 import Utilities.Collection
 
@@ -16,11 +17,13 @@ import Utilities.Collection
 -}
 data Encoding = Encoding
   { -- | Original VIRGo program
-    prog :: S.𝑃,
+    prog :: I.𝑃,
     -- | Reachability conditions of program points in the encoding.
     conditions :: 𝛹,
     -- | Channel capacities
     capacities :: 𝛫,
+    -- | WaitGroups
+    waitgroups :: 𝑊,
     -- | Type environment for concurrency parameters
     typeenv :: 𝛤,
     -- | Type variables required by polymorphic concurrency parameters
@@ -30,14 +33,16 @@ data Encoding = Encoding
     -- | High-level syntax summaries
     summaries :: ℳ,
     -- | Expressions encoding projected number of communication operations.
-    comprojection :: 𝐶 ↦ (OpDir ↦ Exp),
+    comprojection :: 𝐶 ↦ (CommOpType ↦ Exp),
+    -- | Expression encoding projected number of WaitGroup operations.
+    wgprojection :: 𝐶 ↦ (WgOpType ↦ Exp),
     -- | Per-process postcondition
     post :: Exp
   }
 
 -- | Get 'balanced-flow' precondition from the encoding.
-pre :: Encoding -> Exp
-pre Encoding { capacities = 𝜅, comprojection = p } =
+balancedFlowPre :: Encoding -> Exp
+balancedFlowPre Encoding { capacities = 𝜅, comprojection = p, wgprojection = w } =
    let prc c os =
          let -- Get channel capacity expression.
             k = Mb.fromJust (M.lookup c 𝜅)
@@ -53,7 +58,8 @@ pre Encoding { capacities = 𝜅, comprojection = p } =
             -- capacity combined.
             sndsUnblock = sends :<= (recvs :+ k)
          in rcvsUnblock :&& sndsUnblock
-    in ((M.elems $ M.mapWithKey prc p)  ...⋀)
+       prw os = (os M.! A) :== (0 #)
+    in ((M.elems (M.mapWithKey prc p) ++ M.elems (M.map prw w)) ...⋀)
 
 -- | noSendsFound checks whether there are any channels without send operations.
 -- If there are no send operations and partial deadlocks are considered guaranteed,
