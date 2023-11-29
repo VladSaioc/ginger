@@ -86,15 +86,15 @@ balancedFlowWP = Oracle {
     "The precondition is placed in the weakest-precondition position.",
     "If the encoding verifies, the model is partial deadlock-free if and only if the concurrency parameters satisfy the precondition."
   ],
-  successMessage = generateConstraintMessage pre,
+  successMessage = generateConstraintMessage balancedFlowPre,
   -- Precondition is incorporated in the postcondition under equivalence i.e.,
   -- the precondition implies partial deadlock freedom, and vice-versa.
   -- If satisfied, the precondition is also proven to be the weakest (modulo scheduling choices).
   makePrecondition = const (True ?),
-  makePostcondition = \encoding -> pre encoding :<==> encodingToPostcondition encoding,
+  makePostcondition = \encoding -> balancedFlowPre encoding :<==> encodingToPostcondition encoding,
 
   -- In balanced flow, the real precondition includes capacity and balanced flow communication constraints.
-  realPrecondition = \encoding@Encoding {capacities = 𝜅  } -> (capPreconditions 𝜅 ...⋀) :&& pre encoding,
+  realPrecondition = \encoding@Encoding {capacities = 𝜅 } -> (capPreconditions 𝜅 ...⋀) :&& balancedFlowPre encoding,
   transformEncoding = id
 }
 
@@ -112,15 +112,15 @@ balancedFlow = Oracle {
   ],
   successMessage = \encoding ->
     unlines [
-      generateConstraintMessage pre encoding,
+      generateConstraintMessage balancedFlowPre encoding,
       "This condition may be more restrictive than necessary."
     ],
   -- Precondition is positioned normally.
-  makePrecondition = pre,
+  makePrecondition = balancedFlowPre,
   -- Post condition is the usual postcondition.
   makePostcondition = encodingToPostcondition,
 
   -- In balanced flow, the real precondition includes capacity and balanced flow communication constraints.
-  realPrecondition = \encoding@Encoding {capacities = 𝜅  } -> (capPreconditions 𝜅 ...⋀) :&& pre encoding,
+  realPrecondition = \encoding@Encoding {capacities = 𝜅  } -> (capPreconditions 𝜅 ...⋀) :&& balancedFlowPre encoding,
   transformEncoding = id
 }

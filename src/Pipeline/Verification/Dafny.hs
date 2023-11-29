@@ -1,10 +1,12 @@
 module Pipeline.Verification.Dafny (encodingToDafny, iterationsFunc) where
 
+import Data.List qualified as L
+import Data.Map qualified as M
+import Data.Set qualified as S
+
 import Backend.Ast
 import Backend.Utilities
 import Backend.Simplifier
-import Data.List qualified as L
-import Data.Map qualified as M
 import Pipeline.IRTranslation.Clauses.CapPrecondition (capPreconditions)
 import Pipeline.IRTranslation.Enabled (enabledExp)
 import Pipeline.IRTranslation.Encoding
@@ -17,9 +19,11 @@ import Pipeline.IRTranslation.Invariant.Go (goMonitors)
 import Pipeline.IRTranslation.Invariant.RendezvousMutex (rendezvousMutexes)
 import Pipeline.IRTranslation.Invariant.RendezvousNoAsync (noAsyncRendezvous)
 import Pipeline.IRTranslation.Invariant.Return (returnMonitors)
-import Pipeline.IRTranslation.Meta.Channel
+import Pipeline.IRTranslation.Invariant.WgMonitor (wgMonitors)
+import Pipeline.IRTranslation.Meta.CommOp
 import Pipeline.IRTranslation.Meta.Loop
 import Pipeline.IRTranslation.Meta.Meta
+import Pipeline.IRTranslation.Meta.WgOp
 import Pipeline.IRTranslation.Utilities
 import Pipeline.Verification.Oracle
 
@@ -123,6 +127,7 @@ Produces:
 > while enabledExp(𝜅, 𝛯)
 > ∀ (p, 𝜙) ∈ 𝛯. invariant counterInvariant(p, 𝜙)
 > ∀ e ∈ channelMonitors(noloop(P), loop(P)). invariant e
+> ∀ e ∈ wgMonitors(noloopWG(P), loopWG(P)). invariant e
 > ∀ ℓ ∈ loop(P). invariant loopMonitor(ℓ)
 > {
 >   scheduleSwitch(𝛯)
@@ -134,7 +139,7 @@ centralLoop Encoding {
   conditions = 𝜓,
   capacities = 𝜅,
   processes = 𝜉,
-  summaries = ℳ { os, gs, is, ls, rs }} =
+  summaries = ℳ { os, gs, is, ls, rs, ws }} =
   let -- Go statement invariants
       g = goMonitors 𝜓 gs
       -- If statement invariants
@@ -154,6 +159,8 @@ centralLoop Encoding {
       pc = counterInvariants 𝜉
       -- Channel buffer size invariants
       m = channelMonitors 𝜓 𝜅 os ls
+      -- WaitGroup counter size invariants
+      wg = wgMonitors 𝜓 ws ls
       -- Condition under which progress is enabled
       -- 1. Fuel constraint
       hasFuel = ("step" @) :< ("fuel" @)
@@ -161,7 +168,7 @@ centralLoop Encoding {
       enabled = hasFuel :&& enabledExp 𝜅 𝜉
    in While
         enabled
-        (concat [k, pc, rv, rvm, g, i, l, r, m])
+        (concat [k, pc, rv, rvm, g, i, l, r, m, wg])
         []
         ( Block
             [ -- Central loop case analysis
@@ -233,6 +240,21 @@ chanDef 𝜅 =
        in VarDef False . L.map def . M.keys $ 𝜅
     else Assert (True ?)
 
+{- | Constructs an initial assignment for all WaitGroup variables.
+Depends on: ws
+
+Produces:
+
+> ∀ w ∈ ws. var w = 0
+-}
+wgDef :: 𝑊 -> Stmt
+wgDef ws =
+  if S.size ws > 0
+    then
+      let def w = (w, Nothing, (0 #))
+       in VarDef False . L.map def . S.elems $ ws
+    else Assert (True ?)
+
 {- | Construcs the "isSchedule(S)" precondition.
 -}
 isSchedule :: Exp
@@ -263,6 +285,7 @@ progEncoding :: Oracle -> Encoding -> Method
 progEncoding Oracle { makePrecondition, makePostcondition } encoding@Encoding {
   typeenv = 𝛾,
   typevars = ts,
+  waitgroups = ws,
   capacities = 𝜅,
   processes = 𝜉,
   summaries = ℳ { ls } } =
@@ -288,6 +311,7 @@ progEncoding Oracle { makePrecondition, makePostcondition } encoding@Encoding {
               [ counterDef 𝜉,
                 terminationVars 𝜉,
                 chanDef 𝜅,
+                wgDef ws,
                 loopVarDef ls,
                 Assign [("step", (0 #))],
                 centralLoop encoding
