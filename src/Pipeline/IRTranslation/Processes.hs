@@ -6,14 +6,14 @@ import Data.Map qualified as M
 import IR.Ast
 import IR.Utilities
 import Pipeline.IRTranslation.Exps
-import Pipeline.IRTranslation.Meta.Channel
+import Pipeline.IRTranslation.Meta.CommOp
 import Pipeline.IRTranslation.Utilities
 import Utilities.Collection
 
 {- | Transforms a IR program intro a map from process ids to program points.
 Depends on: 𝜅, P = S₁, ..., Sₙ
 
-Produces: 
+Produces:
 
 > 𝛯 = [ pᵢ ↦ 𝜙ᵢ | 𝜙ᵢ = stmtsToPoints(𝜅, pᵢ, ⟨0, []⟩, Sᵢ) ]
 -}
@@ -42,7 +42,7 @@ Produces, based on S:
 > [IF]:       ⟨𝑛, 𝜙, if e { 𝑆₁ } else { 𝑆₂ }⟩ -> ⟨𝑛' + 1, 𝜙'⟩
 >             |- ⟨𝑛 + 1, 𝜙, 𝑆₁⟩ -> ⟨𝑛₁, 𝜙₁⟩
 >             |- ⟨𝑛₁ + 1, 𝜙₁, 𝑆₁⟩ -> ⟨𝑛', 𝜙₂⟩
->             |- 𝜙' = 𝜙₂[ 
+>             |- 𝜙' = 𝜙₂[
 >               𝑛 ↦ if x < e₂ {
 >                   𝜋(p) := 𝑛 + 1
 >                 } else {
@@ -124,14 +124,15 @@ stmtToPoints 𝜅 (𝜆@𝛬 { 𝑛 = 𝑛₀, p = p₀ }, 𝜉) s =
               -- Add go instruction to parent goroutine:
               -- 𝜙₀ = 𝜉₁(p₀)[
               --    𝑛₀ ↦ { 𝜋(p) := 𝑛; 𝜋(p₁) := 0 }
-              --  ] 
+              --  ]
               𝜙₀ = 𝜉₁ M.! p₀ ⇒ (𝑛₀, goto 𝜆' [p'goto p₁ 0])
               -- Add "not-started" and terminated program points:
               -- 𝜙₁ = 𝜉₁(p₁)[
+              --    -2 ↦ {},
               --    -1 ↦ {},
               --    𝜒(p₁) ↦ {}
               -- ]
-              𝜙₁ = 𝜉₁ M.! p₁ ⭆ [(-1, T.Block []), (𝑛 𝜆₁, T.Block [])]
+              𝜙₁ = 𝜉₁ M.! p₁ ⭆ [(_CRASHED, T.Block []), (_UNSPAWNED, T.Block []), (𝑛 𝜆₁, T.Block [])]
            in -- Updated both processes with new program points.
               (𝜆' { nextp = nextp 𝜆₁ }, 𝜉₁ ⭆ [(p₀, 𝜙₀), (p₁, 𝜙₁)])
 
@@ -182,11 +183,30 @@ Produces:
 >        }
 >      }
 >  ]⟩
+
+3. If o = w.Wait() then:
+
+>  ⟨n + 1, 𝜙 = [
+>    if w == 0 {
+>      𝜋(p) := n + 1;
+>    }
+>  ]⟩
+
+4. If o = w.Add(e) then:
+
+>  ⟨n + 1, 𝜙 = [
+>    if w + e < 0 {
+>      ∀ p ∈ dom(𝛯). 𝜋(p) := -2;
+>    } else {
+>      w := w + e
+>      𝜋(p) := n + 1;
+>    }
+>  ]⟩
 -}
 opToPoint :: 𝛫 -> (𝛬, 𝛯) -> Op -> (𝛬, 𝛯)
 opToPoint 𝜅 (𝜆@𝛬 { 𝑛 = 𝑛₀, p }, 𝜉) op =
-  let -- Get channel name for the operation.
-      c = chName op
+  let -- Get concurrency primitive name for the operation.
+      c = primName op
       -- 𝜋(p) := 𝑛'
       nextInstruction 𝑛' = T.Assign [((p ⊲), (𝑛' #))]
       -- if e { s }
@@ -249,3 +269,25 @@ opToPoint 𝜅 (𝜆@𝛬 { 𝑛 = 𝑛₀, p }, 𝜉) op =
            in -- Return program points and next available instruction
               -- point 𝑛+1
               (𝜆 { 𝑛 = 𝑛₀ + 1 }, 𝜉 ⇒ (p, 𝜙'))
+        Wait _ ->
+          let -- c == 0
+              guard = (c @) T.:== (0 #)
+              -- if c == 0 { 𝜋(p) := 𝑛 + 1 }
+              opPoint = ifNoElse guard [nextInstruction (𝑛₀ + 1)]
+              𝜙' = 𝜉 M.! p ⇒ (𝑛₀, opPoint)
+            in -- Return program points and next available instruction
+               -- point 𝑛+1
+               (𝜆 { 𝑛 = 𝑛₀ + 1 }, 𝜉 ⇒ (p, 𝜙'))
+        Add _ e ->
+          let e' = parseExp e
+              -- w + e >= 0
+              guard = ((c @) T.:+ e') T.:>= (0 #)
+              -- ∀ p ∈ dom(𝛯). 𝜋(p) := -2;
+              -- crashProcess p' = T.Assign [((p' ⊲), (CRASHED #))]
+              -- crashed = T.Block $ L.map crashProcess $ M.keys 𝜉
+              -- if c + e >= 0 { w := w + e; 𝜋(p) := 𝑛 + 1 }
+              opPoint = ifNoElse guard [assignChan ((c @) T.:+ e'), nextInstruction (𝑛₀ + 1)]
+              𝜙' = 𝜉 M.! p ⇒ (𝑛₀, opPoint)
+            in -- Return program points and next available instruction
+               -- point 𝑛+1
+               (𝜆 { 𝑛 = 𝑛₀ + 1 }, 𝜉 ⇒ (p, 𝜙'))
