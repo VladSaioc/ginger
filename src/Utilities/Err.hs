@@ -3,6 +3,8 @@ module Utilities.Err where
 import Control.Applicative (Alternative (..))
 import Control.Monad (MonadPlus (..), liftM)
 import Control.Monad.IO.Class
+import Data.Map qualified as M
+import Data.Maybe qualified as Mb
 
 data Err a = Ok a | Bad String
   deriving (Read, Show, Eq, Ord)
@@ -11,6 +13,9 @@ instance Monad Err where
   return = pure
   Ok a >>= f = f a
   Bad s >>= _ = Bad s
+
+instance MonadFail Err where
+  fail = Bad
 
 instance Applicative Err where
   pure = Ok
@@ -42,6 +47,11 @@ isErr :: Err a -> Bool
 isErr = \case
   Ok _ -> True
   Bad _ -> False
+
+mlookup :: (MonadFail m, Ord p) => String -> p -> M.Map p a -> m a
+mlookup errmsg k m = do
+  let v = M.lookup k m
+  Mb.maybe (fail errmsg) pure v
 
 newtype ErrT m a = ErrT {runErrT :: m (Err a)}
 
