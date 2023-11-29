@@ -1,10 +1,9 @@
-module IR.SanityCheck (sanityCheck, asyncCheck) where
+module IR.SanityCheck (sanityCheck) where
 
 import Control.Monad
 import Data.Set qualified as S
 import IR.Ast
 import Utilities.Err
-import Utilities.General
 
 -- | The sanity check context bookkeeps variable names
 data Ctx = Ctx
@@ -13,7 +12,9 @@ data Ctx = Ctx
     -- | Free variables
     fvs :: S.Set String,
     -- | Channel names
-    chenv :: S.Set String
+    chenv :: S.Set String,
+    -- | Waitgroup names
+    wgenv :: S.Set String
   }
   deriving (Eq, Ord, Read)
 
@@ -25,7 +26,8 @@ sanityCheck (𝑃 chs prc) = do
         Ctx
           { ienv = S.empty,
             fvs = S.empty,
-            chenv = S.empty
+            chenv = S.empty,
+            wgenv = S.empty
           }
   -- Perform sanity checks on channel declarations
   ctx' <- foldM sanityCheckChan ctx chs
@@ -33,14 +35,21 @@ sanityCheck (𝑃 chs prc) = do
 
 -- | Perform sanity checks on channel declarations.
 -- Remember any encountered free variables and the names of declared channels.
-sanityCheckChan :: Ctx -> Chan -> Err Ctx
-sanityCheckChan ctx (Chan c e) = do
-  -- Make sure there are no duplicate channel declarations.
-  _ <- multiGuard [(S.member c (chenv ctx), "Duplicate channel declaration: " ++ c)]
-  -- Remember the name of the newly declared channel
-  let ctx' = ctx {chenv = S.insert c (chenv ctx)}
-  -- Sanity check the capacity expression
-  sanityCheckExp ctx' e
+sanityCheckChan :: Ctx -> 𝐷 -> Err Ctx
+sanityCheckChan ctx = \case
+  (Chan c e) -> do
+    -- Make sure there are no duplicate channel declarations.
+    _ <- multiGuard [(S.member c (chenv ctx) || S.member c (wgenv ctx), "Duplicate concurrency primitive declaration: " ++ c)]
+    -- Remember the name of the newly declared channel
+    let ctx' = ctx {chenv = S.insert c (chenv ctx)}
+    -- Sanity check the capacity expression
+    sanityCheckExp ctx' e
+  Wg w -> do
+    -- Make sure there are no duplicate waitgroup declarations.
+    _ <- multiGuard [(S.member w (chenv ctx) || S.member w (wgenv ctx), "Duplicate concurrency primitive declaration: " ++ w)]
+    -- Remember the name of the newly declared channel
+    return $ ctx {wgenv = S.insert w (wgenv ctx)}
+
 
 -- | Perform sanity checks on IR statements.
 sanityCheckStm :: Ctx -> 𝑆 -> Err Ctx
@@ -76,13 +85,18 @@ sanityCheckStm ctx = \case
 -- the channel named by the operation was previously declared.
 sanityCheckOp :: Ctx -> Op -> Err Ctx
 sanityCheckOp ctx =
-  let checkChan c =
-        if S.member c (chenv ctx)
+  let checkPrim c =
+        if S.member c (chenv ctx) || S.member c (wgenv ctx)
           then return ctx
-          else Bad ("Usage of undeclared channel: " ++ c)
+          else Bad ("Usage of undeclared concurrency primitive: " ++ c)
    in \case
-        Send c -> checkChan c
-        Recv c -> checkChan c
+        Send c -> checkPrim c
+        Recv c -> checkPrim c
+        Wait w -> checkPrim w
+        Add w e -> do
+          ctx' <- sanityCheckExp ctx e
+          _ <- checkPrim w
+          return ctx'
 
 -- Sanity check IR expressions. Ensures that loop variables or channel
 -- names are not used in expressions.
@@ -115,11 +129,3 @@ sanityCheckExp ctx =
                 (S.member x (chenv ctx), "Channel used as a free variable: " ++ x)
               ]
           return (ctx {fvs = S.insert x (fvs ctx)})
-
-asyncCheck :: 𝑃 -> Err [()]
-asyncCheck (𝑃 cs _) = results $ map asyncCheckChan cs
-
-asyncCheckChan :: Chan -> Err ()
-asyncCheckChan (Chan c e) = case e of
-  Const 0 -> Bad ("Channel " ++ c ++ " is synchronous.")
-  _ -> return ()
