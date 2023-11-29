@@ -18,6 +18,19 @@ type P = Int
 -- | An alias for the type of program points. Its purpose is to provide
 -- clarity to type definitions involving program points.
 type 𝑁 = Int
+-- | The pattern for the unspawned goroutine program point.
+pattern UNSPAWNED :: (Eq a, Num a) => a
+pattern UNSPAWNED = -1
+-- | The program point of unspawned goroutines as a value.
+_UNSPAWNED :: Int
+_UNSPAWNED = -1
+-- | The pattern for the crashed goroutine program point.
+pattern CRASHED :: (Eq a, Num a) => a
+pattern CRASHED = -2
+-- | The program point of crashed goroutines as a value.
+_CRASHED :: Int
+_CRASHED = -2
+
 
 -- | Bindings from program points to statements, encoding the semantics
 -- of the operation at the given point.
