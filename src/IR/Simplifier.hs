@@ -13,8 +13,10 @@ simplify :: 𝑃 -> 𝑃
 simplify (𝑃 cs s) = 𝑃 (map cOptimize cs) (fix (stripOuterPaths . stripReturns True . sSimplify) s)
 
 -- | Simplify IR channel definitions.
-cOptimize :: Chan -> Chan
-cOptimize (Chan c e) = Chan c (eSimplify e)
+cOptimize :: 𝐷 -> 𝐷
+cOptimize = \case
+  Chan c e -> Chan c (eSimplify e)
+  d -> d
 
 -- | Simplify IR statements.
 sSimplify :: 𝑆 -> 𝑆
@@ -106,12 +108,13 @@ eSimplify pe =
         then e'
         else eSimplify e'
 
+-- | Strip returns from statements in tail position.
 stripReturns :: Bool -> 𝑆 -> 𝑆
-stripReturns tail = \case
-  Seq s1 s2 -> Seq (stripReturns False s1) (stripReturns tail s2)
-  If e s1 s2 -> If e (stripReturns tail s1) (stripReturns tail s2)
+stripReturns tailPos = \case
+  Seq s1 s2 -> Seq (stripReturns False s1) (stripReturns tailPos s2)
+  If e s1 s2 -> If e (stripReturns tailPos s1) (stripReturns tailPos s2)
   Go s -> Go (stripReturns True s)
-  Return -> if tail then Skip else Return
+  Return -> if tailPos then Skip else Return
   s -> s
 
 stripOuterPaths :: 𝑆 -> 𝑆
