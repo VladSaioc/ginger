@@ -16,6 +16,8 @@ type Ctxt a = ICtxt a ()
 data ICtxt a b = Ctxt
   { -- Set of channel names
     chans :: S.Set String,
+    -- Set of channel names
+    wgs :: S.Set String,
     -- Set of loop variables
     loopVars :: S.Set String,
     -- Set of concurrency parameters
@@ -44,6 +46,7 @@ allowed (Prog ss) =
   let newCtxt =
         Ctxt
           { chans = S.empty,
+            wgs = S.empty,
             loopVars = S.empty,
             commParams = S.empty,
             mutableVars = S.empty,
@@ -80,6 +83,13 @@ allowedDeclarations ρ = case syntax ρ of
                       commParams = S.union (commParams ρ') cxs'
                     }
             allowedDeclarations ρ2
+          Wgdef x -> do
+            let ρ2 =
+                  ρ'
+                    { -- Earmark WaitGroup name
+                      wgs = S.insert x (wgs ρ')
+                    }
+            allowedDeclarations ρ2
           Block ss' -> allowedDeclarations (ρ {syntax = ss' ++ ss })
           _ -> do
             _ <- allowedStmts ρ'
@@ -100,9 +110,30 @@ allowedStmts ρ =
                 -- No declarations are allowed after the declaration phase
                 -- is over.
                 Decl x _ -> err $ "Unexpected declaration for: " ++ x
-                Chan {} -> err "Unexpected channel declaration"
+                Chan c _ -> err $ "Unexpected channel declaration:" ++ c
+                Wgdef w -> err $ "Unexpected WaitGroup declaration: " ++ w
                 -- Close operations are not supported (yet)
                 Close {} -> err "Unexpected channel close"
+                -- WaitGroup Add operations are always allowed at the top level.
+                -- Inside loops, they are only allowed if they may not be skipped
+                -- due to preceding 'continue' statements or loop body path conditions.
+                Add e _ -> do
+                  cxs' <- expVars e
+                  let ρ₁ =
+                        ρ'
+                          { -- Earmark Add-related concurrency parameters
+                            commParams = S.union (commParams ρ) cxs'
+                          }
+                  not (continue ρ) ! "WaitGroup.Add operation might be skipped due to continue."
+                  (loopDepth ρ == 0 || not (conditional ρ)) ! "WaitGroup.Add operation is conditional in loop."
+                  allowedStmts ρ₁
+                -- WaitGroup Wait operations are always allowed at the top level.
+                -- Inside loops, they are only allowed if they may not be skipped
+                -- due to preceding 'continue' statements or loop body path conditions.
+                Wait _ -> do
+                  not (continue ρ) ! "Wait operation might be skipped due to continue."
+                  (loopDepth ρ == 0 || not (conditional ρ)) ! "Wait operation is conditional in loop."
+                  allowedStmts ρ'
                 -- Irregular loops are not supported
                 While {} -> err "Unexpected 'while' loop"
                 -- Select statements with a single passive case are reduced to the branch
@@ -153,7 +184,7 @@ allowedStmts ρ =
                 Atomic _ -> do
                   not (continue ρ) ! "Communication operation might be skipped due to continue."
                   (loopDepth ρ == 0 || not (conditional ρ)) ! "Communication operation is conditional in loop."
-                  ok
+                  allowedStmts ρ'
                 -- If statements check both cases for legal operations.
                 If _ s1 s2 -> do
                   -- Either branch is checked as conditional if inside a loop.
