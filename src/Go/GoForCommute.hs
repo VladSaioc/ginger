@@ -16,16 +16,24 @@ data Goroutine = Goroutine
 -- | Attempts to commute appropriate 'go' and 'for' statements.
 -- A 'go' and 'for' statements may be commuted iff. the communication pattern
 -- of the goroutines spawned in the body of the 'for' exhibit simple behaviour,
--- and if there are no side effects outside the
+-- and all the operations in the body of the loop are non-blocking concurrent operations.
+-- Every child goroutine inside the loop is turned to a goroutine outside the loop, and its body
+-- is encapsulated in a loop with the same topology as the outer loop.
+-- All non-blocking concurrent operations are hoisted in a sequential loop before
+-- the goroutines.
+-- TODO: Interleave the goroutines with non-blocking sequential operations in order.
 --
 -- Example:
 --
 -- > for (x : e1 .. e2) {
--- >    go { S1 }; go { S2 }; ...; go { Sn }
+-- >    o1; o2; go { S1 }; go { S2 }; ...; go { Sn }; ... ok
 -- > }
 --
 -- becomes
 --
+-- > for {
+-- >    o1; o2; ...; ok
+-- > }
 -- > go {
 -- >    for (x : e1 .. e2) { S1 }
 -- > }
@@ -51,37 +59,68 @@ goForCommuteSpine = \case
           While e s' -> un (While e) s'
           Go s' -> un Go s'
           For x e1 e2 d s' ->
-            case processForBody s' of
-              Nothing -> un (For x e1 e2 d) s'
-              Just gs' ->
+            case (forBodyGoroutines s', forBodyNonblockingConcurrency s') of
+              (Just gs, Just os) ->
                 let makeGo (Goroutine {decls, body, pos}) =
                       let g = Go $ decls ++ [Pos p $ For x e1 e2 d body]
                        in Pos pos g
-                 in Block $ map makeGo gs'
+                    os' = Pos p $ For x e1 e2 d os
+                 in Block $ os' : map makeGo gs
+              _ -> un (For x e1 e2 d) s'
           Select cs def ->
             let cs' = map (second goForCommuteSpine) cs
              in Select cs' $ fmap goForCommuteSpine def
           s' -> s'
      in Pos p s'' : goForCommuteSpine ss
 
--- | Inspects the body of a for loop and checks whether its body
--- consists only of simple goroutine spawns.
--- If it is the case, it returns just the bodies of the goroutines.
--- Otherwise, it returns nothing.
-processForBody :: [Pos Stmt] -> Maybe [Goroutine]
-processForBody = \case
+-- | Inspects the body of a for loop and extracts all non-blocking concurrent operations.
+-- If the loop body does not contain only non-blocking concurrent operations and
+-- simple goroutine spawns, it returns Nothing.
+forBodyNonblockingConcurrency :: [Pos Stmt] -> Maybe [Pos Stmt]
+forBodyNonblockingConcurrency = \case
   [] -> Just []
   Pos p s : ss -> case s of
-    Skip -> processForBody ss
-    Continue -> processForBody ss
+    Skip -> forBodyNonblockingConcurrency ss
+    Continue -> forBodyNonblockingConcurrency ss
     Break -> Nothing
     Return -> Nothing
     Decl {} -> Nothing
     As {} -> Nothing
+    Wgdef {} -> Nothing
+    Add {} -> do
+      ss' <- forBodyNonblockingConcurrency ss
+      return $ Pos p s : ss'
+    Wait {} -> Nothing
     Chan {} -> Nothing
     Atomic {} -> Nothing
     Close {} -> Nothing
-    Block ss' -> processForBody $ ss' ++ ss
+    Block ss' -> forBodyNonblockingConcurrency $ ss' ++ ss
+    If {} -> Nothing
+    Select {} -> Nothing
+    For {} -> Nothing
+    While {} -> Nothing
+    Go {} -> forBodyNonblockingConcurrency ss
+
+-- | Inspects the body of a for loop and extracts all simple goroutine spawns.
+-- If the loop bpdy does not contain only non-blocking concurrent operations and
+-- simple goroutine spawns, it returns Nothing.
+forBodyGoroutines :: [Pos Stmt] -> Maybe [Goroutine]
+forBodyGoroutines = \case
+  [] -> Just []
+  Pos p s : ss -> case s of
+    Skip -> forBodyGoroutines ss
+    Continue -> forBodyGoroutines ss
+    Break -> Nothing
+    Return -> Nothing
+    Decl {} -> Nothing
+    As {} -> Nothing
+    Wgdef {} -> Nothing
+    Add {} -> forBodyGoroutines ss
+    Wait {} -> Nothing
+    Chan {} -> Nothing
+    Atomic {} -> Nothing
+    Close {} -> Nothing
+    Block ss' -> forBodyGoroutines $ ss' ++ ss
     If {} -> Nothing
     Select {} -> Nothing
     For {} -> Nothing
@@ -91,7 +130,7 @@ processForBody = \case
       ds <- goroutineDecls s'
       let stmts = goroutineStmts s'
       let g = Goroutine {decls = ds, body = stmts, pos = p}
-      ss' <- processForBody ss
+      ss' <- forBodyGoroutines ss
       return $ g : ss'
 
 -- | Collects all the upfront declarations in a goroutine's body.
