@@ -2,6 +2,8 @@ module Pipeline.Translation.GoToIR (getIR) where
 
 import Control.Monad (foldM_)
 import Data.Map qualified as M
+import Data.Maybe qualified as Mb
+
 import Go.Ast qualified as P
 import IR.Ast
 import Utilities.Err
@@ -22,6 +24,8 @@ data Ctxt a b = Ctxt
     varenv :: M.Map String 𝐸,
     -- | Environment from channel names in the scope to their declaration names.
     chenv :: M.Map String String,
+    -- | Environment from WaitGroup names in the scope to their declaration names.
+    wgenv :: M.Map String String,
     -- | Binding from IR channel names to capacity
     chans :: M.Map String 𝐸,
     -- | Translation object so far.
@@ -46,10 +50,11 @@ getIR (P.Prog ss) =
             loopcounter = 0,
             -- Next case counter is 0
             casecounter = 0,
-            -- All environments are empty
+            -- All initial environments are empty
             varenv = M.empty,
             chenv = M.empty,
             chans = M.empty,
+            wgenv = M.empty,
             -- First object statement is a skip
             curr = Skip
           }
@@ -58,10 +63,12 @@ getIR (P.Prog ss) =
         ρ' <- translateStatements ρ
         -- Get binding from channels to capacity expressions.
         let chs = M.elems $ M.mapWithKey Chan (chans ρ')
+        -- Get WaitGroup declarations
+        let wgs = M.elems $ M.map Wg (wgenv ρ')
         -- Obtain IR body statement.
         let s = curr ρ'
         -- Construct IR program.
-        return $ 𝑃 chs s
+        return $ 𝑃 (chs ++ wgs) s
 
 -- | Translate Go statements to IR.
 --
@@ -111,9 +118,26 @@ translateStatements ρ = case syntax ρ of
       -- Wrap operation in the 'Atomic' constructor.
       let op' = Atomic $ curr ρ'
       -- Translation object becomes:
-      -- obj(ρ); op' 
+      -- obj(ρ); op'
       -- Translate continuation.
       translateStatements (ss >: ρ' <: Seq (curr ρ) op')
+    -- Translate WaitGroup declaration
+    P.Wgdef w -> do
+      -- Insert WaitGroup name into the WaitGroup name environment
+      -- (bound to itself initially).
+      let ρ₁ =
+            ρ
+              { wgenv = M.insert w w (wgenv ρ)
+              }
+      -- Translate continuation.
+      translateStatements (ss >: ρ₁)
+    P.Add e w -> do
+      w' <- mlookup ("Invalid WaitGroup: value not found: " ++ show w) w (wgenv ρ)
+      e' <- translateExp (varenv ρ) e
+      translateStatements (ss >: ρ <: Seq (curr ρ) (Atomic $ Add w' e'))
+    P.Wait w -> do
+      w' <- mlookup ("Invalid WaitGroup: value not found: " ++ show w) w (wgenv ρ)
+      translateStatements (ss >: ρ <: Seq (curr ρ) (Atomic $ Wait w'))
     -- Translate channel declaration.
     P.Chan c e -> do
       -- Translate capacity expression.
@@ -146,6 +170,8 @@ translateStatements ρ = case syntax ρ of
               chenv = chenv ρ,
               -- Channel name environment inherited from current context.
               chans = chans ρ,
+              -- WaitGroup name environment inherited from current context.
+              wgenv = wgenv ρ,
               -- Translation object is initially skip.
               curr = Skip
             }
@@ -197,7 +223,7 @@ translateStatements ρ = case syntax ρ of
           let o' = curr ρ₁
           -- Translate case body.
           ρ₂ <- translateStatements $ ss' >: ρ₁ <: Skip
-          -- Translation object is a sequence between the channel guard 
+          -- Translation object is a sequence between the channel guard
           -- and the translated case body.
           return $ ρ₂ <: Seq (Atomic o') (curr ρ₂)
         -- If all cases are on unknown channels, do not do anything.
@@ -224,8 +250,8 @@ translateStatements ρ = case syntax ρ of
               -- If the operation is a case on a known channel, do not anything,
               -- because we have already handled this.
               _ -> return ρ₀
-      -- Fold all select cases, using the channel case arm (if present) as the 
-      -- starting point. 
+      -- Fold all select cases, using the channel case arm (if present) as the
+      -- starting point.
       ρ₂ <- Prelude.foldl translateSelect (return ρ') cs
       -- Translation object becomes:
       -- obj(ρ); obj(ρ₂)
@@ -261,6 +287,13 @@ translateFor ρ = case syntax ρ of
       ρ₁ <- translateOp $ op >: ρ
       let ρ₂ = ρ₁ <: (curr ρ₁ : curr ρ)
       translateFor $ ss >: ρ₂
+    P.Add e w -> do
+      e' <- translateExp (varenv ρ) e
+      let ρ₁ = ρ <: (Add w e' : curr ρ)
+      translateFor $ ss >: ρ₁
+    P.Wait w -> do
+      let ρ₁ = ρ <: (Wait w : curr ρ)
+      translateFor $ ss >: ρ₁
     P.Skip -> translateFor $ ss >: ρ
     P.Continue -> translateFor $ ss >: ρ
     P.If _ s1 s2 -> do
@@ -311,10 +344,7 @@ translateExp venv =
         P.Minus e1 e2 -> bin (:-) e1 e2
         P.Mult e1 e2 -> bin (:*) e1 e2
         P.Div e1 e2 -> bin (:/) e1 e2
-        P.Var x ->
-          case M.lookup x venv of
-            Just e' -> return e'
-            Nothing -> return $ Var x
+        P.Var x -> return $ Mb.fromMaybe (Var x) $ M.lookup x venv
 
 -- | Communication operation translation is straightfoward.
 --
@@ -322,10 +352,9 @@ translateExp venv =
 -- > [RECEICE]:   c? ==> c?
 translateOp :: Ctxt P.CommOp a -> Err (Ctxt () Op)
 translateOp ρ =
-  let translate cons c =
-        case M.lookup c (chenv ρ) of
-          Just c' -> done (ρ <: cons c')
-          Nothing -> Bad $ "Invalid channel: value not found: " ++ show c
+  let translate cons c = do
+        c' <- mlookup ("Invalid channel: value not found: " ++ c) c (chenv ρ)
+        done (ρ <: cons c')
    in case syntax ρ of
         P.Send c -> translate Send c
         P.Recv c -> translate Recv c

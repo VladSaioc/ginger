@@ -148,18 +148,14 @@ translateExp venv =
         P.Minus e1 e2 -> bin (:-) e1 e2
         P.Mult e1 e2 -> bin (:*) e1 e2
         P.Div e1 e2 -> bin (:/) e1 e2
-        P.EVar (P.Var x) ->
-          case M.lookup x venv of
-            Just e' -> return e'
-            Nothing -> Bad ("Unrecognized variable: " ++ x)
+        P.EVar (P.Var x) -> mlookup  ("Unrecognized variable: " ++ x) x venv
         _ -> Bad "Unexpected expression translation"
 
 translateOp :: Ctxt (Pos P.Stmt) a -> Err (Ctxt () Op)
 translateOp ctx =
-  let translate cons c =
-        case M.lookup c (chenv ctx) of
-          Just c' -> done (ctx <: cons c')
-          Nothing -> Bad "Invalid channel: value not found."
+  let translate cons c = do
+        c' <- mlookup ("Invalid channel: value not found for " ++ c) c (chenv ctx)
+        done (ctx <: cons c')
    in case syntax ctx of
         Pos _ (P.Send (P.Var c) _) -> translate Send c
         Pos _ (P.Recv (P.Var c) _) -> translate Recv c

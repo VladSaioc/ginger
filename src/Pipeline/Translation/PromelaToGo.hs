@@ -4,6 +4,7 @@ import Control.Monad
 import Data.List qualified as L
 import Data.Map qualified as M
 import Data.Maybe qualified as Mb
+
 import Go.Ast qualified as T
 import Go.Cyclomatic
 import Go.Utilities (flipIfs)
@@ -32,6 +33,9 @@ data Ctxt a b = Ctxt
     -- | Channel name environment.
     -- Binds Promela channel names to equivalently scoped Go names
     chenv :: M.Map String String,
+    -- | WaitGroup name environment.
+    -- Binds Promela WaitGroup names to equivalently scoped Go names
+    wgenv :: M.Map String String,
     -- | Channel capacity environment.
     -- Binds Go channel names to Go capacity expressions.
     𝜅 :: M.Map String T.Exp,
@@ -154,6 +158,8 @@ getGo p@(P.Spec ms) =
                   -- Capacity and variable name environments are initially empty
                   𝜅 = M.empty,
                   chenv = M.empty,
+                  -- WaitGroup name environment is initially empty
+                  wgenv = M.empty,
                   -- No calls have yet been executed
                   calls = 0,
                   -- The initial translation object only includes the initialization
@@ -205,10 +211,13 @@ translateStatements ρ = case syntax ρ of
             translateStatements (ss >: ρ <: obj)
           P.As _ _ -> err "[INVALID ASSIGNMENT] unrecognized write to complex data structure"
           -- WaitGroup operations
+          -- Wait group addition
+          WgAdd {} -> addOp s
+          -- Wait group wait
+          WgWait {} -> addOp s
           -- FIXME: Temporarily ignored.
-          WgAdd {} -> translateStatements (ss >: ρ)
+          -- Ignore waitgroup acknowledgement
           WgAddAck {} -> translateStatements (ss >: ρ)
-          WgWait {} -> translateStatements (ss >: ρ)
           -- Lock operations
           MuLock c@(P.Var {}) e -> addOp (P.Send c e)
           MuUnlock c@(P.Var {}) e -> addOp (P.Recv c e)
@@ -390,6 +399,14 @@ translateStatements ρ = case syntax ρ of
                     -- with capacity expression and its own name.
                     let ρ' = ρ {𝜅 = M.insert cname (T.CNum 1) (𝜅 ρ), chenv = M.insert x cname (chenv ρ)}
                     translateStatements $ ss >: ρ' <: obj'
+                  P.TNamed "Wgdef" -> do
+                    -- Construct translated WaitGroup declaration.
+                    let wname = x ++ "'" ++ show (calls ρ)
+                    let wgdecl = Pos p $ T.Wgdef wname
+                    -- Add WaitGroup declaration to context declarations
+                    let obj' = (curr ρ) {decls = decls (curr ρ) ++ [wgdecl]}
+                    let ρ' = ρ {wgenv = M.insert x wname (chenv ρ)}
+                    translateStatements $ ss >: ρ' <: obj'
                   -- FIXME: Ignore named types
                   P.TNamed _ -> translateStatements $ ss >: ρ
           -- Skip named monitor invocations.
@@ -437,6 +454,12 @@ translateStatements ρ = case syntax ρ of
                       let c' = Mb.fromMaybe c $ M.lookup c (chenv ρ)
                        in M.insert a c' ce
                     _ -> ce
+                addWg we ((a, t), e) =
+                  case (t, e) of
+                    (P.TNamed "Wgdef", P.EVar (P.Var w)) ->
+                      let w' = Mb.fromMaybe w $ M.lookup w (wgenv ρ)
+                       in M.insert a w' we
+                    _ -> we
             -- Construct all formal parameter declarations.
             initializers <- foldMonad addVarInit [] (++) pes
             -- Context-sensitively translate body of the callee
@@ -454,7 +477,11 @@ translateStatements ρ = case syntax ρ of
                       varenv = Prelude.foldl addVarName (varenv ρ) ps,
                       -- Construct a fresh channel environment based on the parameters.
                       chenv = Prelude.foldl addCh M.empty pes,
+                      -- Construct a fresh WaitGroup environment based on the parameters.
+                      wgenv = Prelude.foldl addWg M.empty pes,
+                      -- Pass capacity environment
                       𝜅 = 𝜅 ρ,
+                      -- Create a fresh translation object with initializers and statements.
                       curr = Obj {decls = initializers, stmts = []}
                     }
             ρ2 <- translateStatements ρ1
@@ -486,7 +513,7 @@ translateStatements ρ = case syntax ρ of
             let Obj {decls = ods, stmts = oss} = curr ρ
             let Obj {decls = ods', stmts = oss'} = curr ρ₁
             -- Add 'for' loop to the list of translated statements
-            let oss2 = Pos p (T.For x e1' e2' T.Inc oss') : oss
+            let oss2 = Pos p (T.For x e1' (T.Plus e2' (T.CNum 1)) T.Inc oss') : oss
             -- Construct translation object and proceed with the
             -- rest of the translation.
             let obj' = Obj {decls = ods ++ ods', stmts = oss2}
@@ -547,25 +574,30 @@ translateExpPos p σ =
 -- | Translate Promela channel operation to Go channel operation
 translateOp :: Ctxt (Pos P.Stmt) a -> Err (Ctxt () (Pos T.Stmt))
 translateOp ρ =
-  let translate p cons c =
+  let translate env p cons c =
         -- Skip by convention channels preceded by "child".
         -- They are only introduced to model single-threaded function
         -- calls in Promela.
         if "child" `L.isPrefixOf` c
           then done $ ρ <: Pos p T.Skip
           else -- Look up the Go name for the Promela channel name
-
-            let errMsg = Bad $ "[INVALID CHANNEL] binding not found for: " ++ c
+            let errMsg = Bad $ "[INVALID CONCURRENCY PRIMITIVE] binding not found for: " ++ c
                 -- Translate to equivalent Go operation.
-                makeCtx = done . (ρ <:) . Pos p . T.Atomic . cons
+                makeCtx = done . (ρ <:) . Pos p . cons
                 -- Look up channel name in translation context
-                c' = M.lookup c (chenv ρ)
+                c' = M.lookup c (env ρ)
              in Mb.maybe errMsg makeCtx c'
    in case syntax ρ of
         -- Translate send statement
-        Pos p (P.Send (P.Var c) _) -> translate p T.Send c
+        Pos p (P.Send (P.Var c) _) -> translate chenv p (T.Atomic . T.Send) c
         -- Translate receive statement
-        Pos p (P.Recv (P.Var c) _) -> translate p T.Recv c
+        Pos p (P.Recv (P.Var c) _) -> translate chenv p (T.Atomic . T.Recv) c
+        -- Translate receive statement
+        Pos p (WgWait (P.Var w) _) -> translate wgenv p T.Wait w
+        -- Translate WaitGroup Add
+        Pos p (WgAdd (P.Var w) [e]) -> do
+          e' <- translateExpPos p (varenv ρ) e
+          translate wgenv p (T.Add e') w
         Pos p s -> Bad (":" ++ show p ++ ": Promela-to-Go Translation: Unexpected statement: " ++ show s)
 
 -- | Partial translation from Promela constants to Go constant expressions.
