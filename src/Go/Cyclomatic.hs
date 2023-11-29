@@ -20,8 +20,11 @@ simpleProcess = \case
       Return -> return ()
       As {} -> return ()
       Chan {} -> Nothing
+      Wgdef {} -> Nothing
       Break -> Nothing
       Continue -> return ()
+      Add {} -> return ()
+      Wait {} -> return ()
       Atomic _ -> return ()
       Close {} -> return ()
       Decl {} -> return ()
@@ -82,6 +85,9 @@ terminal = \case
     Break {} -> terminal ss
     Continue {} -> terminal ss
     Chan {} -> terminal ss
+    Wgdef {} -> terminal ss
+    Add {} -> terminal ss
+    Wait {} -> terminal ss
     Decl {} -> terminal ss
     As {} -> terminal ss
     Close {} -> terminal ss
