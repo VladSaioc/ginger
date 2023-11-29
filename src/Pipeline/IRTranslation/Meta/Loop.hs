@@ -1,13 +1,15 @@
 module Pipeline.IRTranslation.Meta.Loop where
 
 import Backend.Ast
+import Backend.Utilities
 import Data.List (intercalate)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
 import IR.Ast
 import IR.Utilities
 import Pipeline.IRTranslation.Exps (parseExp)
-import Pipeline.IRTranslation.Meta.Channel
+import Pipeline.IRTranslation.Meta.CommOp
+import Pipeline.IRTranslation.Meta.WgOp
 import Pipeline.IRTranslation.Utilities
 import Utilities.Collection
 import Utilities.PrettyPrint
@@ -27,7 +29,9 @@ data ℒ = ℒ
     -- | Upper bound
     upper :: Exp,
     -- | Channel operations in the loop (indexed by channel name)
-    l𝒪s :: 𝐶 ↦ 𝒪s
+    l𝒪s :: 𝐶 ↦ 𝒪s,
+    -- | WaitGroup operations in the loop (indexed by waitgroup name)
+    l𝒲s :: 𝑋 ↦ 𝒲s
   } deriving Eq
 
 instance Show ℒ where
@@ -55,7 +59,8 @@ processLoops 𝛬 { p, 𝑛 } = \case
         x' = p % x
         -- Gather all channel operations and the next available program
         -- point.
-        (chops, 𝑛') = chanOps p (𝑛 + 1) os
+        (chops, _) = chanOps p (𝑛 + 1) os
+        (wgops, 𝑛') = wgOps p (𝑛 + 1) os
         l =
           ℒ
             { -- Loop process
@@ -72,11 +77,12 @@ processLoops 𝛬 { p, 𝑛 } = \case
               -- Parse upper bound expression
               upper = parseExp e2,
               -- Add channel operations
-              l𝒪s = chops
+              l𝒪s = chops,
+              -- Add WaitGroup operations
+              l𝒲s = wgops
             }
      in [l]
   _ -> []
-     
 
 -- | Collect all channel operations in a loop.
 -- Relevant information includes: channel name, program point
@@ -84,19 +90,54 @@ processLoops 𝛬 { p, 𝑛 } = \case
 chanOps :: P -> 𝑁 -> [Op] -> (𝐶 ↦ 𝒪s, 𝑁)
 chanOps p 𝑛 =
   let addOp (chops, 𝑛') op =
-        let -- Get channel name and direction
-            (c, d) = (chName op, chDir op)
-            -- Get program counters for channel operations
-            𝑛s = fromMaybe M.empty (M.lookup c chops)
-            -- Get list of channel operations for the direction
-            dpcs = fromMaybe [] (M.lookup d 𝑛s)
-            ch =
-              𝒪
-                { oP = p,
-                  o𝐶 = c,
-                  oDir = d,
-                  o𝑛 = 𝑛'
-                }
-            pcs' = M.insert d (ch : dpcs) 𝑛s
-         in (M.insert c pcs' chops, 𝑛' + ppOffset op)
+        let ops = do
+              -- Ensure it is a channel operation.
+              d <- case opType op of WgO {} -> Nothing; CommO d -> Just d
+              -- Get channel name and direction
+              let c = primName op
+                  -- Get program counters for channel operations
+              let 𝑛s = fromMaybe M.empty (M.lookup c chops)
+                  -- Get list of channel operations for the direction
+              let dpcs = fromMaybe [] (M.lookup d 𝑛s)
+              let ch =
+                    𝒪
+                      { oP = p,
+                        o𝐶 = c,
+                        oDir = d,
+                        o𝑛 = 𝑛'
+                      }
+                  pcs' = M.insert d (ch : dpcs) 𝑛s
+              return $ M.insert c pcs' chops
+         in (fromMaybe chops ops, 𝑛' + ppOffset op)
+   in Prelude.foldl addOp (M.empty, 𝑛)
+
+-- | Collect all WaitGroup operations in a loop.
+-- Relevant information includes: WaitGroup name, program point,
+-- operation type, and expression.
+wgOps :: P -> 𝑁 -> [Op] -> (𝑋 ↦ 𝒲s, 𝑁)
+wgOps p 𝑛 =
+  let addOp (chops, 𝑛') op =
+        let ops = do
+              -- Ensure it is a WaitGroup operation.
+              (d, e) <- case op of
+                Wait _ -> return (W, (0 #))
+                Add _ e -> return (A, parseExp e)
+                _ -> Nothing
+              -- Get channel name and direction
+              let c = primName op
+                  -- Get program counters for channel operations
+              let 𝑛s = fromMaybe M.empty (M.lookup c chops)
+                  -- Get list of channel operations for the direction
+              let dpcs = fromMaybe [] (M.lookup d 𝑛s)
+              let ch =
+                    𝒲
+                      { wP = p,
+                        w𝐶 = c,
+                        wDir = d,
+                        w𝑛 = 𝑛',
+                        wE = e
+                      }
+                  pcs' = M.insert d (ch : dpcs) 𝑛s
+              return $ M.insert c pcs' chops
+         in (fromMaybe chops ops, 𝑛' + ppOffset op)
    in Prelude.foldl addOp (M.empty, 𝑛)

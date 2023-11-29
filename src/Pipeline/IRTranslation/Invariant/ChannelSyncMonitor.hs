@@ -6,7 +6,7 @@ import Data.List qualified as L
 import Data.Map qualified as M
 import Data.Maybe qualified as Mb
 import IR.Utilities
-import Pipeline.IRTranslation.Meta.Channel
+import Pipeline.IRTranslation.Meta.CommOp
 import Pipeline.IRTranslation.Meta.Loop
 import Pipeline.IRTranslation.Utilities
 import Utilities.Collection
@@ -75,7 +75,7 @@ Produces:
 >       else 0 ]
 >   | ∀ c, (𝑛, cd) ∈ O ]
 -}
-loopMonitor :: 𝛹 -> ℒ -> 𝐶 ↦ (OpDir ↦ Exp)
+loopMonitor :: 𝛹 -> ℒ -> 𝐶 ↦ (CommOpType ↦ Exp)
 loopMonitor 𝜓 (ℒ {lP = p, l𝑋 = var, lower, l𝑛 = 𝑛, lExit = 𝑛', l𝒪s = chans}) =
   let b = 𝜓 M.! p M.! 𝑛
       x = (var @)
@@ -110,7 +110,7 @@ Produces:
 >   ? ↦ {if 𝜓(p)(𝑛) && 𝑛 < 𝜋(p) then 2 else 0 | ∀(𝑛, c?) ∈ 𝜙 }]
 >   | ∀ c, (𝑛, cd) ∈ 𝜙 ]
 -}
-noloopMonitors :: 𝛹 -> 𝐶 ↦ 𝒪s -> 𝐶 ↦ (OpDir ↦ Exp)
+noloopMonitors :: 𝛹 -> 𝐶 ↦ 𝒪s -> 𝐶 ↦ (CommOpType ↦ Exp)
 noloopMonitors 𝜓 = M.map (M.map ((...+) . map (noloopMonitor 𝜓)))
 
 {- | Monitor sub-expression for a non-loop single synchronous channel operation.
@@ -122,7 +122,7 @@ its resource contribution is 1 more.
 For receive operations:
 After synchronization, its resource contribution is 2.
 
-Depends on: p, 𝑛, where 𝑛 ∈ dom(𝛯(p))
+Depends on: p, 𝑛, where 𝑛 ∈ dom(𝛯(p)), e
 
 Reachability conditions for all processes:
   𝜓 = [p ↦ [𝑛 ↦ e | 𝑛 ∈ dom(𝛯(p))] | p ∈ dom(𝛯)]
@@ -131,7 +131,7 @@ Depnding on the operation direction, it produces:
 
 >   ! ↦   if 𝜓(p)(𝑛) && 𝑛 < 𝜋(p) then 1 else 0
 >       + if 𝜓(p)(𝑛) && 𝑛 + 1 < 𝜋(p) then 1 else 0
-> 
+>
 >   ? ↦ if 𝜓(p)(𝑛) && 𝑛 < 𝜋(p) then 2 else 0
 -}
 noloopMonitor :: 𝛹 -> 𝒪 -> Exp
