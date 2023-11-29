@@ -4,7 +4,7 @@ import Backend.Ast
 import Backend.Utilities
 import Data.List qualified as L
 import Data.Map qualified as M
-import Pipeline.IRTranslation.Meta.Channel
+import Pipeline.IRTranslation.Meta.CommOp
 
 -- | Aggregate all asynchrony preconditions.
 capPreconditions :: 𝛫 -> [Exp]

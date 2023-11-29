@@ -6,24 +6,17 @@ import Data.List qualified as L
 import Data.Map qualified as M
 import Data.Maybe qualified as Mb
 import IR.Utilities
-import Pipeline.IRTranslation.Meta.Channel
+import Pipeline.IRTranslation.Clauses.Utilities
+import Pipeline.IRTranslation.Meta.CommOp
 import Pipeline.IRTranslation.Meta.Loop
 import Pipeline.IRTranslation.Meta.Meta
 import Pipeline.IRTranslation.Utilities
 import Utilities.Collection
 
--- | Creates a call to the "iter" function on loop bounds.
---
--- Produces:
---
--- > iter(lo,hi)
-iterations :: Exp -> Exp -> Exp
-iterations lo hi = Call "iter" [lo, hi]
-
 -- | Creates a binding from channels to expressions projecting the number of channel operations,
 -- from which channel preconditions may be constructed.
-projectedCommunication :: 𝛹 -> ℳ -> 𝐶 ↦ (OpDir ↦ Exp)
-projectedCommunication 𝜓 ℳ { ls, os }=
+projectedCommunication :: 𝛹 -> ℳ -> 𝐶 ↦ (CommOpType ↦ Exp)
+projectedCommunication 𝜓 ℳ { ls, os } =
   let
       -- Gather precondition contributions for every channel for
       -- operations in loop statements.
@@ -32,7 +25,7 @@ projectedCommunication 𝜓 ℳ { ls, os }=
       -- operations outside loops.
       nR = noloopOpToPre 𝜓 os
       -- Combine the sets of channel names.
-      cs = L.union (M.keys lR) (M.keys nR)
+      cs = M.keys lR `L.union` M.keys nR
       -- Construct a precondition for channel c.
       prc c =
         let -- Get channel precondition sub-expressions from map.
@@ -41,12 +34,10 @@ projectedCommunication 𝜓 ℳ { ls, os }=
             cdR d r = Mb.fromMaybe (0 #) (M.lookup d r)
             -- Get loop and non-loop precondition sub-expressions.
             (clR, cnR) = (cR lR, cR nR)
-
             -- Get send sub-expressions.
             sends = cdR S clR :+ cdR S cnR
             -- Get receive sub-expressions.
             recvs = cdR R clR :+ cdR R cnR
-
          in -- Bind the channel to the number of receive and send operations it
             -- is projected to compute.
             (c, M.fromList [(R, recvs), (S, sends)])
@@ -67,7 +58,7 @@ Produces:
 >   ? ↦ |O? ⊆ O| * iterations(e₁, e₂)
 > ] | c ∈ chans(O)]
 -}
-loopToPre :: 𝛹 -> ℒ -> 𝐶 ↦ (OpDir ↦ Exp)
+loopToPre :: 𝛹 -> ℒ -> 𝐶 ↦ (CommOpType ↦ Exp)
 loopToPre 𝜓 (ℒ {lP = p, l𝑛 = 𝑛, lower, upper, l𝒪s = os}) =
   let iter ops =
         let b = 𝜓 M.! p M.! 𝑛
@@ -93,7 +84,7 @@ Produces:
 >   ? ↦ (𝛴 (p, 𝜙) ∈ dom(𝛯). ∀ 𝑛, (𝑛, c?) ∈ 𝜙. if 𝜓(p)(𝑛) then 1 else 0)
 > ] | c ∈ chans(O)]
 -}
-noloopOpToPre :: 𝛹 -> P ↦ (𝐶 ↦ 𝒪s) -> 𝐶 ↦ (OpDir ↦ Exp)
+noloopOpToPre :: 𝛹 -> P ↦ (𝐶 ↦ 𝒪s) -> 𝐶 ↦ (CommOpType ↦ Exp)
 noloopOpToPre 𝜓 pis =
   let chOp 𝒪 {oP = p, o𝑛 = 𝑛} =
         let b = 𝜓 M.! p M.! 𝑛

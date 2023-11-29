@@ -6,7 +6,7 @@ import Data.List qualified as L
 import Data.Map qualified as M
 import Data.Maybe
 import IR.Utilities
-import Pipeline.IRTranslation.Meta.Channel
+import Pipeline.IRTranslation.Meta.CommOp
 import Pipeline.IRTranslation.Meta.Loop
 import Pipeline.IRTranslation.Utilities
 import Utilities.Collection
@@ -74,7 +74,7 @@ Produces:
 >       else 0 ]
 >   | ∀ c, (𝑛, c{!,?}) ∈ O ]
 -}
-loopMonitor :: 𝛹 -> ℒ -> 𝐶 ↦ (OpDir ↦ Exp)
+loopMonitor :: 𝛹 -> ℒ -> 𝐶 ↦ (CommOpType ↦ Exp)
 loopMonitor 𝜓 ℒ {lP = p, l𝑋 = var, lower, l𝑛 = 𝑛, lExit = 𝑛', l𝒪s = chans} =
   let b = 𝜓 M.! p M.! 𝑛
       pc = 𝜋 p
@@ -101,7 +101,7 @@ Produces:
 >     ? ↦ {if 𝑛 < 𝜋(p) then 1 else 0) | ∀(𝑛, c!) ∈ 𝜙(p) }
 >   ]]
 -}
-noloopMonitors :: 𝛹 -> 𝐶 ↦ 𝒪s -> 𝐶 ↦ (OpDir ↦ Exp)
+noloopMonitors :: 𝛹 -> 𝐶 ↦ 𝒪s -> 𝐶 ↦ (CommOpType ↦ Exp)
 noloopMonitors 𝜓 =
   let subexps = L.map (noloopMonitor 𝜓)
       setTransform = (...+) . subexps

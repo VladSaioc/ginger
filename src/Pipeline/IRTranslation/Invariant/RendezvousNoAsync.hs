@@ -6,7 +6,7 @@ import Data.List qualified as L
 import Data.Map qualified as M
 import Data.Maybe qualified as Mb
 import IR.Utilities
-import Pipeline.IRTranslation.Meta.Channel
+import Pipeline.IRTranslation.Meta.CommOp
 import Pipeline.IRTranslation.Meta.Loop
 import Pipeline.IRTranslation.Utilities
 import Utilities.Collection
