@@ -1,6 +1,7 @@
 module Backend.Ast where
 
 import Data.List (intercalate)
+
 import Utilities.PrettyPrint
 
 -- | Back-end type syntax:

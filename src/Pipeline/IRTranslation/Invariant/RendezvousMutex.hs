@@ -1,8 +1,9 @@
 module Pipeline.IRTranslation.Invariant.RendezvousMutex where
 
+import Data.Map qualified as M
+
 import Backend.Ast
 import Backend.Utilities
-import Data.Map qualified as M
 import IR.Utilities
 import Pipeline.IRTranslation.Meta.CommOp
 import Pipeline.IRTranslation.Utilities

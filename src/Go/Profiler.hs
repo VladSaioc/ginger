@@ -1,9 +1,10 @@
 module Go.Profiler (profileProgram) where
 
-import Go.Ast
 import Data.List qualified as L
-import Utilities.Position
 import Data.Monoid
+
+import Go.Ast
+import Utilities.Position
 
 data Parametricity = Looping | Capacity | PathCondition
   deriving (Read)

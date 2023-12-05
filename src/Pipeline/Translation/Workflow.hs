@@ -1,6 +1,7 @@
 module Pipeline.Translation.Workflow (promelaToGo, goToIR) where
 
 import Debug.Trace (trace)
+
 import Go.Ast (Prog)
 import Go.GoForCommute (goForCommute)
 import Go.Simplifier qualified as S (simplify)

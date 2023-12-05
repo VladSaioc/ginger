@@ -1,6 +1,7 @@
 module Go.ZipCases where
 
 import Data.Bifunctor
+
 import Go.Ast
 import Go.Cyclomatic
 import Utilities.Position

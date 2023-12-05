@@ -2,6 +2,7 @@ module Pipeline.Sanity.PromelaAllowed (allowed) where
 
 import Data.List qualified as L
 import Data.Set qualified as S
+
 import Promela.Ast
 import Utilities.Err
 import Utilities.General

@@ -1,8 +1,9 @@
 module Pipeline.IRTranslation.Invariant.ChannelBound (channelBounds) where
 
+import Data.Map qualified as M
+
 import Backend.Ast
 import Backend.Utilities
-import Data.Map qualified as M
 import Pipeline.IRTranslation.Meta.CommOp
 
 {- | Composes all channel bound invariants.

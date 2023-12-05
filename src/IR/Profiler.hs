@@ -1,8 +1,9 @@
 module IR.Profiler (profileVirgo) where
 
-import IR.Ast
 import Data.List qualified as L
 import Data.Monoid
+
+import IR.Ast
 
 data Parametricity = ChLooping | WgLooping | WgAdd | Capacity | PathCondition
   deriving (Read)

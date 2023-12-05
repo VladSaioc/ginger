@@ -3,6 +3,7 @@ module Pipeline.Translation.AlphaConversion (alphaConvert) where
 import Data.List qualified as L
 import Data.Map as M
 import Data.Maybe
+
 import Promela.Ast
 import Utilities.Position
 

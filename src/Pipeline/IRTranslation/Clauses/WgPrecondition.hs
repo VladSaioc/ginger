@@ -1,10 +1,11 @@
 module Pipeline.IRTranslation.Clauses.WgPrecondition (projectedConcurrency) where
 
-import Backend.Ast
-import Backend.Utilities
 import Data.List qualified as L
 import Data.Map qualified as M
 import Data.Maybe qualified as Mb
+
+import Backend.Ast
+import Backend.Utilities
 import IR.Utilities
 import Pipeline.IRTranslation.Clauses.Utilities
 import Pipeline.IRTranslation.Meta.Loop

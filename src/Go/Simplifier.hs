@@ -1,6 +1,7 @@
 module Go.Simplifier where
 
 import Data.Bifunctor
+
 import Go.Ast
 import Go.Utilities
 import Utilities.Position

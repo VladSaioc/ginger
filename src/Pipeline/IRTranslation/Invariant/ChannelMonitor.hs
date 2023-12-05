@@ -1,9 +1,10 @@
 module Pipeline.IRTranslation.Invariant.ChannelMonitor (channelMonitors) where
 
-import Backend.Ast
-import Backend.Utilities
 import Data.Map qualified as M
 import Data.Maybe qualified as Mb
+
+import Backend.Ast
+import Backend.Utilities
 import Pipeline.IRTranslation.Invariant.ChannelAsyncMonitor (asyncChannelMonitors)
 import Pipeline.IRTranslation.Invariant.ChannelSyncMonitor (syncChannelMonitors)
 import Pipeline.IRTranslation.Meta.CommOp
