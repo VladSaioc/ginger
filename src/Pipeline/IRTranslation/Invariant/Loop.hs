@@ -1,8 +1,9 @@
 module Pipeline.IRTranslation.Invariant.Loop (loopMonitors) where
 
+import Data.Map qualified as M
+
 import Backend.Ast
 import Backend.Utilities
-import Data.Map qualified as M
 import Pipeline.IRTranslation.Meta.Loop
 import Pipeline.IRTranslation.Utilities
 
@@ -39,9 +40,9 @@ loopMonitor :: 𝛹 -> ℒ -> Exp
 loopMonitor 𝜓 (ℒ {l𝑋 = var, lP = p, l𝑛 = 𝑛, lExit = 𝑛', lower, upper}) =
   let b = 𝜓 M.! p M.! 𝑛
       -- Short-hand for lower bound
-      lo = lower 
+      lo = lower
       -- Short-hand for upper bound
-      hi = upper 
+      hi = upper
       -- Loop variable as a back-end variable
       x = (var @)
       -- Program counter as a back-end variable

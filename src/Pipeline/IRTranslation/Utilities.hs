@@ -1,9 +1,10 @@
 module Pipeline.IRTranslation.Utilities where
 
+import Data.Map qualified as M
+
 import Backend.Ast qualified as T
 import Backend.Utilities
 import IR.Ast
-import Data.Map qualified as M
 import Utilities.Collection
 
 -- | An alias for the type of process ids. Its purpose is to provide

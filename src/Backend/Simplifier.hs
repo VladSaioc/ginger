@@ -1,8 +1,9 @@
 module Backend.Simplifier (simplify, clausesSimplify, eSimplify) where
 
+import Data.Maybe qualified as Mb
+
 import Backend.Ast
 import Backend.Utilities
-import Data.Maybe qualified as Mb
 
 -- | Takes a back-end program and applies heuristics to simplify it.
 simplify :: Program -> Program

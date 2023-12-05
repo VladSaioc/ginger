@@ -1,8 +1,9 @@
 module Pipeline.IRTranslation.Processes (procs) where
 
+import Data.Map qualified as M
+
 import Backend.Ast qualified as T
 import Backend.Utilities
-import Data.Map qualified as M
 import IR.Ast
 import IR.Utilities
 import Pipeline.IRTranslation.Exps

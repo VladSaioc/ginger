@@ -18,10 +18,13 @@ streamlineReturnSs = \case
           Skip -> streamlineReturnSs ss
           Return -> [s]
           Chan {} -> s : streamlineReturnSs ss
+          Wgdef {} -> s : streamlineReturnSs ss
+          Decl {} -> s : streamlineReturnSs ss
           Break -> [s]
           Continue -> []
           Atomic {} -> s : streamlineReturnSs ss
-          Decl {} -> s : streamlineReturnSs ss
+          Add {} -> s : streamlineReturnSs ss
+          Wait {} -> s : streamlineReturnSs ss
           As {} -> s : streamlineReturnSs ss
           Close {} -> s : streamlineReturnSs ss
           Block ss' ->

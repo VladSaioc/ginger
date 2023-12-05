@@ -1,9 +1,10 @@
 module Pipeline.IRTranslation.Meta.CommOp where
 
-import Backend.Ast
 import Control.Monad (unless)
 import Data.Map qualified as M
 import Data.Maybe
+
+import Backend.Ast
 import IR.Ast qualified as I
 import IR.Utilities
 import Pipeline.IRTranslation.Utilities

@@ -1,8 +1,9 @@
 module Pipeline.IRTranslation.Invariant.WgBound (wgBounds) where
 
+import Data.Set qualified as S
+
 import Backend.Ast
 import Backend.Utilities
-import Data.Set qualified as S
 import Pipeline.IRTranslation.Meta.WgOp
 
 {- | Composes all channel bound invariants.

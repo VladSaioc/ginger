@@ -1,8 +1,9 @@
 module Pipeline.IRTranslation.Invariant.Go (goMonitors) where
 
+import Data.Map qualified as M
+
 import Backend.Ast
 import Backend.Utilities
-import Data.Map qualified as M
 import Pipeline.IRTranslation.Meta.Go
 import Pipeline.IRTranslation.Utilities
 

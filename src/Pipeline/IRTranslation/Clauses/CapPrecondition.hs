@@ -1,9 +1,10 @@
 module Pipeline.IRTranslation.Clauses.CapPrecondition (capPreconditions) where
 
-import Backend.Ast
-import Backend.Utilities
 import Data.List qualified as L
 import Data.Map qualified as M
+
+import Backend.Ast
+import Backend.Utilities
 import Pipeline.IRTranslation.Meta.CommOp
 
 -- | Aggregate all asynchrony preconditions.

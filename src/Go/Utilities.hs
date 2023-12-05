@@ -1,6 +1,7 @@
 module Go.Utilities where
 
 import Data.Bifunctor
+
 import Go.Ast
 import Utilities.Position
 

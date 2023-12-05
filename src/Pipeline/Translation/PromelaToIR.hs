@@ -1,6 +1,7 @@
 module Pipeline.Translation.PromelaToIR (getIR) where
 
 import Data.Map qualified as M
+
 import IR.Ast
 import Pipeline.Callgraph (getCG)
 import Promela.Ast qualified as P

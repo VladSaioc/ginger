@@ -1,6 +1,7 @@
 module Pipeline.IRTranslation.Context.Capacity (caps) where
 
 import Data.Map qualified as M
+
 import IR.Ast
 import Pipeline.IRTranslation.Exps (parseExp)
 import Pipeline.IRTranslation.Meta.CommOp

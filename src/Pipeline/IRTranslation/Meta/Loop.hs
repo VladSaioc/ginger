@@ -1,10 +1,11 @@
 module Pipeline.IRTranslation.Meta.Loop where
 
-import Backend.Ast
-import Backend.Utilities
 import Data.List (intercalate)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
+
+import Backend.Ast
+import Backend.Utilities
 import IR.Ast
 import IR.Utilities
 import Pipeline.IRTranslation.Exps (parseExp)

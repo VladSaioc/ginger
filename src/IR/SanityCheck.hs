@@ -2,6 +2,7 @@ module IR.SanityCheck (sanityCheck) where
 
 import Control.Monad
 import Data.Set qualified as S
+
 import IR.Ast
 import Utilities.Err
 

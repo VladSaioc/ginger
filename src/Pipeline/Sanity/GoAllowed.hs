@@ -3,6 +3,7 @@ module Pipeline.Sanity.GoAllowed (allowed) where
 import Control.Monad (foldM)
 import Data.Maybe
 import Data.Set qualified as S
+
 import Go.Ast
 import Utilities.Err
 import Utilities.General

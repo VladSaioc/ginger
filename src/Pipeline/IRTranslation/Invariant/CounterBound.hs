@@ -1,8 +1,9 @@
 module Pipeline.IRTranslation.Invariant.CounterBound (counterInvariants) where
 
+import Data.Map qualified as M
+
 import Backend.Ast
 import Backend.Utilities
-import Data.Map qualified as M
 import Pipeline.IRTranslation.Utilities
 
 -- | Composes all counter invariants under conjunction
@@ -16,7 +17,7 @@ Produces:
 
 > i <= 𝜋(p) ∧ 𝜋(p) <= 𝜒(p)
 > where i = {
->   0, if p = 0, 
+>   0, if p = 0,
 >   i = -1, if p > 0
 > }
 -}

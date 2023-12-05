@@ -1,4 +1,5 @@
 module Pipeline.IRTranslation.Context.TypeInference (typesAndFvs) where
+
 import Control.Monad (foldM)
 import Data.List qualified as L
 import Data.Map qualified as M
