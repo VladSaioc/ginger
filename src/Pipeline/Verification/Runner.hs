@@ -1,7 +1,8 @@
 module Pipeline.Verification.Runner (verify) where
 
 import Control.Monad (unless)
-import Data.List (isInfixOf)
+import Data.List (isInfixOf, intercalate)
+import Data.Set qualified as S
 import Data.Text (pack, replace, unpack)
 import GHC.IO.Exception (ExitCode(ExitSuccess, ExitFailure))
 import System.Directory (createDirectory, doesDirectoryExist)
@@ -120,22 +121,26 @@ verify args sourceFile p = do
                 unsat <- unsatExpression dafnyBin encoding (realPrecondition oracle encoding)
                 if unsat then do
                   -- If the precondition is unsatisfiable, partial deadlocks are guaranteed
-                  let msg = "Preconditions are unsatisfiable. Partial deadlock is guaranteed.\n"
-                  let (msg', fp) =
+                  let (msg, fp) =
                         if noSendsFound encoding
                           then ("Preconditions are unsatisfiable. LIKELY FP! NO SENDS FOUND\n", "(FP) ")
-                          else (msg, "")
-                  let (msg'', fp') =
+                          else ("Preconditions are unsatisfiable. Partial deadlock is guaranteed.\n", "")
+                  let (msg', fp') =
                         if noReceivesFound encoding
                           then ("Preconditions are unsatisfiable. LIKELY FP! NO RECEIVES FOUND\n", "(FP) ")
-                          else (msg', fp)
+                          else (msg, fp)
+                  let (msg'', fp'') =
+                        if S.null (closes encoding)
+                          then (msg', fp')
+                          else ("Preconditions are unsatisfiable. LIKELY FP! CLOSE OPERATIONS FOUND\n", "(FP) ")
                   colorPrint Red msg''
                   putStrLn $ "Precondition: " ++ prettyPrint 0 (eSimplify $ realPrecondition oracle encoding)
-                  printResults (fp' ++ "UNSAT")
+                  printResults (fp'' ++ "UNSAT")
                   return True
                 else do
                   -- Otherwise, print the oracle success message, which includes the precondition for the non-trivial oracle.
                   putStrLn $ successMessage oracle encoding
+                  putStrLn $ unwords ["The following channels do not need to be closed:", intercalate ", " (S.toList (closes encoding))]
                   printResults "SUCCESS"
                   return True
               else do

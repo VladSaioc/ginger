@@ -1,10 +1,12 @@
 module Pipeline.IRTranslation.Encoding where
 
+import Data.Maybe qualified as Mb
+import Data.Map qualified as M
+import Data.Set qualified as S
+
 import Backend.Ast
 import Backend.Utilities
 import Backend.Simplifier (eSimplify)
-import Data.Maybe qualified as Mb
-import Data.Map qualified as M
 import IR.Ast qualified as I
 import IR.Utilities
 import Pipeline.IRTranslation.Meta.CommOp
@@ -36,6 +38,8 @@ data Encoding = Encoding
     comprojection :: 𝐶 ↦ (CommOpType ↦ Exp),
     -- | Expression encoding projected number of WaitGroup operations.
     wgprojection :: 𝐶 ↦ (WgOpType ↦ Exp),
+    -- | Closed channels
+    closes :: S.Set 𝐶,
     -- | Per-process postcondition
     post :: Exp
   }
@@ -61,14 +65,14 @@ balancedFlowPre Encoding { capacities = 𝜅, comprojection = p, wgprojection = 
        prw os = (os M.! A) :== (0 #)
     in ((M.elems (M.mapWithKey prc p) ++ M.elems (M.map prw w)) ...⋀)
 
--- | noSendsFound checks whether there are any channels without send operations.
+-- | Checks whether there are any channels without send operations.
 -- If there are no send operations and partial deadlocks are considered guaranteed,
 -- likely the channel escapes the fragment scope, or is used as a free variable in a thunk,
 -- (i.e. we are dealing with a false positive).
 noSendsFound :: Encoding -> Bool
 noSendsFound Encoding { comprojection = p } = any (\os -> eSimplify (os M.! S) == (0 #)) (M.elems p)
 
--- | noReceivesFound checks whether there are any channels without receive operations.
+-- | Checks whether there are any channels without receive operations.
 -- If there are no receive operations and partial deadlocks are considered guaranteed,
 -- likely the channel escapes the fragment scope, or is used as a free variable in a thunk,
 -- (i.e. we are dealing with a false positive).

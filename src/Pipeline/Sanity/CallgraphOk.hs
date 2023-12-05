@@ -3,6 +3,7 @@ module Pipeline.Sanity.CallgraphOk (noRecursion) where
 import Control.Monad
 import Data.Map qualified as M
 import Data.Set qualified as S
+
 import Pipeline.Callgraph (getCG)
 import Promela.Ast
 import Promela.Utilities
@@ -119,6 +120,7 @@ traverseExp ctx =
         Div e1 e2 -> visit [e1, e2]
         Neg e -> visit [e]
         Not e -> visit [e]
+        Run "close" [_] -> return (wrap ctx)
         Run f es -> do
           _ <-
             multiGuard

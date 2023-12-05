@@ -57,6 +57,8 @@ data 𝑆
     Return
   | -- | > for (x : 𝐸₁ .. 𝐸₂) { 𝑠 }
     For String 𝐸 𝐸 [Op]
+  | -- | > close(c)
+    Close String
   | -- | > go { S }
     Go 𝑆
   | -- | > 𝑐! | 𝑐? | 𝑤.Add(𝐸) | 𝑤.Wait()
@@ -91,33 +93,33 @@ data Op
 -- >    | true | false
 -- >    | 𝑛 | x
 data 𝐸
-  = -- | 𝐸₁ && 𝐸₂
+  = -- | > 𝐸₁ && 𝐸₂
     𝐸 :& 𝐸
-  | -- | 𝐸₁ || 𝐸₂
+  | -- | > 𝐸₁ || 𝐸₂
     𝐸 :| 𝐸
-  | -- | !𝐸
+  | -- | > !𝐸
     Not 𝐸
-  | -- | 𝐸₁ == 𝐸₂
+  | -- | > 𝐸₁ == 𝐸₂
     𝐸 :== 𝐸
-  | -- | 𝐸₁ != 𝐸₂
+  | -- | > 𝐸₁ != 𝐸₂
     𝐸 :!= 𝐸
-  | -- | 𝐸₁ >= 𝐸₂
+  | -- | > 𝐸₁ >= 𝐸₂
     𝐸 :>= 𝐸
-  | -- | 𝐸₁ > 𝐸₂
+  | -- | > 𝐸₁ > 𝐸₂
     𝐸 :> 𝐸
-  | -- | 𝐸₁ <= 𝐸₂
+  | -- | > 𝐸₁ <= 𝐸₂
     𝐸 :<= 𝐸
-  | -- | 𝐸₁ < 𝐸₂
+  | -- | > 𝐸₁ < 𝐸₂
     𝐸 :< 𝐸
-  | -- | 𝐸₁ + 𝐸₂
+  | -- | > 𝐸₁ + 𝐸₂
     𝐸 :+ 𝐸
-  | -- | 𝐸₁ - 𝐸₂
+  | -- | > 𝐸₁ - 𝐸₂
     𝐸 :- 𝐸
-  | -- | 𝐸₁ * 𝐸₂
+  | -- | > 𝐸₁ * 𝐸₂
     𝐸 :* 𝐸
-  | -- | 𝐸₁ / 𝐸₂
+  | -- | > 𝐸₁ / 𝐸₂
     𝐸 :/ 𝐸
-  | -- | 𝑛 ∈ ℤ
+  | -- | > 𝑛 ∈ ℤ
     Const Int
   | -- | > true
     BTrue
@@ -147,6 +149,7 @@ instance PrettyPrint 𝑆 where
       Seq s1 s2 -> multiline [prettyPrint n s1 ++ ";", prettyPrint n s2]
       Skip -> tab "skip"
       Return -> tab "return"
+      Close c -> tab "close(" ++ c ++ ")"
       Atomic o -> tab $ show o
       If e s1 s2 ->
         multiline
@@ -209,18 +212,20 @@ instance ProgramPointOffset 𝑃 where
 -- The offsets are:
 -- 1. skip: 0 (skip statements are ignored)
 -- 2. return: 1 for the return instruction point
--- 3. 𝑆₁; 𝑆₂: |𝑆₁| + |𝑆₂|
--- 4. for x : 𝐸₁ .. 𝐸₂ { 𝑠 }: 2 + |𝑠|
+-- 3. close(c): 0 (close statements are temporarily ignored)
+-- 4. 𝑆₁; 𝑆₂: |𝑆₁| + |𝑆₂|
+-- 5. for x : 𝐸₁ .. 𝐸₂ { 𝑠 }: 2 + |𝑠|
 --      1 for the guard
 --      1 for the index incrementing operation
--- 5. if 𝐸 { 𝑆₁ } else { 𝑆₂ }: 2 + |𝑆₁| + |𝑆₂|
+-- 6. if 𝐸 { 𝑆₁ } else { 𝑆₂ }: 2 + |𝑆₁| + |𝑆₂|
 --      1 for the guard
 --      1 for the continuation of the 'then' path
--- 6. go { 𝑆 }: 1 for the start goroutine instruction.
+-- 7. go { 𝑆 }: 1 for the start goroutine instruction.
 instance ProgramPointOffset 𝑆 where
   ppOffset = \case
     Skip -> 0
     Return -> 1
+    Close _ -> 0
     Seq s1 s2 -> ppOffset s1 + ppOffset s2
     For _ _ _ os -> 2 + sum (map ppOffset os)
     If _ s1 s2 -> 2 + ppOffset s1 + ppOffset s2

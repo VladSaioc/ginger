@@ -121,14 +121,15 @@ translateStatements ρ = case syntax ρ of
       -- obj(ρ); op'
       -- Translate continuation.
       translateStatements (ss >: ρ' <: Seq (curr ρ) op')
+    -- Close operations are translated 1-to-1
+    P.Close c -> do
+      c' <- mlookup ("Invalid channel: value not found: " ++ c) c (chenv ρ)
+      translateStatements (ss >: ρ <:  Seq (curr ρ) (Close c'))
     -- Translate WaitGroup declaration
     P.Wgdef w -> do
       -- Insert WaitGroup name into the WaitGroup name environment
       -- (bound to itself initially).
-      let ρ₁ =
-            ρ
-              { wgenv = M.insert w w (wgenv ρ)
-              }
+      let ρ₁ = ρ { wgenv = M.insert w w (wgenv ρ) }
       -- Translate continuation.
       translateStatements (ss >: ρ₁)
     P.Add e w -> do
@@ -358,4 +359,4 @@ translateOp ρ =
    in case syntax ρ of
         P.Send c -> translate Send c
         P.Recv c -> translate Recv c
-        s -> Bad $ "Unexpected communication operation: " ++ show s
+        s -> fail $ "Unexpected communication operation: " ++ show s
