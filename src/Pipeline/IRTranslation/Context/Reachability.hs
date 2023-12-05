@@ -1,8 +1,9 @@
 module Pipeline.IRTranslation.Context.Reachability (reachability) where
 
+import Data.Map qualified as M
+
 import Backend.Ast qualified as T
 import Backend.Utilities
-import Data.Map qualified as M
 import IR.Ast
 import Pipeline.IRTranslation.Exps
 import Pipeline.IRTranslation.Utilities
@@ -50,6 +51,9 @@ reachability (𝑃 _ s₀)=
             -- Skip statements do not increment the program counter,
             -- and do not result in an early return condition.
             Skip -> (M.empty, 𝜆', (False ?))
+            -- Close statements do not increment the program counter,
+            -- and do not result in an early return condition.
+            Close _ -> (M.empty, 𝜆', (False ?))
             -- Return statements are conditional based on the previous statement.
             -- They also stipulate an early return condition if their reachability
             -- condition is satisfied.

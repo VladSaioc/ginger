@@ -59,6 +59,10 @@ data Obj a b = Obj
 
 type Go = Obj [Pos T.Stmt] [Pos T.Stmt]
 
+-- | Pattern for closing a channel
+pattern Close :: String -> P.Stmt
+pattern Close c = P.ExpS (P.Run "close" [P.EVar (P.Var c)])
+
 -- | Pattern for running a WaitGroup monitor.
 --
 -- > run wg_monitor(x)
@@ -182,6 +186,7 @@ translateStatements ρ = case syntax ρ of
     let freshObj = Obj {decls = [], stmts = []}
         translateExp = translateExpPos p
         err = posErr p
+        errMsg = posErrMsg p
         addKeywordStmt c = do
           let oss = stmts $ curr ρ
           let oss' = Pos p c : oss
@@ -199,11 +204,7 @@ translateStatements ρ = case syntax ρ of
           -- Translation of assignment statements.
           -- Only assignments to plain variables are allowed.
           P.As (P.Var x) e -> do
-            x' <-
-              ( case M.lookup x (varenv ρ) of
-                  Just x' -> return x'
-                  Nothing -> err $ "[INVALID VARIABLE] binding not found for: " ++ x
-                )
+            x' <- mlookup (errMsg $ "[INVALID VARIABLE] binding not found for: " ++ x) x (varenv ρ)
             e' <- translateExp (varenv ρ) e
             let Obj {stmts = oss} = curr ρ
             let oss' = Pos p (T.As x' e') : oss
@@ -227,6 +228,12 @@ translateStatements ρ = case syntax ρ of
           -- Channel operations
           P.Send {} -> addOp s
           P.Recv {} -> addOp s
+          -- Translate close instruction
+          Close c -> do
+            c' <- mlookup ("[INVALID CONCURRENCY PRIMITIVE] binding not found for: " ++ c) c (chenv ρ)
+            let Obj {stmts = oss} = curr ρ
+            let obj = (curr ρ) {stmts = Pos p (T.Close c') : oss}
+            translateStatements (ss >: ρ <: obj)
           -- Assert statements are irrelevant
           P.Assert _ -> translateStatements (ss >: ρ)
           -- Skip statements are irrelevant
@@ -267,7 +274,7 @@ translateStatements ρ = case syntax ρ of
                   (ods, cs, def) ->
                     -- Add a communicating case
                     let addCommCase op c ss' = do
-                          c' <- maybe (err ("Channel name not found: " ++ show c)) return $ M.lookup c (chenv ρ')
+                          c' <- mlookup (errMsg ("Channel name not found: " ++ show c)) c (chenv ρ')
                           -- Translate the statements in the case body.
                           ctx'' <- translateStatements (ss' >: ρ' <: freshObj)
                           let Obj {stmts, decls = ods'} = curr ctx''
@@ -580,13 +587,11 @@ translateOp ρ =
         -- calls in Promela.
         if "child" `L.isPrefixOf` c
           then done $ ρ <: Pos p T.Skip
-          else -- Look up the Go name for the Promela channel name
-            let errMsg = Bad $ "[INVALID CONCURRENCY PRIMITIVE] binding not found for: " ++ c
-                -- Translate to equivalent Go operation.
-                makeCtx = done . (ρ <:) . Pos p . cons
-                -- Look up channel name in translation context
-                c' = M.lookup c (env ρ)
-             in Mb.maybe errMsg makeCtx c'
+          else do
+            -- Look up the Go name for the Promela channel name
+            c' <- mlookup ("[INVALID CONCURRENCY PRIMITIVE] binding not found for: " ++ c) c (env ρ)
+            -- Translate to equivalent Go operation.
+            done (ρ <: Pos p (cons c'))
    in case syntax ρ of
         -- Translate send statement
         Pos p (P.Send (P.Var c) _) -> translate chenv p (T.Atomic . T.Send) c
@@ -598,7 +603,7 @@ translateOp ρ =
         Pos p (WgAdd (P.Var w) [e]) -> do
           e' <- translateExpPos p (varenv ρ) e
           translate wgenv p (T.Add e') w
-        Pos p s -> Bad (":" ++ show p ++ ": Promela-to-Go Translation: Unexpected statement: " ++ show s)
+        Pos p s -> posErr p (":" ++ show p ++ ": Promela-to-Go Translation: Unexpected statement: " ++ show s)
 
 -- | Partial translation from Promela constants to Go constant expressions.
 translateVal :: P.Val -> Maybe T.Exp

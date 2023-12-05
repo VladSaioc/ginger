@@ -2,14 +2,9 @@ module Pipeline.IRTranslation.Utilities where
 
 import Backend.Ast qualified as T
 import Backend.Utilities
-import Data.Maybe
 import IR.Ast
 import Data.Map qualified as M
 import Utilities.Collection
-import GHC.Stack (HasCallStack)
-
-(!!!) :: HasCallStack => Ord a => M.Map a b -> a -> b
-m !!! k = fromMaybe (error "WTF") $ M.lookup k m
 
 -- | An alias for the type of process ids. Its purpose is to provide
 -- clarity to type definitions involving process ids.
@@ -104,6 +99,7 @@ programToCollection f (𝑃 _ s₀) =
          in case s of
             Skip -> (𝜆', 𝜎₀)
             Return -> (𝜆', 𝜎₀)
+            Close _ -> (𝜆', 𝜎₀)
             Atomic {} -> (𝜆', 𝜎₀)
             Seq s₁ s₂ ->
               let (𝜆₁, 𝜎₁) = foldStatement 𝜆 s₁

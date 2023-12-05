@@ -1,12 +1,12 @@
 module Pipeline.IRTranslation.Context.TypeInference (typesAndFvs) where
-
-import Backend.Ast qualified as T
-import Backend.Utilities
 import Control.Monad (foldM)
 import Data.List qualified as L
 import Data.Map qualified as M
 import Data.Maybe
 import Data.UnionFind.IntMap
+
+import Backend.Ast qualified as T
+import Backend.Utilities
 import IR.Ast
 import Utilities.Err
 import Utilities.TransformationCtx
@@ -136,6 +136,7 @@ stmtFVs ctx@(Ctx {datum = s}) =
    in case s of
         Skip -> done ctx
         Return -> done ctx
+        Close _ -> done ctx
         Atomic (Add _ e) -> updateWithExp T.TInt ctx e
         Atomic _ -> done ctx
         Seq s1 s2 -> do

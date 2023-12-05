@@ -56,6 +56,7 @@ sanityCheckStm :: Ctx -> 𝑆 -> Err Ctx
 sanityCheckStm ctx = \case
   Skip -> return ctx
   Return -> return ctx
+  Close _ -> return ctx
   Go s1 -> sanityCheckStm ctx s1
   If e s1 s2 -> do
     ctx' <- sanityCheckExp ctx e

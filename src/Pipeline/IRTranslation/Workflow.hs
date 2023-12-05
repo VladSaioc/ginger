@@ -1,7 +1,5 @@
 module Pipeline.IRTranslation.Workflow (irToBackend) where
 
-import Data.Set qualified as S
-
 import IR.Ast
 -- import IR.Homogeneity (homogeneous)
 import IR.SanityCheck (sanityCheck)
@@ -10,6 +8,7 @@ import IR.Simplifier (simplify)
 import Pipeline.IRTranslation.Clauses.CommPrecondition
 import Pipeline.IRTranslation.Clauses.WgPrecondition
 import Pipeline.IRTranslation.Clauses.Postcondition (postcondition)
+import Pipeline.IRTranslation.Close
 import Pipeline.IRTranslation.Encoding
 import Pipeline.IRTranslation.Context.Capacity (caps)
 import Pipeline.IRTranslation.Context.Reachability (reachability)
@@ -46,5 +45,6 @@ irToBackend p' = do
       summaries = 𝓂,
       comprojection = projectedCommunication 𝜓 𝓂,
       wgprojection = projectedConcurrency 𝜓 𝓂,
+      closes = closingChannels p,
       post = postcondition 𝜓 𝜉 (gs 𝓂)
     }

@@ -46,8 +46,11 @@ instance Show a => Show (Pos a) where
 (@>) :: Pos a -> (a -> b) -> Pos b
 (@>) (Pos l a) f = Pos l (f a)
 
+posErrMsg :: Int -> String -> String
+posErrMsg p msg = ":" ++ show p ++ ": " ++ msg
+
 posErr :: Int -> String -> Err a
-posErr p msg = Bad (":" ++ show p ++ ": " ++ msg)
+posErr p msg = Bad $ posErrMsg p msg
 
 (@^) :: Pos a -> a
 (@^) (Pos _ a) = a

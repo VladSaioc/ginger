@@ -73,6 +73,7 @@ stmtToPoints 𝜅 (𝜆@𝛬 { 𝑛 = 𝑛₀, p = p₀ }, 𝜉) s =
       p'goto p' 𝑛' = T.Assign [((p' ⊲), (𝑛' #))]
    in case s of
         Skip -> (𝜆, 𝜉)
+        Close _ -> (𝜆, 𝜉)
         Return ->
           let exit = T.Block [T.Assign [((p₀ ⊲), 𝜒 p₀)]]
            in (𝜆', 𝜉 ⇒ (p₀, 𝜉 M.! p₀ ⇒ (𝑛₀, exit)))
