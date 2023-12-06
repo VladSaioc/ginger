@@ -11,7 +11,7 @@ recursiveVerify () {
     else
       if [[ $file = *"-ginger.pml" ]]; then
         echo "Now testing: $dir/$file"
-        stack run -- "$dir/$file" &> "$dir/$file-results.res"
+        timeout 360 stack run -- "$dir/$file" &> "$dir/$file-results.res"
       else
         echo "Skipping non-ginger input file $file"
       fi
