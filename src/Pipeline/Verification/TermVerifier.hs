@@ -17,7 +17,7 @@ runDafny dafnyBin program = do
   (exitCode, successMsg, _) <- readProcessWithExitCode dafnyBin ["/stdin"] $ show program
   case exitCode of
     ExitFailure _ -> return False
-    ExitSuccess -> return $ "Dafny program verifier finished with 1 verified, 0 errors" `isInfixOf` successMsg
+    ExitSuccess -> return $ ("verified, 0 errors" `isInfixOf` successMsg) && not ("0 verified" `isInfixOf` successMsg)
 
 -- | Verify that a Dafny expression ensures a certain property relative to the encoding (free value and type variables).
 -- The property should produce a boolean typed expression. Otherwise, the produced program will produce a type error.
