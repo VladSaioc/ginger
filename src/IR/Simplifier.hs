@@ -10,11 +10,11 @@ import Utilities.General
 
 -- | Simplify IR statements.
 simplify :: 𝑃 -> 𝑃
-simplify (𝑃 cs s) = 𝑃 (map cOptimize cs) (fix (stripOuterPaths . stripReturns True . sSimplify) s)
+simplify (𝑃 cs s) = 𝑃 (map cSimplify cs) (fix (stripOuterPaths . stripReturns True . sSimplify) s)
 
 -- | Simplify IR channel definitions.
-cOptimize :: 𝐷 -> 𝐷
-cOptimize = \case
+cSimplify :: 𝐷 -> 𝐷
+cSimplify = \case
   Chan c e -> Chan c (eSimplify e)
   d -> d
 
@@ -23,6 +23,9 @@ sSimplify :: 𝑆 -> 𝑆
 sSimplify s =
   let bin c s1 s2 = c (sSimplify s1) (sSimplify s2)
   in case s of
+    -- wg.Add(0) ==> skip
+    Atomic (Add _ (Const 0)) -> Skip
+    Atomic o -> Atomic (oSimplify o)
     -- return; S ==> return
     Seq Return _ -> Return
     -- skip; S ==> S
@@ -36,7 +39,7 @@ sSimplify s =
     Seq s1 s2 -> Seq (sSimplify s1) (sSimplify s2)
     -- for (x : e1 .. e2) {} ==> skip
     For _ _ _ [] -> Skip
-    For x e1 e2 os -> For x (eSimplify e1) (eSimplify e2) os
+    For x e1 e2 os -> For x (eSimplify e1) (eSimplify e2) (map oSimplify os)
     -- if _ then skip else skip ==> skip
     If _ Skip Skip -> Skip
     -- if true then S1 else S2 ==> S1
@@ -78,6 +81,8 @@ eSimplify pe =
       e' = case pe of
         -- n1 + n2 ==> n
         Const n1 :+ Const n2 -> ((n1 + n2) #)
+        -- e + e' - e' ==> e
+        (e :+ e1) :- e2 -> if e1 == e2 then eSimplify e else (eSimplify e :+ eSimplify e1) :- eSimplify e2
         -- e + 0 ==> e
         e :+ Const 0 -> eSimplify e
         -- 0 + e ==> e
@@ -107,6 +112,12 @@ eSimplify pe =
    in if pe == e'
         then e'
         else eSimplify e'
+
+-- | Simplify concurrent operations
+oSimplify :: Op -> Op
+oSimplify = \case
+  Add w e -> Add w (eSimplify e)
+  s -> s
 
 -- | Strip returns from statements in tail position.
 stripReturns :: Bool -> 𝑆 -> 𝑆
