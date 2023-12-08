@@ -93,7 +93,15 @@ data Op
 -- >    | true | false
 -- >    | 𝑛 | x
 data 𝐸
-  = -- | > 𝐸₁ && 𝐸₂
+  = -- | > 𝑛 ∈ ℤ
+    Const Int
+  | -- | > true
+    BTrue
+  | -- | > false
+    BFalse
+  | -- | x
+    Var String
+  | -- | > 𝐸₁ && 𝐸₂
     𝐸 :& 𝐸
   | -- | > 𝐸₁ || 𝐸₂
     𝐸 :| 𝐸
@@ -119,14 +127,6 @@ data 𝐸
     𝐸 :* 𝐸
   | -- | > 𝐸₁ / 𝐸₂
     𝐸 :/ 𝐸
-  | -- | > 𝑛 ∈ ℤ
-    Const Int
-  | -- | > true
-    BTrue
-  | -- | > false
-    BFalse
-  | -- | x
-    Var String
   deriving (Eq, Ord, Read)
 
 instance Show 𝑃 where
