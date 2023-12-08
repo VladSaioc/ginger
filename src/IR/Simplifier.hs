@@ -87,7 +87,10 @@ eSimplify pe =
         e :+ Const 0 -> eSimplify e
         -- 0 + e ==> e
         Const 0 :+ e -> eSimplify e
-        e1 :+ e2 -> bin (:+) e1 e2
+        -- e1 + (e2 + e3) ==> (e1 + e2) + e3
+        e1 :+ (e2 :+ e3) -> eSimplify ((e1 :+ e2) :+ e3)
+        -- e1 + e2 ==> e2 + e1, if e2 < e1 (move constants)
+        e1 :+ e2 -> uncurry (bin (:+)) (if e1 < e2 then (e1, e2) else (e2, e1))
         -- n1 - n2 ==> n
         Const n1 :- Const n2 -> ((n1 - n2) #)
         -- e - 0 ==> e
