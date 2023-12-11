@@ -195,10 +195,9 @@ translateStatements ρ = case syntax ρ of
         addOp op = do
           -- Translate channel operation
           ρ' <- translateOp (Pos p op >: ρ)
-          let stm = curr ρ'
           let oss = stmts $ curr ρ
           -- Add statement to object syntax.
-          let ρ₂ = ss >: ρ' <: (curr ρ) {stmts = stm : oss}
+          let ρ₂ = ss >: ρ' <: (curr ρ) {stmts = curr ρ' : oss}
           translateStatements ρ₂
      in case s of
           -- Translation of assignment statements.
@@ -383,7 +382,7 @@ translateStatements ρ = case syntax ρ of
                           -- Construct translated channel declaration
                           let chdecl = Pos p $ T.Chan cname e'
                           -- Add channel declaration to context declarations
-                          let obj' = (curr ρ) {decls = decls (curr ρ) ++ [chdecl]}
+                          let obj' = (curr ρ) {stmts = chdecl : stmts (curr ρ)}
                           -- Insert channel in the capacity and variable environments,
                           -- with capacity expression and its own name.
                           let ρ' = ρ {𝜅 = M.insert cname  e' (𝜅 ρ), chenv = M.insert x cname (chenv ρ)}
@@ -401,7 +400,7 @@ translateStatements ρ = case syntax ρ of
                     let cname = x ++ "'" ++ show (calls ρ)
                     let mudecl = Pos p $ T.Chan cname (T.CNum 1)
                     -- Add mutex declaration to context declarations
-                    let obj' = (curr ρ) {decls = decls (curr ρ) ++ [mudecl]}
+                    let obj' = (curr ρ) {stmts = mudecl : stmts (curr ρ)}
                     -- Insert channel in the capacity and variable environments,
                     -- with capacity expression and its own name.
                     let ρ' = ρ {𝜅 = M.insert cname (T.CNum 1) (𝜅 ρ), chenv = M.insert x cname (chenv ρ)}
@@ -411,7 +410,7 @@ translateStatements ρ = case syntax ρ of
                     let wname = x ++ "'" ++ show (calls ρ)
                     let wgdecl = Pos p $ T.Wgdef wname
                     -- Add WaitGroup declaration to context declarations
-                    let obj' = (curr ρ) {decls = decls (curr ρ) ++ [wgdecl]}
+                    let obj' = (curr ρ) {stmts = wgdecl : stmts (curr ρ)}
                     let ρ' = ρ {wgenv = M.insert x wname (chenv ρ)}
                     translateStatements $ ss >: ρ' <: obj'
                   -- FIXME: Ignore named types

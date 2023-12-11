@@ -9,8 +9,8 @@ import Utilities.General
 (#) = Const
 
 -- | Simplify IR statements.
-simplify :: 𝑃 -> 𝑃
-simplify (𝑃 cs s) = 𝑃 (map cSimplify cs) (fix (stripOuterPaths . stripReturns True . sSimplify) s)
+simplify :: 𝑆 -> 𝑆
+simplify = fix (stripOuterPaths . stripReturns True . sSimplify)
 
 -- | Simplify IR channel definitions.
 cSimplify :: 𝐷 -> 𝐷
@@ -23,6 +23,7 @@ sSimplify :: 𝑆 -> 𝑆
 sSimplify s =
   let bin c s1 s2 = c (sSimplify s1) (sSimplify s2)
   in case s of
+    Def d -> Def $ cSimplify d
     -- wg.Add(0) ==> skip
     Atomic (Add _ (Const 0)) -> Skip
     Atomic o -> Atomic (oSimplify o)

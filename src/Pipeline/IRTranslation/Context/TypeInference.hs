@@ -1,6 +1,5 @@
 module Pipeline.IRTranslation.Context.TypeInference (typesAndFvs) where
 
-import Control.Monad (foldM)
 import Data.List qualified as L
 import Data.Map qualified as M
 import Data.Maybe
@@ -109,11 +108,9 @@ unboundTypes Ctx {supply, tenv, venv} =
               _ -> Nothing
    in L.nub $ mapMaybe getUnboundType (M.elems venv)
 
-typesAndFvs :: 𝑃 -> Err (𝛤, [T.Type])
-typesAndFvs (𝑃 chs s) = do
-  ctx <- foldM (\θ ch -> chanFVs $ ch >: θ) mkTCtx chs
-  ctx' <- stmtFVs $ s >: ctx
-  -- S.unions (map chanFVs chs ++ map stmtFVs procs)
+typesAndFvs :: 𝑆 -> Err (𝛤, [T.Type])
+typesAndFvs s = do
+  ctx' <- stmtFVs $ s >: mkTCtx
   let vs = makeTypeEnvironment ctx'
   let ts = unboundTypes ctx'
   return (vs, ts)
@@ -135,6 +132,7 @@ stmtFVs ctx@(Ctx {datum = s}) =
         ctx2 <- unifyTypes ctx1 t t1
         done ctx2
    in case s of
+        Def d -> chanFVs (d >: ctx)
         Skip -> done ctx
         Return -> done ctx
         Close _ -> done ctx
