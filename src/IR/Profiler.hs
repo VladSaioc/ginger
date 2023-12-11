@@ -16,13 +16,13 @@ instance Show Parametricity where
     Capacity -> "capacity"
     PathCondition -> "path condition"
 
-profileVirgo :: 𝑃 -> String
-profileVirgo p =
-  let parametricity = getParametricity p
+profileVirgo :: 𝑆 -> String
+profileVirgo s =
+  let parametricity = getParametricity s
    in if null parametricity then "not parametric."
       else L.intercalate "; " (map show parametricity)
 
-getParametricity :: 𝑃 -> [Parametricity]
+getParametricity :: 𝑆 -> [Parametricity]
 getParametricity p =
   let chlooping =  ([ChLooping | Any True == chLoopParametric p])
       wglooping =  ([WgLooping | Any True == wgLoopParametric p])
@@ -46,8 +46,8 @@ traverseStmt makecontext makeresult ctx s =
 traverseOp :: (a -> Op -> b) -> a -> Op -> b
 traverseOp makeresult = makeresult
 
-chLoopParametric :: 𝑃 -> Any
-chLoopParametric (𝑃 _ s) =
+chLoopParametric :: 𝑆 -> Any
+chLoopParametric s =
   let makecontext looping = \case
         For _ e1 e2 _ -> Any (parametricExp e1) <> Any (parametricExp e2)
         _ -> looping
@@ -57,8 +57,8 @@ chLoopParametric (𝑃 _ s) =
         _ -> Any False
     in traverseStmt makecontext makeresult (Any False) s
 
-wgLoopParametric :: 𝑃 -> Any
-wgLoopParametric (𝑃 _ s) =
+wgLoopParametric :: 𝑆 -> Any
+wgLoopParametric s =
   let makecontext looping = \case
         For _ e1 e2 _ -> Any (parametricExp e1) <> Any (parametricExp e2)
         _ -> looping
@@ -68,20 +68,21 @@ wgLoopParametric (𝑃 _ s) =
         _ -> Any False
     in traverseStmt makecontext makeresult (Any False) s
 
-wgAddParametric :: 𝑃 -> Any
-wgAddParametric (𝑃 _ s) =
+wgAddParametric :: 𝑆 -> Any
+wgAddParametric s =
   let makecontext _ _ = Any False
       makeresult _ = \case
         Atomic (Add _ e) -> Any $ parametricExp e
         _ -> Any False
     in traverseStmt makecontext makeresult (Any False) s
 
-capParametric :: 𝑃 -> Any
-capParametric (𝑃 cs _) =
-  let checkCap = \case
-        Chan _ e -> Any $ parametricExp e
+capParametric :: 𝑆 -> Any
+capParametric s =
+  let makecontext _ _ = Any False
+      makeresult _ = \case
+        Def (Chan _ e) -> Any $ parametricExp e
         _ -> Any False
-   in mconcat (map checkCap cs)
+   in traverseStmt makecontext makeresult (Any False) s
 
 parametricExp :: 𝐸 -> Bool
 parametricExp =

@@ -26,8 +26,6 @@ data Ctxt a b = Ctxt
     chenv :: M.Map String String,
     -- | Environment from WaitGroup names in the scope to their declaration names.
     wgenv :: M.Map String String,
-    -- | Binding from IR channel names to capacity
-    chans :: M.Map String 𝐸,
     -- | Translation object so far.
     curr :: b
   }
@@ -40,7 +38,7 @@ instance TransformCtx Ctxt where
   updateObject ctx a = ctx {curr = a}
 
 -- | Convert whole Go program to IR.
-getIR :: P.Prog -> Err 𝑃
+getIR :: P.Prog -> Err 𝑆
 getIR (P.Prog ss) =
   let ρ =
         Ctxt
@@ -53,7 +51,6 @@ getIR (P.Prog ss) =
             -- All initial environments are empty
             varenv = M.empty,
             chenv = M.empty,
-            chans = M.empty,
             wgenv = M.empty,
             -- First object statement is a skip
             curr = Skip
@@ -61,14 +58,8 @@ getIR (P.Prog ss) =
    in do
         -- Translate all Go statements and get an exit translation context.
         ρ' <- translateStatements ρ
-        -- Get binding from channels to capacity expressions.
-        let chs = M.elems $ M.mapWithKey Chan (chans ρ')
-        -- Get WaitGroup declarations
-        let wgs = M.elems $ M.map Wg (wgenv ρ')
-        -- Obtain IR body statement.
-        let s = curr ρ'
-        -- Construct IR program.
-        return $ 𝑃 (chs ++ wgs) s
+        -- Obtain VIRGo program.
+        return $ curr ρ'
 
 -- | Translate Go statements to IR.
 --
@@ -131,7 +122,7 @@ translateStatements ρ = case syntax ρ of
       -- (bound to itself initially).
       let ρ₁ = ρ { wgenv = M.insert w w (wgenv ρ) }
       -- Translate continuation.
-      translateStatements (ss >: ρ₁)
+      translateStatements (ss >: ρ₁ <: Seq (curr ρ) (Def (Wg w)))
     P.Add e w -> do
       w' <- mlookup ("Invalid WaitGroup: value not found: " ++ show w) w (wgenv ρ)
       e' <- translateExp (varenv ρ) e
@@ -148,11 +139,10 @@ translateStatements ρ = case syntax ρ of
       -- (bound to itself initially).
       let ρ₁ =
             ρ
-              { chans = M.insert c e' (chans ρ),
-                chenv = M.insert c c (chenv ρ)
+              { chenv = M.insert c c (chenv ρ)
               }
       -- Translate continuation.
-      translateStatements (ss >: ρ₁)
+      translateStatements (ss >: ρ₁ <: Seq (curr ρ) (Def (Chan c e')))
     -- Translate go statement
     P.Go ss' -> do
       -- Translate go statement body with a fresh context.
@@ -167,10 +157,8 @@ translateStatements ρ = case syntax ρ of
               loopcounter = loopcounter ρ,
               -- Variable environment inherited from current context.
               varenv = varenv ρ,
-              -- Channel capacity environment inherited from current context.
-              chenv = chenv ρ,
               -- Channel name environment inherited from current context.
-              chans = chans ρ,
+              chenv = chenv ρ,
               -- WaitGroup name environment inherited from current context.
               wgenv = wgenv ρ,
               -- Translation object is initially skip.

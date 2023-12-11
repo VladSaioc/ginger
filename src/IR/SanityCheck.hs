@@ -20,8 +20,8 @@ data Ctx = Ctx
   deriving (Eq, Ord, Read)
 
 -- | Perform a sanity check on the given IR program
-sanityCheck :: 𝑃 -> Err Ctx
-sanityCheck (𝑃 chs prc) = do
+sanityCheck :: 𝑆 -> Err Ctx
+sanityCheck prc = do
   -- Create a fresh context
   let ctx =
         Ctx
@@ -30,11 +30,9 @@ sanityCheck (𝑃 chs prc) = do
             chenv = S.empty,
             wgenv = S.empty
           }
-  -- Perform sanity checks on channel declarations
-  ctx' <- foldM sanityCheckChan ctx chs
-  sanityCheckStm ctx' prc
+  sanityCheckStm ctx prc
 
--- | Perform sanity checks on channel declarations.
+-- | Perform sanity checks on primitive declarations.
 -- Remember any encountered free variables and the names of declared channels.
 sanityCheckChan :: Ctx -> 𝐷 -> Err Ctx
 sanityCheckChan ctx = \case
@@ -55,6 +53,7 @@ sanityCheckChan ctx = \case
 -- | Perform sanity checks on IR statements.
 sanityCheckStm :: Ctx -> 𝑆 -> Err Ctx
 sanityCheckStm ctx = \case
+  Def d -> sanityCheckChan ctx d
   Skip -> return ctx
   Return -> return ctx
   Close _ -> return ctx

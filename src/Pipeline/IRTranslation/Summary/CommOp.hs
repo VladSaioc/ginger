@@ -85,13 +85,10 @@ noloopPChanInsns 𝛬 { 𝑛, p } = \case
 -- If M(c) is undefined (and similarly M(c)(d)), they get initialized
 -- to the corresponding zero value for the appropriate type.
 (+>) :: 𝒪 -> (𝐶 ↦ 𝒪s) -> (𝐶 ↦ 𝒪s)
-ch +> chops =
-  let 𝒪 {o𝐶 = c, oDir = d} = ch
-      ops = fromMaybe M.empty (M.lookup c chops)
+ch@(𝒪 {o𝐶 = c, oDir = d}) +> chops =
+  let ops = fromMaybe M.empty (M.lookup c chops)
       dops = fromMaybe [] (M.lookup d ops)
-      dops' = ch : dops
-      ops' = M.insert d dops' ops
-   in M.insert c ops' chops
+   in chops ⊔ (c, d, ch : dops)
 
 -- | A pattern for identifying asynchronous send encodings. Corresponds to:
 --

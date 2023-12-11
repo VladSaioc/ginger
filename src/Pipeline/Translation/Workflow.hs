@@ -6,7 +6,7 @@ import Go.Ast (Prog)
 import Go.GoForCommute (goForCommute)
 import Go.Simplifier qualified as S (simplify)
 import Go.ZipCases (zipCases)
-import IR.Ast (𝑃)
+import IR.Ast
 import IR.Simplifier qualified as S' (simplify)
 import Pipeline.Sanity.CallgraphOk (noRecursion)
 import Pipeline.Sanity.GoAllowed (allowed)
@@ -27,7 +27,7 @@ promelaToGo p = do
 -- | Convert simple Go to VIRGo.
 -- Can fail if the simple Go program uses unsupported constructs,
 -- or supported constructs in unsupported ways.
-goToIR :: Prog -> Err 𝑃
+goToIR :: Prog -> Err 𝑆
 goToIR g = do
   let zimplify g1 =
         let g' = (zipCases . S.simplify) g1

@@ -20,6 +20,8 @@ statement.
 
 Rules:
 
+> [CHAN]:   ⟨e, 𝑛 : c = [e']⟩ -> ⟨𝑛 + 1, e : [𝑛 ↦ e]⟩
+
 > [RETURN]: ⟨e, 𝑛 : return⟩ -> ⟨𝑛 + 1, e : [𝑛 ↦ e]⟩
 
 > [SKIP]:   ⟨_, 𝑛 : skip⟩ -> ⟨𝑛, false : []⟩
@@ -29,6 +31,8 @@ Rules:
 >           |- ∀ 0 ≤ i < n, n = |os|, oᵢ ∈ os, 𝜓ᵢ = [𝑛ᵢ ↦ e].
 >               ⟨e, 𝑛ᵢ : oᵢ⟩ -> ⟨𝑛ᵢ₊₁, false : 𝜓ᵢ⟩
 >           |- 𝜓 = ⋃ ∀ 0 ≤ i < n. 𝜓ᵢ
+
+> [GO]
 
 > [SEND]:   ⟨e, 𝑛 : c!⟩ -> ⟨𝑛 + 2, false : [𝑛 ↦ e]⟩
 
@@ -42,12 +46,15 @@ Rules:
 >           |- ⟨e && e', 𝑛 : S₁⟩ -> ⟨𝑛₁, e₁ : 𝜓₁⟩
 >           |- ⟨e && !e', S₂⟩ -> ⟨𝑛₂, e₂ : 𝜓₂⟩
 -}
-reachability :: 𝑃 -> 𝛹
-reachability (𝑃 _ s₀)=
+reachability :: 𝑆 -> 𝛹
+reachability s₀=
   let (⊎) = M.unionWith M.union
       stmtReachability' e 𝜆@𝛬 { 𝑛 = 𝑛₀, p = p₀ } s =
         let 𝜆' = 𝜆 { 𝑛 = 𝑛 𝜆 + ppOffset s }
          in case s of
+            -- Channel definition statements increment program counter,
+            -- and do not result in an early return condition.
+            Def {} -> (M.empty ⊔ (p 𝜆, 𝑛 𝜆, e), 𝜆', (False ?))
             -- Skip statements do not increment the program counter,
             -- and do not result in an early return condition.
             Skip -> (M.empty, 𝜆', (False ?))
@@ -57,18 +64,16 @@ reachability (𝑃 _ s₀)=
             -- Return statements are conditional based on the previous statement.
             -- They also stipulate an early return condition if their reachability
             -- condition is satisfied.
-            Return -> (M.empty ⇒ (p 𝜆, M.empty ⇒ (𝑛 𝜆, e)), 𝜆', e)
+            Return -> (M.empty ⊔ (p 𝜆, 𝑛 𝜆, e), 𝜆', e)
             Seq s₁ s₂ ->
               let (𝜓₁, 𝜆₁, e₁) = stmtReachability' e 𝜆 s₁
                   (𝜓₂, 𝜆₂, e₂) = stmtReachability' (T.Not e₁ T.:&& e) 𝜆₁ s₂
                in (𝜓₁ ⊎ 𝜓₂, 𝜆₂, e₁ T.:|| e₂)
             For _ _ _ os ->
-               let addOp (𝑛ᵢ, 𝜓ᵢ) o =
-                     let 𝜓ᵢ' = 𝜓ᵢ ⇒ (𝑛ᵢ, e)
-                      in (𝑛ᵢ + ppOffset o, 𝜓ᵢ')
+               let addOp (𝑛ᵢ, 𝜓ᵢ) o = (𝑛ᵢ + ppOffset o, 𝜓ᵢ ⇒ (𝑛ᵢ, e))
                    (𝑛', 𝜓ₚ) = foldl addOp (𝑛₀ + 1, M.empty ⇒ (𝑛₀, e)) os
                in  (M.fromList [(p₀, 𝜓ₚ)], 𝜆 { 𝑛 = 𝑛' + 1 }, (False ?))
-            Atomic {} -> (M.empty ⇒ (p₀, M.fromList [(𝑛₀, e)]), 𝜆', (False ?))
+            Atomic {} -> (M.empty ⊔ (p₀, 𝑛₀, e), 𝜆', (False ?))
             -- If statements may add additional reachability conditions to
             -- possibile return statements encountered along the branches.
             If e0 s₁ s₂ ->
@@ -92,7 +97,7 @@ reachability (𝑃 _ s₀)=
                   -- Compute reachability for instructions inside goroutine.
                   (𝜓₁, 𝜆₁, _) = stmtReachability' e 𝜆₀ s₁
                   -- Add reachability of 'go' instruction itself.
-                  𝜓₁' = 𝜓₁ ⇒ (p₀, M.fromList [(𝑛₀, e)])
+                  𝜓₁' = 𝜓₁ ⊔ (p₀, 𝑛₀, e)
                in -- 'go' instruction does not result in an early return condition.
                   -- Traversal context for continuation only inherits the next
                   -- available goroutine name.
