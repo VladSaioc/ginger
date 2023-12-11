@@ -5,7 +5,7 @@ import Data.Map qualified as M
 
 import Backend.Ast
 import Backend.Utilities
-import Pipeline.IRTranslation.Meta.CommOp
+import Pipeline.IRTranslation.Summary.Chan
 
 -- | Aggregate all asynchrony preconditions.
 capPreconditions :: 𝛫 -> [Exp]
@@ -20,4 +20,4 @@ Produces:
 > 𝜅(c) ≥ 0
 -}
 capPrecondition :: Exp -> Exp
-capPrecondition = (:<=) (0 #)
+capPrecondition = ((0 #) :<=)

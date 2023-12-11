@@ -2,7 +2,7 @@ module Pipeline.IRTranslation.Invariant.If (ifMonitors) where
 
 import Backend.Ast
 import Backend.Utilities
-import Pipeline.IRTranslation.Meta.If
+import Pipeline.IRTranslation.Summary.If
 import Pipeline.IRTranslation.Utilities
 
 {- | Get all if monitor expressions.

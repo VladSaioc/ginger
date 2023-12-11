@@ -4,7 +4,7 @@ import Data.Map qualified as M
 
 import Backend.Ast
 import Backend.Utilities
-import Pipeline.IRTranslation.Meta.Go
+import Pipeline.IRTranslation.Summary.Go
 import Pipeline.IRTranslation.Utilities
 
 {- | Get all go monitor expressions.

@@ -7,8 +7,9 @@ import Data.Maybe qualified as Mb
 import Backend.Ast
 import Backend.Utilities
 import IR.Utilities
-import Pipeline.IRTranslation.Meta.CommOp
-import Pipeline.IRTranslation.Meta.Loop
+import Pipeline.IRTranslation.Summary.Chan
+import Pipeline.IRTranslation.Summary.CommOp
+import Pipeline.IRTranslation.Summary.Loop
 import Pipeline.IRTranslation.Utilities
 import Utilities.Collection
 

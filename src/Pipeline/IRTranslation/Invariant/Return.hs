@@ -4,7 +4,7 @@ import Data.Map qualified as M
 
 import Backend.Ast
 import Backend.Utilities
-import Pipeline.IRTranslation.Meta.Return
+import Pipeline.IRTranslation.Summary.Return
 import Pipeline.IRTranslation.Utilities
 
 {- Get all return monitor expressions.

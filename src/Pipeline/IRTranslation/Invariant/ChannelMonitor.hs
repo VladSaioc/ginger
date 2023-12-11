@@ -7,8 +7,9 @@ import Backend.Ast
 import Backend.Utilities
 import Pipeline.IRTranslation.Invariant.ChannelAsyncMonitor (asyncChannelMonitors)
 import Pipeline.IRTranslation.Invariant.ChannelSyncMonitor (syncChannelMonitors)
-import Pipeline.IRTranslation.Meta.CommOp
-import Pipeline.IRTranslation.Meta.Loop
+import Pipeline.IRTranslation.Summary.Chan
+import Pipeline.IRTranslation.Summary.CommOp
+import Pipeline.IRTranslation.Summary.Loop
 import Pipeline.IRTranslation.Utilities
 import Utilities.Collection
 
