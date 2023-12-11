@@ -1,18 +1,21 @@
-module Pipeline.IRTranslation.Meta.Meta where
+module Pipeline.IRTranslation.Summary.Summary where
 
 import IR.Ast
-import Pipeline.IRTranslation.Meta.CommOp
-import Pipeline.IRTranslation.Meta.Go
-import Pipeline.IRTranslation.Meta.If
-import Pipeline.IRTranslation.Meta.Loop
-import Pipeline.IRTranslation.Meta.Return
-import Pipeline.IRTranslation.Meta.WgOp
+import Pipeline.IRTranslation.Summary.Chan
+import Pipeline.IRTranslation.Summary.CommOp
+import Pipeline.IRTranslation.Summary.Go
+import Pipeline.IRTranslation.Summary.If
+import Pipeline.IRTranslation.Summary.Loop
+import Pipeline.IRTranslation.Summary.Return
+import Pipeline.IRTranslation.Summary.WgOp
 import Pipeline.IRTranslation.Utilities
 import Utilities.Collection
 
 -- | All statement summaries in the program.
 data ℳ = ℳ
-  { -- | Channel outside-loop operation summaries
+  { -- | Channel definition summaries
+    cs :: [𝒞],
+    -- | Channel outside-loop operation summaries
     os :: P ↦ (𝐶 ↦ 𝒪s),
     -- | WaitGroup outside-loop operation summaries
     ws :: P ↦ (𝐶 ↦ 𝒲s),
@@ -26,10 +29,11 @@ data ℳ = ℳ
     rs :: [ℛ]
   }
 
-getSummaries :: 𝑃 -> ℳ
+getSummaries :: 𝑆 -> ℳ
 getSummaries p =
   ℳ
     {
+      cs = chandefs p,
       os = noloopPsChanInsns p,
       ws = noloopPsWgInsns p,
       gs = gos p,

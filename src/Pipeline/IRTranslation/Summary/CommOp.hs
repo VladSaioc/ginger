@@ -1,4 +1,4 @@
-module Pipeline.IRTranslation.Meta.CommOp where
+module Pipeline.IRTranslation.Summary.CommOp where
 
 import Control.Monad (unless)
 import Data.Map qualified as M
@@ -7,21 +7,15 @@ import Data.Maybe
 import Backend.Ast
 import IR.Ast qualified as I
 import IR.Utilities
+import Pipeline.IRTranslation.Summary.Chan
 import Pipeline.IRTranslation.Utilities
 import Utilities.Collection
-
--- | An alias for the type of concurrency primitive names, denoted as strings.
--- Its purpose is to shorten type definitions involving concurrency primitives.
-type 𝐶 = String
-
--- | The type of channel capacity environments, connecting channel names to capacity expressions.
-type 𝛫 = 𝐶 ↦ Exp
 
 -- | Mappings from concurrent operation type to a set of
 -- program points marking channel operations with that direction.
 type 𝒪s = CommOpType ↦ [𝒪]
 
--- | (Meta)data about concurrency operations.
+-- | Communication operation summary.
 data 𝒪 = 𝒪
   { -- | Process of channel operation
     oP :: P,
@@ -41,7 +35,7 @@ instance Show 𝒪 where
 -- | Aggregates all non-loop channel operations across
 -- all processes of the program, including operation
 -- direction, program point, and channel name.
-noloopPsChanInsns :: I.𝑃 -> P ↦ (𝐶 ↦ 𝒪s)
+noloopPsChanInsns :: I.𝑆 -> P ↦ (𝐶 ↦ 𝒪s)
 noloopPsChanInsns = programToCollection noloopPChanInsns
 
 {- | Aggregates all non-loop channel operations, including operation
