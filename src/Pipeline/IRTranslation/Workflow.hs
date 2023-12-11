@@ -15,14 +15,13 @@ import Pipeline.IRTranslation.Context.Reachability (reachability)
 import Pipeline.IRTranslation.Context.TypeInference (typesAndFvs)
 import Pipeline.IRTranslation.Context.WaitGroups (wgnames)
 import Pipeline.IRTranslation.Processes (procs)
-import Pipeline.IRTranslation.Meta.Meta
+import Pipeline.IRTranslation.Summary.Summary
 import Utilities.Err
 
 -- | Convert IR program to back-end program. May fail.
-irToBackend :: 𝑃 -> Err Encoding
+irToBackend :: 𝑆 -> Err Encoding
 irToBackend p' = do
   let p = simplify p'
-  let (𝑃 defs _) = p
   _ <- sanityCheck p
   -- _ <- homogeneous p
   -- _ <-
@@ -38,7 +37,7 @@ irToBackend p' = do
     { prog = p,
       conditions = 𝜓,
       capacities = 𝜅,
-      waitgroups = wgnames defs,
+      waitgroups = wgnames p,
       typeenv = 𝛾,
       typevars = ts,
       processes = 𝜉,

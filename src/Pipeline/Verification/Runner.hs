@@ -30,7 +30,7 @@ mkdir dir = do
   unless dirExists $ createDirectory dir
 
 -- | Print results in a tabular format.
-printTabular :: 𝑃 -> Oracle -> String -> IO ()
+printTabular :: 𝑆 -> Oracle -> String -> IO ()
 printTabular p oracle res = do
   putStrLn ""
   putStrLn "Final results (short)"
@@ -38,7 +38,7 @@ printTabular p oracle res = do
   return ()
 
 -- | Verify a VIRGo program encoding using Dafny.
-verify :: [String] -> String -> 𝑃 -> IO ()
+verify :: [String] -> String -> 𝑆 -> IO ()
 verify args sourceFile p = do
   -- Get Dafny binary as given by arguments
   let dafnyBin = getDafnyPath args

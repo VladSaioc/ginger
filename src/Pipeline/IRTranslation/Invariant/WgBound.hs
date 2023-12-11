@@ -4,7 +4,7 @@ import Data.Set qualified as S
 
 import Backend.Ast
 import Backend.Utilities
-import Pipeline.IRTranslation.Meta.WgOp
+import Pipeline.IRTranslation.Summary.WgOp
 
 {- | Composes all channel bound invariants.
 Depends on: 𝜅

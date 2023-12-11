@@ -4,7 +4,7 @@ import Data.Map qualified as M
 
 import Backend.Ast
 import Backend.Utilities
-import Pipeline.IRTranslation.Meta.Go
+import Pipeline.IRTranslation.Summary.Go
 import Pipeline.IRTranslation.Utilities
 
 {- | Constructs postconditions for all the processes.
@@ -13,8 +13,7 @@ Depends on: 𝜓, 𝛯, [g]
 Produces:
 
 > 𝜋(0) = (max ∘ dom)((𝛯)(0))
->  ∧ ⋀∀ (p, p', 𝑛) ∈ [g].
->     𝜋(p') = (if 𝜓(p)(𝑛) then (max ∘ dom)((𝛯)(p')) else -1)
+>  ∧ ⋀∀ (p, p', 𝑛) ∈ [g]. 𝜋(p') = (if 𝜓(p)(𝑛) then (max ∘ dom)((𝛯)(p')) else -1)
 -}
 postcondition :: 𝛹 -> 𝛯 -> [𝒢] -> Exp
 postcondition 𝜓 𝜉 gs =

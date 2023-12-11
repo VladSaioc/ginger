@@ -4,7 +4,7 @@ import Data.Map qualified as M
 
 import Backend.Ast
 import Backend.Utilities
-import Pipeline.IRTranslation.Meta.Loop
+import Pipeline.IRTranslation.Summary.Loop
 import Pipeline.IRTranslation.Utilities
 
 {- | Get all loop monitors for every loop.

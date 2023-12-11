@@ -1,6 +1,5 @@
 module Pipeline.IRTranslation.Encoding where
 
-import Data.Maybe qualified as Mb
 import Data.Map qualified as M
 import Data.Set qualified as S
 
@@ -9,9 +8,9 @@ import Backend.Utilities
 import Backend.Simplifier (eSimplify)
 import IR.Ast qualified as I
 import IR.Utilities
-import Pipeline.IRTranslation.Meta.CommOp
-import Pipeline.IRTranslation.Meta.Meta
-import Pipeline.IRTranslation.Meta.WgOp
+import Pipeline.IRTranslation.Summary.Chan
+import Pipeline.IRTranslation.Summary.Summary
+import Pipeline.IRTranslation.Summary.WgOp
 import Pipeline.IRTranslation.Utilities
 import Utilities.Collection
 
@@ -19,7 +18,7 @@ import Utilities.Collection
 -}
 data Encoding = Encoding
   { -- | Original VIRGo program
-    prog :: I.𝑃,
+    prog :: I.𝑆,
     -- | Reachability conditions of program points in the encoding.
     conditions :: 𝛹,
     -- | Channel capacities
@@ -49,7 +48,7 @@ balancedFlowPre :: Encoding -> Exp
 balancedFlowPre Encoding { capacities = 𝜅, comprojection = p, wgprojection = w } =
    let prc c os =
          let -- Get channel capacity expression.
-            k = Mb.fromJust (M.lookup c 𝜅)
+            k = 𝜅 M.! c
             -- Get projected number of sends
             sends = os M.! S
             -- Get projected number of receives
