@@ -20,13 +20,6 @@ pattern UNSPAWNED = -1
 -- | The program point of unspawned goroutines as a value.
 _UNSPAWNED :: Int
 _UNSPAWNED = -1
--- | The pattern for the crashed goroutine program point.
-pattern CRASHED :: (Eq a, Num a) => a
-pattern CRASHED = -2
--- | The program point of crashed goroutines as a value.
-_CRASHED :: Int
-_CRASHED = -2
-
 
 -- | Bindings from program points to statements, encoding the semantics
 -- of the operation at the given point.
@@ -63,7 +56,7 @@ data 𝛬 = 𝛬 {
 --
 -- > X{p}
 (▽) :: P -> String
-(▽) p = "X" ++ show p
+(▽) p = "T" ++ show p
 
 -- | Annotate process-local variable. Given process id p and name x,
 -- the naming schema is (contents between braces are swapped with
@@ -81,7 +74,7 @@ data 𝛬 = 𝛬 {
 
 -- | Program id to exit variable expression.
 --
--- > X{p}
+-- > T{p}
 𝜒 :: P -> T.Exp
 𝜒 p = ((p ▽) @)
 
@@ -91,27 +84,30 @@ data 𝛬 = 𝛬 {
   [] -> (0 #)
   (𝑛, _) : _ -> (𝑛 #)
 
--- | Folds program to aggregate a certain collection.
-programToCollection :: Collection a => (𝛬 -> 𝑆 -> a) -> 𝑃 -> a
-programToCollection f (𝑃 _ s₀) =
-  let foldStatement 𝜆 s =
+-- | Folds program to aggregate a collection.
+programToCollection :: Collection a => (𝛬 -> 𝑆 -> a) -> 𝑆 -> a
+programToCollection = foldStatement (∪)
+  -- let
+  --  in snd $ foldStatement 𝛬 { 𝑛 = 0, p = 0, nextp = 1} s₀
+
+-- | Folds VIRGo program to operate over a data structure.
+foldStatement :: (a -> a -> a) -> (𝛬 -> 𝑆 -> a) -> 𝑆 -> a
+foldStatement (⊎) f s₀ =
+  let fold 𝜆 s =
         let 𝜆' = 𝜆 { 𝑛 = 𝑛 𝜆 + ppOffset s }
             𝜎₀ = f 𝜆 s
          in case s of
-            Skip -> (𝜆', 𝜎₀)
-            Return -> (𝜆', 𝜎₀)
-            Close _ -> (𝜆', 𝜎₀)
-            Atomic {} -> (𝜆', 𝜎₀)
             Seq s₁ s₂ ->
-              let (𝜆₁, 𝜎₁) = foldStatement 𝜆 s₁
-                  (𝜆₂, 𝜎₂) = foldStatement 𝜆₁ s₂
-               in (𝜆₂, 𝜎₁ ∪ 𝜎₂ ∪ 𝜎₀)
+              let (𝜆₁, 𝜎₁) = fold 𝜆 s₁
+                  (𝜆₂, 𝜎₂) = fold 𝜆₁ s₂
+               in (𝜆₂,  𝜎₀ ⊎ 𝜎₁ ⊎ 𝜎₂)
             If _ s₁ s₂ ->
-              let (𝜆₁, 𝜎₁) = foldStatement 𝜆 { 𝑛 = 𝑛 𝜆 + 1 } s₁
-                  (𝜆₂, 𝜎₂) = foldStatement 𝜆₁ { 𝑛 = 𝑛 𝜆₁ + 1 } s₂
-               in (𝜆₂ { 𝑛 = 𝑛 𝜆₂ }, 𝜎₀ ∪ 𝜎₁ ∪ 𝜎₂)
+              let (𝜆₁, 𝜎₁) = fold 𝜆 { 𝑛 = 𝑛 𝜆 + 1 } s₁
+                  (𝜆₂, 𝜎₂) = fold 𝜆₁ { 𝑛 = 𝑛 𝜆₁ + 1 } s₂
+               in (𝜆₂ { 𝑛 = 𝑛 𝜆₂ }, 𝜎₀ ⊎ 𝜎₁ ⊎ 𝜎₂)
             For {} -> (𝜆', 𝜎₀)
             Go s₁ ->
-              let (𝜆₁, 𝜎₁) = foldStatement 𝛬 { 𝑛 = 0, p = nextp 𝜆, nextp = nextp 𝜆 + 1 } s₁
-               in (𝜆' { nextp = nextp 𝜆₁}, 𝜎₀ ∪ 𝜎₁)
-   in snd $ foldStatement 𝛬 { 𝑛 = 0, p = 0, nextp = 1} s₀
+              let (𝜆₁, 𝜎₁) = fold 𝛬 { 𝑛 = 0, p = nextp 𝜆, nextp = nextp 𝜆 + 1 } s₁
+               in (𝜆' { nextp = nextp 𝜆₁}, 𝜎₀ ⊎ 𝜎₁)
+            _ -> (𝜆', 𝜎₀)
+   in snd $ fold 𝛬 { 𝑛 = 0, p = 0, nextp = 1} s₀
