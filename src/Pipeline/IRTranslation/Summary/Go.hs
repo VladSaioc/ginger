@@ -1,9 +1,9 @@
-module Pipeline.IRTranslation.Meta.Go where
+module Pipeline.IRTranslation.Summary.Go where
 
 import IR.Ast
 import Pipeline.IRTranslation.Utilities
 
--- | Meta(data) about a go instruction.
+-- | Go instruction summary.
 data 𝒢 = 𝒢
   { -- | Process ID of return statement.
     gP :: P,
@@ -18,7 +18,7 @@ instance Show 𝒢 where
   show 𝒢 {gP = p, gP' = p', g𝑛 = 𝑛} = unwords [show p ++ ": [" ++ show 𝑛 ++ "]", "go {", show p',"}"]
 
 -- | Collect all if statements found in the program.
-gos :: 𝑃 -> [𝒢]
+gos :: 𝑆 -> [𝒢]
 gos = programToCollection processGos
 
 -- | Collect all if statement found in a process.
