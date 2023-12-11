@@ -25,10 +25,6 @@ import Utilities.PrettyPrint (PrettyPrint (prettyPrint), indent, multiline)
 class ProgramPointOffset a where
   ppOffset :: a -> Int
 
--- | Production rule for VIRGo programs:
--- > 𝑃 ::= {𝐷; ...}* {go { 𝑆 } ...}*
-data 𝑃 = 𝑃 [𝐷] 𝑆 deriving (Eq, Ord, Read)
-
 -- | Production rules for VIRGo definitions:
 -- > 𝐷 ::= c = [e]
 -- >  | x = sync.WaitGroup
@@ -40,14 +36,17 @@ data 𝐷
   deriving (Eq, Ord, Read)
 
 -- | Production rule for VIRGo statements:
--- > 𝑆 ::= 𝑆₁; 𝑆₂
+-- > 𝑆 ::= 𝐷
+-- >  | 𝑆₁; 𝑆₂
 -- >  | if 𝐸 then 𝑆₁ else 𝑆₂
 -- >  | skip
 -- >  | return
 -- >  | for (x : 𝐸₁ .. 𝐸₂) { 𝑠 }
 -- >  | 𝑐! | 𝑐? | 𝑤.Add(𝐸) | 𝑤.Wait()
 data 𝑆
-  = -- | > 𝑆₁; 𝑆₂
+  = -- | > 𝐷
+    Def 𝐷
+  | -- | > 𝑆₁; 𝑆₂
     Seq 𝑆 𝑆
   | -- | > if 𝐸 then 𝑆₁ else 𝑆₂
     If 𝐸 𝑆 𝑆
@@ -129,11 +128,6 @@ data 𝐸
     𝐸 :/ 𝐸
   deriving (Eq, Ord, Read)
 
-instance Show 𝑃 where
-  show (𝑃 cs s) =
-    let cs' = multiline (map show cs)
-     in unlines [cs', prettyPrint 0 s]
-
 instance Show 𝐷 where
   show = \case
     Chan c e -> unwords [c, "=", "[" ++ show e ++ "];"]
@@ -146,6 +140,7 @@ instance PrettyPrint 𝑆 where
   prettyPrint n =
     let tab = indent n
     in \case
+      Def d -> tab $ show d
       Seq s1 s2 -> multiline [prettyPrint n s1 ++ ";", prettyPrint n s2]
       Skip -> tab "skip"
       Return -> tab "return"
@@ -202,35 +197,34 @@ instance Show Op where
     Add w e -> w ++ ".Add(" ++ show e ++ ")"
     Wait w -> w ++ ".Wait()"
 
-instance ProgramPointOffset 𝑃 where
-  ppOffset (𝑃 _ s) = ppOffset s
-
 -- Computes the offset required, in terms of program points, to reach
 -- the instruction following the channel operation, based on its
 -- direction.
 --
 -- The offsets are:
 -- 1. skip: 0 (skip statements are ignored)
--- 2. return: 1 for the return instruction point
--- 3. close(c): 0 (close statements are temporarily ignored)
--- 4. 𝑆₁; 𝑆₂: |𝑆₁| + |𝑆₂|
--- 5. for x : 𝐸₁ .. 𝐸₂ { 𝑠 }: 2 + |𝑠|
+-- 2. c = [e]: 1
+--    1 for checking capacity safety
+-- 3. return: 1 for the return instruction point
+-- 4. close(c): 0 (close statements are temporarily ignored)
+-- 5. 𝑆₁; 𝑆₂: |𝑆₁| + |𝑆₂|
+-- 6. for x : 𝐸₁ .. 𝐸₂ { 𝑠 }: 2 + |𝑠|
 --      1 for the guard
 --      1 for the index incrementing operation
--- 6. if 𝐸 { 𝑆₁ } else { 𝑆₂ }: 2 + |𝑆₁| + |𝑆₂|
+-- 7. if 𝐸 { 𝑆₁ } else { 𝑆₂ }: 2 + |𝑆₁| + |𝑆₂|
 --      1 for the guard
 --      1 for the continuation of the 'then' path
--- 7. go { 𝑆 }: 1 for the start goroutine instruction.
+-- 8. go { 𝑆 }: 1 for the start goroutine instruction.
 instance ProgramPointOffset 𝑆 where
   ppOffset = \case
-    Skip -> 0
+    Def (Chan {}) -> 1
     Return -> 1
-    Close _ -> 0
     Seq s1 s2 -> ppOffset s1 + ppOffset s2
     For _ _ _ os -> 2 + sum (map ppOffset os)
     If _ s1 s2 -> 2 + ppOffset s1 + ppOffset s2
     Go _ -> 1
     Atomic o -> ppOffset o
+    _ -> 0
 
 -- Computes the offset required, in terms of program points, to reach
 -- the instruction following the channel operation, based on its

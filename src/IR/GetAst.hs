@@ -20,18 +20,12 @@ composeSyntax f rs = do
 
 -- Parses the given string as a Promela program and
 -- performs additional refinement on the existing parse tree.
-getAst :: String -> Err 𝑃
+getAst :: String -> Err 𝑆
 getAst = pProgram . pProg . myLexer
 
-pProgram :: R''.Err R'.Prog -> Err 𝑃
+pProgram :: R''.Err R'.Prog -> Err 𝑆
 pProgram = \case
-  R''.Ok (R'.Prog s) -> do
-    let getChannels f rs = do
-          os' <- foldMonad f [] (++) rs
-          return (reverse os')
-    chs' <- getChannels pChan s
-    ps' <- pStms s
-    return (𝑃 chs' ps')
+  R''.Ok (R'.Prog s) -> pStms s
   R''.Bad err -> Bad err
 
 pChan :: R'.Stm -> Err [𝐷]
@@ -51,6 +45,10 @@ pStms ss =
 
 pStm :: R'.Stm -> Err 𝑆
 pStm = \case
+  R'.Chan c e ->  do
+    e' <- pExp e
+    return $ Def (Chan (c &) e')
+  R'.Wgdef w -> return $ Def (Wg (w &))
   R'.Return {} -> return Return
   R'.Skip {} -> return Skip
   R'.SOp o -> do
@@ -69,7 +67,6 @@ pStm = \case
   R'.Go _ s -> do
     s' <- pStms s
     return (Go s')
-  _ -> return Skip
 
 pOp :: R'.Op -> Err Op
 pOp = \case
