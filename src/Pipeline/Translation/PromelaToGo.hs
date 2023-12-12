@@ -411,7 +411,7 @@ translateStatements ρ = case syntax ρ of
                     let wgdecl = Pos p $ T.Wgdef wname
                     -- Add WaitGroup declaration to context declarations
                     let obj' = (curr ρ) {stmts = wgdecl : stmts (curr ρ)}
-                    let ρ' = ρ {wgenv = M.insert x wname (chenv ρ)}
+                    let ρ' = ρ {wgenv = M.insert x wname (wgenv ρ)}
                     translateStatements $ ss >: ρ' <: obj'
                   -- FIXME: Ignore named types
                   P.TNamed _ -> translateStatements $ ss >: ρ
@@ -588,7 +588,7 @@ translateOp ρ =
           then done $ ρ <: Pos p T.Skip
           else do
             -- Look up the Go name for the Promela channel name
-            c' <- mlookup ("[INVALID CONCURRENCY PRIMITIVE] binding not found for: " ++ c) c (env ρ)
+            c' <- mlookup (show p ++ ": [INVALID CONCURRENCY PRIMITIVE] binding not found for: " ++ c) c (env ρ)
             -- Translate to equivalent Go operation.
             done (ρ <: Pos p (cons c'))
    in case syntax ρ of
