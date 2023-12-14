@@ -1,6 +1,7 @@
 module Backend.Utilities where
 
 import Data.List qualified as L
+import Data.Monoid qualified as Mo
 import Data.Map qualified as M
 import Data.Set qualified as S
 
@@ -105,6 +106,48 @@ eFVs =
     EVar x -> S.singleton x
     Call _ es -> variadic es
     _ -> S.empty
+
+-- | Check whether an expression contains any conditional statements
+containsConditionals :: Exp -> Bool
+containsConditionals e =
+  let Mo.Any b = aggregateExpression (\case
+        IfElse {} -> Mo.Any True
+        Match {} -> Mo.Any True
+        _ -> Mo.Any False) e
+   in b
+
+-- | Get the set of free variables in an expression.
+aggregateExpression :: Monoid m => (Exp -> m) -> Exp -> m
+aggregateExpression f e0 =
+  let fold = aggregateExpression f
+      variadic = foldl (<>) mempty . L.map fold
+      bin e1 e2 = fold e1 <> fold e2
+   in f e0 <> case e0 of
+    Match e cs -> f e <> variadic (L.map snd cs)
+    IfElse e1 e2 e3 -> variadic [e1, e2, e3]
+    Exists _ e -> variadic [e]
+    Forall _ e -> variadic [e]
+    In e1 e2 -> bin e1 e2
+    ESet es -> variadic es
+    e1 :<==> e2 -> bin e1 e2
+    e1 :==> e2 -> bin e1 e2
+    e1 :&& e2 -> bin e1 e2
+    e1 :|| e2 -> bin e1 e2
+    e1 :== e2 -> bin e1 e2
+    e1 :!= e2 -> bin e1 e2
+    e1 :>= e2 -> bin e1 e2
+    e1 :> e2 -> bin e1 e2
+    e1 :<= e2 -> bin e1 e2
+    e1 :< e2 -> bin e1 e2
+    e1 :+ e2 -> bin e1 e2
+    e1 :- e2 -> bin e1 e2
+    e1 :* e2 -> bin e1 e2
+    e1 :/ e2 -> bin e1 e2
+    e1 :% e2 -> bin e1 e2
+    Not e -> variadic [e]
+    ETuple es -> variadic es
+    Call _ es -> variadic es
+    _ -> mempty
 
 -- | Get the type of a Dafny expression, relative to a type environment.
 typeOfExp :: 𝛤 -> Exp -> Type
