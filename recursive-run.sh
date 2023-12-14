@@ -7,9 +7,10 @@ recursiveVerify () {
   do
     if [ -d $dir/$file ];
     then
-      rm -rf $dir/$file/*.dfy
-      rm -rf $dir/$file/*.res
-      rm -rf $dir/$file/*.dll
+      find . -name "$dir/$file/*.dfy" -type f -delete
+      find . -name "$dir/$file/*.res" -type f -delete
+      find . -name "$dir/$file/*.dll" -type f -delete
+      find . -name "$dir/$file/*.runtimeconfig.json" -type f -delete
       recursiveVerify $dir/$file
     else
       if [[ $file = *"-ginger.pml" ]]; then
