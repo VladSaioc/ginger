@@ -1,5 +1,6 @@
 module Pipeline.IRTranslation.Encoding where
 
+import Data.List qualified as L
 import Data.Map qualified as M
 import Data.Set qualified as S
 
@@ -45,10 +46,12 @@ data Encoding = Encoding
 
 -- | Get 'balanced-flow' precondition from the encoding.
 balancedFlowPre :: Encoding -> Exp
-balancedFlowPre Encoding { capacities = 𝜅, comprojection = p, wgprojection = w } =
-   let prc c os =
+balancedFlowPre Encoding { conditions = 𝜓, summaries = ℳ { cs }, capacities = 𝜅, comprojection = cos, wgprojection = w } =
+   let prc 𝒞 { c𝐶 = c, cP, c𝑛 = 𝑛} =
          let -- Get channel capacity expression.
             k = 𝜅 M.! c
+            -- Get channel operations
+            os = cos M.! c
             -- Get projected number of sends
             sends = os M.! S
             -- Get projected number of receives
@@ -60,9 +63,10 @@ balancedFlowPre Encoding { capacities = 𝜅, comprojection = p, wgprojection = 
             -- Sends unblock if there are more receive operations and
             -- capacity combined.
             sndsUnblock = sends :<= (recvs :+ k)
-         in rcvsUnblock :&& sndsUnblock
+         in -- If the channel definition is reachable, apply the balanced flow heuristic
+            𝜓 M.! cP M.! 𝑛 :==> (rcvsUnblock :&& sndsUnblock)
        prw os = (os M.! A) :== (0 #)
-    in ((M.elems (M.mapWithKey prc p) ++ M.elems (M.map prw w)) ...⋀)
+    in ((L.map prc cs ++ M.elems (M.map prw w)) ...⋀)
 
 -- | Checks whether there are any channels without send operations.
 -- If there are no send operations and partial deadlocks are considered guaranteed,
