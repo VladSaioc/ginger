@@ -92,10 +92,10 @@ balancedFlowWP = Oracle {
   -- the precondition implies partial deadlock freedom, and vice-versa.
   -- If satisfied, the precondition is also proven to be the weakest (modulo scheduling choices).
   makePrecondition = const (True ?),
-  makePostcondition = \encoding@Encoding {capacities = 𝜅 } -> (capPreconditions 𝜅 ...⋀) :&& balancedFlowPre encoding :<==> encodingToPostcondition encoding,
+  makePostcondition = \encoding -> balancedFlowPre encoding :<==> encodingToPostcondition encoding,
 
   -- In balanced flow, the real precondition includes capacity and balanced flow communication constraints.
-  realPrecondition = \encoding@Encoding {capacities = 𝜅 } -> (capPreconditions 𝜅 ...⋀) :&& balancedFlowPre encoding,
+  realPrecondition = balancedFlowPre,
   transformEncoding = id
 }
 
@@ -117,11 +117,11 @@ balancedFlow = Oracle {
       "This condition may be more restrictive than necessary."
     ],
   -- Precondition is positioned normally.
-  makePrecondition = \encoding@Encoding {capacities = 𝜅  } -> (capPreconditions 𝜅 ...⋀) :&& balancedFlowPre encoding,
+  makePrecondition = balancedFlowPre,
   -- Post condition is the usual postcondition.
   makePostcondition = encodingToPostcondition,
 
   -- In balanced flow, the real precondition includes capacity and balanced flow communication constraints.
-  realPrecondition = \encoding@Encoding {capacities = 𝜅  } -> (capPreconditions 𝜅 ...⋀) :&& balancedFlowPre encoding,
+  realPrecondition = balancedFlowPre,
   transformEncoding = id
 }
