@@ -130,7 +130,7 @@ data 𝐸
 
 instance Show 𝐷 where
   show = \case
-    Chan c e -> unwords [c, "=", "[" ++ show e ++ "];"]
+    Chan c e -> unwords [c, "=", "[" ++ show e ++ "]"]
     Wg x -> unwords [x, "=", "sync.WaitGroup"]
 
 instance Show 𝑆 where
