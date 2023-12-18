@@ -36,13 +36,13 @@ encodingToPostcondition Encoding { conditions = 𝜓, processes = 𝜉, summarie
 
 -- | Generate message from constraints.
 generateConstraintMessage :: (Encoding -> Exp) -> Encoding -> String
-generateConstraintMessage comPrecon encoding@Encoding { capacities = κ } =
+generateConstraintMessage comPrecon encoding@Encoding { capacities = 𝜅 } =
   -- If the message is trivially tautological, do not generate the message
   let messagesFromTerm msg e = if e == (True ?)
         then []
         else [msg, "\t" ++ prettyPrint 0 e]
       -- Get simplified capacity constraints
-      capExp = eSimplify (capPreconditions κ ...⋀)
+      capExp = eSimplify (capPreconditions 𝜅 ...⋀)
       -- Get simplified communication constraints
       comExp = eSimplify $ comPrecon encoding
       -- Generate message from capacity constraints, if not trivial
