@@ -2,6 +2,7 @@ module Pipeline.IRTranslation.Encoding where
 
 import Data.List qualified as L
 import Data.Map qualified as M
+import Data.Maybe qualified as Mb
 import Data.Set qualified as S
 
 import Backend.Ast
@@ -46,12 +47,12 @@ data Encoding = Encoding
 
 -- | Get 'balanced-flow' precondition from the encoding.
 balancedFlowPre :: Encoding -> Exp
-balancedFlowPre Encoding { conditions = 𝜓, summaries = ℳ { cs }, capacities = 𝜅, comprojection = cos, wgprojection = w } =
+balancedFlowPre Encoding { conditions = 𝜓, summaries = ℳ { cs }, capacities = 𝜅, comprojection = comms, wgprojection = w } =
    let prc 𝒞 { c𝐶 = c, cP, c𝑛 = 𝑛} =
          let -- Get channel capacity expression.
             k = 𝜅 M.! c
-            -- Get channel operations
-            os = cos M.! c
+            -- Get channel operations (defaults to 0 if none are present.)
+            os = Mb.fromMaybe (M.fromList [(S, (0 #)), (R, (0 #))]) (M.lookup c comms)
             -- Get projected number of sends
             sends = os M.! S
             -- Get projected number of receives
