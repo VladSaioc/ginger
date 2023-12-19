@@ -362,7 +362,7 @@ instance PrettyPrint Stmt where
                 cons kw e'' = "\n" ++ ind1 ++ unwords [kw, prettyPrint (i + 1) e'']
                 es' = concat (map (cons "invariant") es1 ++ map (cons "decreases") es2) ++ " "
              in unwords ["while", e'] ++ es' ++ prettyPrint i s''
-          Return es -> unwords ["return", intercalate ", " (map (prettyPrint i) es)]
+          Return es -> unwords ["return", intercalate ", " (map (prettyPrint i) es)] ++ ";"
      in s'
 
 instance PrettyPrint Const where
