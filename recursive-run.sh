@@ -14,10 +14,17 @@ recursiveVerify () {
       recursiveVerify $dir/$file
     else
       if [[ $file = *"-ginger.pml" ]]; then
+        if [ -f "$dir/$file-results.res" ]; then
+          local ctnt=$(cat "$dir/$file-results.res")
+          if [[ "$ctnt" = *"not parametric"* ]]; then
+            continue
+          fi
+          if [[ "$ctnt" = *"unexpected"* ]]; then
+            continue
+          fi
+        fi
         echo "Now testing: $dir/$file"
         timeout 360 stack run -- "$dir/$file" &> "$dir/$file-results.res"
-      else
-        echo "Skipping non-ginger input file $file"
       fi
     fi
   done
