@@ -13,7 +13,7 @@ verifyIRExample () {
       # echo "Directory $dir/$file"
       verifyIRExample $curr/$file
     else
-      if [[ $file = "examples__"* ]];
+      if [[ $file = *".t" ]];
       then
         echo "Skipping Dafny file $file"
       else
@@ -36,7 +36,7 @@ translateIRExample () {
     then
       translateIRExample $curr/$file
     else
-      if [[ $file = "examples__"* ]];
+      if [[ $file = *".pml" ]];
       then
         echo "Skipping Dafny file $file"
       else

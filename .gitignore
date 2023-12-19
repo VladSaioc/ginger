@@ -50,6 +50,9 @@ output
 examples\#*
 examples__*
 *__examples__*
+examples/**/*.dfy
+examples/**/*.dll
+examples/**/*.runtimeconfig.json
 
 # Dafny
 dafny-*.zip
