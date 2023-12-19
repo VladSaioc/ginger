@@ -65,32 +65,6 @@ allowedDeclarations ρ = case syntax ρ of
   Pos _ s : ss ->
     let ρ' = ρ {syntax = ss}
      in case s of
-          -- Non-channel declarations are allowed and earmarked
-          -- as concurrency parameters as long as the RHS is allowed.
-          Decl _ e -> do
-            cxs <- expVars e
-            -- Proceed to next statement and earmark any concurrency parameters
-            -- discovered in the RHS expression
-            allowedDeclarations $ ρ' {commParams = S.union (commParams ρ') cxs}
-          -- Channel declarations are allowed and earmarked
-          -- as long as the capacity expression is allowed.
-          Chan x e -> do
-            cxs' <- expVars e
-            let ρ2 =
-                  ρ'
-                    { -- Earmark channel name
-                      chans = S.insert x (chans ρ'),
-                      -- Earmark capacity-related concurrency parameters
-                      commParams = S.union (commParams ρ') cxs'
-                    }
-            allowedDeclarations ρ2
-          Wgdef x -> do
-            let ρ2 =
-                  ρ'
-                    { -- Earmark WaitGroup name
-                      wgs = S.insert x (wgs ρ')
-                    }
-            allowedDeclarations ρ2
           Block ss' -> allowedDeclarations (ρ {syntax = ss' ++ ss })
           _ -> do
             _ <- allowedStmts ρ'
@@ -110,11 +84,36 @@ allowedStmts ρ =
            in case s of
                 -- No declarations are allowed after the declaration phase
                 -- is over.
-                Decl x _ -> err $ "Unexpected declaration for: " ++ x
-                Chan c _ -> err $ "Unexpected channel declaration:" ++ c
-                Wgdef w -> err $ "Unexpected WaitGroup declaration: " ++ w
-                -- Close operations are not supported (yet)
-                Close {} -> err "Unexpected channel close"
+                -- Non-channel declarations are allowed and earmarked
+                -- as concurrency parameters as long as the RHS is allowed.
+                Decl _ e -> do
+                  cxs <- expVars e
+                  -- Proceed to next statement and earmark any concurrency parameters
+                  -- discovered in the RHS expression
+                  allowedStmts $ ρ' {commParams = S.union (commParams ρ') cxs}
+                -- Channel declarations are allowed and earmarked
+                -- as long as the capacity expression is allowed.
+                Chan x e -> do
+                  cxs' <- expVars e
+                  let ρ2 =
+                        ρ'
+                          { -- Earmark channel name
+                            chans = S.insert x (chans ρ'),
+                            -- Earmark capacity-related concurrency parameters
+                            commParams = S.union (commParams ρ') cxs'
+                          }
+                  allowedStmts ρ2
+                Wgdef x -> do
+                  let ρ2 =
+                        ρ'
+                          { -- Earmark WaitGroup name
+                            wgs = S.insert x (wgs ρ')
+                          }
+                  allowedStmts ρ2
+                -- Close operations are not supported (yet), but allowed
+                -- as long as verification succeeds without them, effectively
+                -- proving that they are redundant.
+                Close {} -> allowedStmts ρ'
                 -- WaitGroup Add operations are always allowed at the top level.
                 -- Inside loops, they are only allowed if they may not be skipped
                 -- due to preceding 'continue' statements or loop body path conditions.

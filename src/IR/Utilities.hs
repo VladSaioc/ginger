@@ -40,7 +40,7 @@ instance Show OpType where
     CommO o -> show o
     WgO o -> show o
 
--- | Checks whether the IR program is interesting.
+-- | Checks whether the VIRGo program is interesting.
 -- If the program is not interesting, no back-end code is emitted.
 --
 -- > [SEND]:      interesting(c!)
@@ -57,18 +57,35 @@ instance Show OpType where
 -- >              |- interesting(S2)
 -- > [FOR]:       interesting(for x : e1 .. e2 { S })
 -- >              |- interesting(S)
-interesting :: 𝑃 -> Bool
-interesting (𝑃 _ s) = interestingStmt s
-
--- | Checks whether a VIRGo statement is interesting.
-interestingStmt :: 𝑆 -> Bool
-interestingStmt =
+interesting :: 𝑆 -> Bool
+interesting =
   let
-    bin s1 s2 = interestingStmt s1 || interestingStmt s2
+    bin s1 s2 = interesting s1 || interesting s2
   in \case
     Atomic _ -> True
     Seq s1 s2 -> bin s1 s2
     If _ s1 s2 -> bin s1 s2
     For _ _ _ os -> not (null os)
-    Go s1 -> interestingStmt s1
+    Go s1 -> interesting s1
+    Def (Chan _ e) -> containsVars e
+    _ -> False
+
+containsVars :: 𝐸 -> Bool
+containsVars =
+  let bin e1 e2 = containsVars e1 || containsVars e2
+  in \case
+    Var {} -> True
+    e1 :+ e2 -> bin e1 e2
+    e1 :- e2 -> bin e1 e2
+    e1 :* e2 -> bin e1 e2
+    e1 :/ e2 -> bin e1 e2
+    e1 :& e2 -> bin e1 e2
+    e1 :| e2 -> bin e1 e2
+    e1 :== e2 -> bin e1 e2
+    e1 :!= e2 -> bin e1 e2
+    e1 :< e2 -> bin e1 e2
+    e1 :<= e2 -> bin e1 e2
+    e1 :> e2 -> bin e1 e2
+    e1 :>= e2 -> bin e1 e2
+    Not e -> containsVars e
     _ -> False

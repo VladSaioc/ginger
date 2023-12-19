@@ -8,9 +8,10 @@ import Backend.Ast
 import Backend.Utilities
 import IR.Utilities
 import Pipeline.IRTranslation.Clauses.Utilities
-import Pipeline.IRTranslation.Meta.CommOp
-import Pipeline.IRTranslation.Meta.Loop
-import Pipeline.IRTranslation.Meta.Meta
+import Pipeline.IRTranslation.Summary.Chan
+import Pipeline.IRTranslation.Summary.CommOp
+import Pipeline.IRTranslation.Summary.Loop
+import Pipeline.IRTranslation.Summary.Summary
 import Pipeline.IRTranslation.Utilities
 import Utilities.Collection
 

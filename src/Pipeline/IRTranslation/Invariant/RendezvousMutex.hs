@@ -5,7 +5,8 @@ import Data.Map qualified as M
 import Backend.Ast
 import Backend.Utilities
 import IR.Utilities
-import Pipeline.IRTranslation.Meta.CommOp
+import Pipeline.IRTranslation.Summary.Chan
+import Pipeline.IRTranslation.Summary.CommOp
 import Pipeline.IRTranslation.Utilities
 
 -- | Aggregates all rendezvous mutexes.

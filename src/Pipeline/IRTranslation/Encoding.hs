@@ -1,7 +1,8 @@
 module Pipeline.IRTranslation.Encoding where
 
-import Data.Maybe qualified as Mb
+import Data.List qualified as L
 import Data.Map qualified as M
+import Data.Maybe qualified as Mb
 import Data.Set qualified as S
 
 import Backend.Ast
@@ -9,9 +10,9 @@ import Backend.Utilities
 import Backend.Simplifier (eSimplify)
 import IR.Ast qualified as I
 import IR.Utilities
-import Pipeline.IRTranslation.Meta.CommOp
-import Pipeline.IRTranslation.Meta.Meta
-import Pipeline.IRTranslation.Meta.WgOp
+import Pipeline.IRTranslation.Summary.Chan
+import Pipeline.IRTranslation.Summary.Summary
+import Pipeline.IRTranslation.Summary.WgOp
 import Pipeline.IRTranslation.Utilities
 import Utilities.Collection
 
@@ -19,7 +20,7 @@ import Utilities.Collection
 -}
 data Encoding = Encoding
   { -- | Original VIRGo program
-    prog :: I.𝑃,
+    prog :: I.𝑆,
     -- | Reachability conditions of program points in the encoding.
     conditions :: 𝛹,
     -- | Channel capacities
@@ -46,10 +47,12 @@ data Encoding = Encoding
 
 -- | Get 'balanced-flow' precondition from the encoding.
 balancedFlowPre :: Encoding -> Exp
-balancedFlowPre Encoding { capacities = 𝜅, comprojection = p, wgprojection = w } =
-   let prc c os =
+balancedFlowPre Encoding { conditions = 𝜓, summaries = ℳ { cs }, capacities = 𝜅, comprojection = comms, wgprojection = w } =
+   let prc 𝒞 { c𝐶 = c, cP, c𝑛 = 𝑛} =
          let -- Get channel capacity expression.
-            k = Mb.fromJust (M.lookup c 𝜅)
+            k = 𝜅 M.! c
+            -- Get channel operations (defaults to 0 if none are present.)
+            os = Mb.fromMaybe (M.fromList [(S, (0 #)), (R, (0 #))]) (M.lookup c comms)
             -- Get projected number of sends
             sends = os M.! S
             -- Get projected number of receives
@@ -61,9 +64,10 @@ balancedFlowPre Encoding { capacities = 𝜅, comprojection = p, wgprojection = 
             -- Sends unblock if there are more receive operations and
             -- capacity combined.
             sndsUnblock = sends :<= (recvs :+ k)
-         in rcvsUnblock :&& sndsUnblock
+         in -- If the channel definition is reachable, apply the balanced flow heuristic
+            𝜓 M.! cP M.! 𝑛 :==> (rcvsUnblock :&& sndsUnblock)
        prw os = (os M.! A) :== (0 #)
-    in ((M.elems (M.mapWithKey prc p) ++ M.elems (M.map prw w)) ...⋀)
+    in ((L.map prc cs ++ M.elems (M.map prw w)) ...⋀)
 
 -- | Checks whether there are any channels without send operations.
 -- If there are no send operations and partial deadlocks are considered guaranteed,

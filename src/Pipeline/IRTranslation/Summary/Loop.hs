@@ -1,4 +1,4 @@
-module Pipeline.IRTranslation.Meta.Loop where
+module Pipeline.IRTranslation.Summary.Loop where
 
 import Data.List (intercalate)
 import Data.Map qualified as M
@@ -9,13 +9,14 @@ import Backend.Utilities
 import IR.Ast
 import IR.Utilities
 import Pipeline.IRTranslation.Exps (parseExp)
-import Pipeline.IRTranslation.Meta.CommOp
-import Pipeline.IRTranslation.Meta.WgOp
+import Pipeline.IRTranslation.Summary.Chan
+import Pipeline.IRTranslation.Summary.CommOp
+import Pipeline.IRTranslation.Summary.WgOp
 import Pipeline.IRTranslation.Utilities
 import Utilities.Collection
 import Utilities.PrettyPrint
 
--- | (Meta)data about loops found in the program.
+-- | Loop summary.
 data ℒ = ℒ
   { -- | Process of loop
     lP :: P,
@@ -49,7 +50,7 @@ instance Show ℒ where
 
 -- | Collect all loops found in the program.
 -- Assume that all loops are initially guarded by true.
-loops :: 𝑃 -> [ℒ]
+loops :: 𝑆 -> [ℒ]
 loops = programToCollection processLoops
 
 -- | Collect all loops found in a process.

@@ -7,10 +7,11 @@ import Data.Set qualified as S
 import Backend.Ast
 import Backend.Utilities
 import Backend.Simplifier
-import Pipeline.IRTranslation.Clauses.CapPrecondition (capPreconditions)
+import Pipeline.IRTranslation.Clauses.Utilities
 import Pipeline.IRTranslation.Enabled (enabledExp)
 import Pipeline.IRTranslation.Encoding
 import Pipeline.IRTranslation.Invariant.ChannelBound (channelBounds)
+import Pipeline.IRTranslation.Invariant.ChannelDef (channelDefs)
 import Pipeline.IRTranslation.Invariant.ChannelMonitor (channelMonitors)
 import Pipeline.IRTranslation.Invariant.CounterBound (counterInvariants)
 import Pipeline.IRTranslation.Invariant.If (ifMonitors)
@@ -20,10 +21,10 @@ import Pipeline.IRTranslation.Invariant.RendezvousMutex (rendezvousMutexes)
 import Pipeline.IRTranslation.Invariant.RendezvousNoAsync (noAsyncRendezvous)
 import Pipeline.IRTranslation.Invariant.Return (returnMonitors)
 import Pipeline.IRTranslation.Invariant.WgMonitor (wgMonitors)
-import Pipeline.IRTranslation.Meta.CommOp
-import Pipeline.IRTranslation.Meta.Loop
-import Pipeline.IRTranslation.Meta.Meta
-import Pipeline.IRTranslation.Meta.WgOp
+import Pipeline.IRTranslation.Summary.Chan
+import Pipeline.IRTranslation.Summary.Loop
+import Pipeline.IRTranslation.Summary.Summary
+import Pipeline.IRTranslation.Summary.WgOp
 import Pipeline.IRTranslation.Utilities
 import Pipeline.Verification.Oracle
 
@@ -46,7 +47,7 @@ iterationsFunc =
           funcHoare =
             HoareWrap
               { ghost = True,
-                name = "iter",
+                name = 𝑥iter,
                 types = [],
                 params = [("lo", TInt), ("hi", TInt)],
                 requires = [],
@@ -115,7 +116,7 @@ scheduleSwitch :: 𝛯 -> Stmt
 scheduleSwitch =
   let iguard pid = PCon (CNum pid)
       cases = M.toList . M.mapKeys iguard . M.mapWithKey processSwitch
-      step = Call "S" [("step" @)]
+      step = Call "S" [(𝑥step @)]
    in MatchStmt step . cases
 
 {- | Constructs the central loop which emulates the execution
@@ -139,7 +140,7 @@ centralLoop Encoding {
   conditions = 𝜓,
   capacities = 𝜅,
   processes = 𝜉,
-  summaries = ℳ { os, gs, is, ls, rs, ws }} =
+  summaries = ℳ { cs, os, gs, is, ls, rs, ws }} =
   let -- Go statement invariants
       g = goMonitors 𝜓 gs
       -- If statement invariants
@@ -148,8 +149,10 @@ centralLoop Encoding {
       l = loopMonitors 𝜓 ls
       -- Return statement invariants
       r = returnMonitors 𝜓 rs
+      -- Channel definition invariants
+      def = [channelDefs 𝜓 cs]
       -- Channel bound invariants
-      k = channelBounds 𝜅
+      k = channelBounds cs
       -- Absence of rendezvous for buffered channels invariants
       rv = noAsyncRendezvous 𝜅 os ls
       -- Mutual exclusion between rendezvous points of different process
@@ -163,18 +166,20 @@ centralLoop Encoding {
       wg = wgMonitors 𝜓 ws ls
       -- Condition under which progress is enabled
       -- 1. Fuel constraint
-      hasFuel = ("step" @) :< ("fuel" @)
-      -- 2. Fuel + process operation disjunctions
-      enabled = hasFuel :&& enabledExp 𝜅 𝜉
+      hasFuel = (𝑥step @) :< (𝑥fuel @)
+      -- 2. Program has not crashed
+      notErr = Not (𝑥ERR @)
+      -- 3. Fuel + process operation disjunctions
+      enabled = hasFuel :&& notErr :&& enabledExp 𝜅 𝜉
    in While
         enabled
-        (concat [k, pc, rv, rvm, g, i, l, r, m, wg])
+        (concat [k, def, pc, rv, rvm, g, i, l, r, m, wg])
         []
         ( Block
             [ -- Central loop case analysis
               scheduleSwitch 𝜉,
               -- Increment steps
-              Assign [("step", ("step" @) :+ (1 #))]
+              Assign [(𝑥step, (𝑥step @) :+ (1 #))]
             ]
         )
 
@@ -290,21 +295,18 @@ progEncoding Oracle { makePrecondition, makePostcondition } encoding@Encoding {
   processes = 𝜉,
   summaries = ℳ { ls } } =
     Method
-        { methodReturns = ("step", TNat) : (L.map ((,TInt) . (⊲)) . M.keys) 𝜉,
+        { methodReturns = (𝑥step, TNat) : (𝑥ERR, TBool) : (L.map ((,TInt) . (⊲)) . M.keys) 𝜉,
           methodHoare =
             HoareWrap
               { ghost = True,
                 name = "Program",
                 types = ts,
-                params = ("fuel", TNat) : ("S", TNat :-> TNat) : M.toList 𝛾,
+                params = (𝑥fuel, TNat) : ("S", TNat :-> TNat) : M.toList 𝛾,
                 ensures =
-                  [ (("step" @) :< ("fuel" @)) :==> makePostcondition encoding
+                  [ ((𝑥step @) :< (𝑥fuel @)) :==> makePostcondition encoding
                   ],
                 decreases = [],
-                requires =
-                  isSchedule :
-                  makePrecondition encoding :
-                  capPreconditions 𝜅
+                requires = [isSchedule, makePrecondition encoding]
               },
           methodBody =
             Block
@@ -313,7 +315,7 @@ progEncoding Oracle { makePrecondition, makePostcondition } encoding@Encoding {
                 chanDef 𝜅,
                 wgDef ws,
                 loopVarDef ls,
-                Assign [("step", (0 #))],
+                Assign [(𝑥step, (0 #)), (𝑥ERR, (False ?))],
                 centralLoop encoding
               ]
         }

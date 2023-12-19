@@ -6,12 +6,14 @@ import Data.Monoid
 import Go.Ast
 import Utilities.Position
 
-data Parametricity = Looping | Capacity | PathCondition
+data Parametricity = ChLooping | WgLooping | WgAdd | Capacity | PathCondition
   deriving (Read)
 
 instance Show Parametricity where
   show = \case
-    Looping -> "loop parametric"
+    ChLooping -> "channel loop parametric"
+    WgLooping -> "WaitGroup loop parametric"
+    WgAdd -> "add parametric"
     Capacity -> "capacity parametric"
     PathCondition -> "path condition parametric"
 
@@ -23,9 +25,11 @@ profileProgram p =
 
 getParametricity :: Prog -> [Parametricity]
 getParametricity p =
-  let looping =  ([Looping | Any True == loopParametric p])
+  let chlooping =  ([ChLooping | Any True == chLoopParametric p])
+      wglooping =  ([WgLooping | Any True == wgLoopParametric p])
+      wgadd =  ([WgAdd | Any True == addParametric p])
       capping = ([Capacity | Any True == capParametric p])
-    in looping ++ capping
+    in chlooping ++ capping ++ wglooping ++ wgadd
 
 traverseStmt :: Monoid a => Monoid b => (a -> Stmt -> a) -> (a -> Stmt -> b) -> a -> Pos Stmt -> b
 traverseStmt makecontext makeresult ctx (Pos p s) =
@@ -44,8 +48,8 @@ traverseStmt makecontext makeresult ctx (Pos p s) =
        in res s <> caseops <> casestmts
     _ -> res s
 
-loopParametric :: Prog -> Any
-loopParametric (Prog ss) =
+chLoopParametric :: Prog -> Any
+chLoopParametric (Prog ss) =
   let makecontext looping = \case
         For _ e1 e2 _ _ -> Any (parametricExp e1) <> Any (parametricExp e2)
         _ -> looping
@@ -55,10 +59,28 @@ loopParametric (Prog ss) =
         _ -> Any False
     in mconcat $ map (traverseStmt makecontext makeresult (Any False)) ss
 
+wgLoopParametric :: Prog -> Any
+wgLoopParametric (Prog ss) =
+  let makecontext looping = \case
+        For _ e1 e2 _ _ -> Any (parametricExp e1) <> Any (parametricExp e2)
+        _ -> looping
+      makeresult looping = \case
+        Add _ _ -> looping
+        Wait _ -> looping
+        _ -> Any False
+    in mconcat $ map (traverseStmt makecontext makeresult (Any False)) ss
+
 capParametric :: Prog -> Any
 capParametric (Prog ss) =
   let makeresult _ = \case
         Chan _ e -> Any (parametricExp e)
+        _ -> Any False
+    in mconcat $ map (traverseStmt mempty makeresult (Any False)) ss
+
+addParametric :: Prog -> Any
+addParametric (Prog ss) =
+  let makeresult _ = \case
+        Add e _ -> Any (parametricExp e)
         _ -> Any False
     in mconcat $ map (traverseStmt mempty makeresult (Any False)) ss
 

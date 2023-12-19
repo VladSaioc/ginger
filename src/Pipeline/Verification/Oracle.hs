@@ -4,9 +4,10 @@ import Backend.Ast
 import Backend.Utilities
 import Backend.Simplifier (eSimplify)
 import Pipeline.IRTranslation.Encoding
-import Pipeline.IRTranslation.Meta.Meta
-import Pipeline.IRTranslation.Clauses.Postcondition (postcondition)
 import Pipeline.IRTranslation.Clauses.CapPrecondition (capPreconditions)
+import Pipeline.IRTranslation.Clauses.Postcondition (postcondition)
+import Pipeline.IRTranslation.Clauses.Utilities
+import Pipeline.IRTranslation.Summary.Summary
 import Utilities.PrettyPrint
 
 -- | Oracles contextualize how verification is performed. They are provided with pre/post condition construction.
@@ -31,17 +32,17 @@ data Oracle = Oracle {
 
 -- | Wrap postcondition construction over an entire encoding.
 encodingToPostcondition :: Encoding -> Exp
-encodingToPostcondition Encoding { conditions = 𝜓, processes = 𝜉, summaries = ℳ { gs } } = postcondition 𝜓 𝜉 gs
+encodingToPostcondition Encoding { conditions = 𝜓, processes = 𝜉, summaries = ℳ { gs } } = Not (𝑥ERR @) :&& postcondition 𝜓 𝜉 gs
 
 -- | Generate message from constraints.
 generateConstraintMessage :: (Encoding -> Exp) -> Encoding -> String
-generateConstraintMessage comPrecon encoding@Encoding { capacities = κ } =
+generateConstraintMessage comPrecon encoding@Encoding { capacities = 𝜅 } =
   -- If the message is trivially tautological, do not generate the message
   let messagesFromTerm msg e = if e == (True ?)
         then []
         else [msg, "\t" ++ prettyPrint 0 e]
       -- Get simplified capacity constraints
-      capExp = eSimplify (capPreconditions κ ...⋀)
+      capExp = eSimplify (capPreconditions 𝜅 ...⋀)
       -- Get simplified communication constraints
       comExp = eSimplify $ comPrecon encoding
       -- Generate message from capacity constraints, if not trivial
@@ -58,7 +59,7 @@ trivial = Oracle {
   shortName = "trivial",
   description = unlines [
     "Running the trivial oracle. The precondition is assumed to be `true`.",
-    "If the encoding verifies, the model is partial deadlock-free for all concurrency parameter values."
+    "If the encoding verifies, the model is partial deadlock-free and capacity safe for all concurrency parameter values."
   ],
   successMessage = \encoding -> unlines [
     generateConstraintMessage (const (True ?)) encoding,
@@ -66,10 +67,10 @@ trivial = Oracle {
   ],
   -- Precondition is the weakest possible
   makePrecondition = const (True ?),
-  -- Postcondition only states that all processes should terminate.
+  -- Postcondition only states that all processes should terminate without crashing.
   makePostcondition = encodingToPostcondition,
-  -- In the trivial oracle, the real precondition consists only of capacity constraints
-  realPrecondition = \Encoding {capacities = 𝜅 } -> (capPreconditions 𝜅 ...⋀),
+  -- In the trivial oracle, the real precondition is the weakest possible
+  realPrecondition = const (True ?),
   -- No encoding transformations required
   transformEncoding = id
 }
@@ -84,7 +85,7 @@ balancedFlowWP = Oracle {
   description = unlines [
     "Running the 'balanced-flow' oracle in the weakest-precondition position. The precondition states that for every receive operation there should be a corresponding, and that the number of sends must not exceed the number of receives and the channel capacity.",
     "The precondition is placed in the weakest-precondition position.",
-    "If the encoding verifies, the model is partial deadlock-free if and only if the concurrency parameters satisfy the precondition."
+    "If the encoding verifies, the model is partial deadlock-free and capacity safe if and only if the concurrency parameters satisfy the precondition."
   ],
   successMessage = generateConstraintMessage balancedFlowPre,
   -- Precondition is incorporated in the postcondition under equivalence i.e.,
@@ -94,7 +95,7 @@ balancedFlowWP = Oracle {
   makePostcondition = \encoding -> balancedFlowPre encoding :<==> encodingToPostcondition encoding,
 
   -- In balanced flow, the real precondition includes capacity and balanced flow communication constraints.
-  realPrecondition = \encoding@Encoding {capacities = 𝜅 } -> (capPreconditions 𝜅 ...⋀) :&& balancedFlowPre encoding,
+  realPrecondition = balancedFlowPre,
   transformEncoding = id
 }
 
@@ -121,6 +122,6 @@ balancedFlow = Oracle {
   makePostcondition = encodingToPostcondition,
 
   -- In balanced flow, the real precondition includes capacity and balanced flow communication constraints.
-  realPrecondition = \encoding@Encoding {capacities = 𝜅  } -> (capPreconditions 𝜅 ...⋀) :&& balancedFlowPre encoding,
+  realPrecondition = balancedFlowPre,
   transformEncoding = id
 }

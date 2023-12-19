@@ -1,4 +1,4 @@
-module Pipeline.IRTranslation.Meta.WgOp where
+module Pipeline.IRTranslation.Summary.WgOp where
 
 import Control.Monad (unless)
 import Data.Map qualified as M
@@ -20,7 +20,7 @@ type 𝑊 = Set 𝑋
 -- program points marking channel operations with that direction.
 type 𝒲s = WgOpType ↦ [𝒲]
 
--- | (Meta)data about concurrency operations.
+-- | WaitGroup operation summary.
 data 𝒲 = 𝒲
   { -- | Process of channel operation
     wP :: P,
@@ -42,7 +42,7 @@ instance Show 𝒲 where
 -- | Aggregates all non-loop channel operations across
 -- all processes of the program, including operation
 -- direction, program point, and channel name.
-noloopPsWgInsns :: I.𝑃 -> P ↦ (String ↦ 𝒲s)
+noloopPsWgInsns :: I.𝑆 -> P ↦ (String ↦ 𝒲s)
 noloopPsWgInsns = programToCollection noloopWgInsns
 
 {- | Aggregates all non-loop channel operations, including operation

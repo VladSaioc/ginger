@@ -18,7 +18,6 @@ data Ctxt a b = Ctxt
     cg :: M.Map String P.Module,
     varenv :: M.Map String 𝐸,
     chenv :: M.Map String String,
-    chans :: M.Map String 𝐸,
     curr :: b
   }
   deriving (Eq, Ord, Read)
@@ -29,7 +28,7 @@ instance TransformCtx Ctxt where
   object = curr
   updateObject ctx a = ctx {curr = a}
 
-getIR :: P.Spec -> Err 𝑃
+getIR :: P.Spec -> Err 𝑆
 getIR p@(P.Spec ms) =
   let getFV venv = \case
         P.TopDecl x P.TInt v -> M.insert x (translateVal x v) venv
@@ -41,14 +40,12 @@ getIR p@(P.Spec ms) =
             nextpid = 1,
             cg = getCG p,
             varenv = Prelude.foldl getFV M.empty ms,
-            chans = M.empty,
             chenv = M.empty,
             curr = Skip
           }
    in do
         ctx' <- translateStatements ctx
-        let chs = M.elems $ M.mapWithKey Chan (chans ctx')
-        return $ 𝑃 chs (curr ctx')
+        return (curr ctx')
 
 translateStatements :: Ctxt [Pos P.Stmt] 𝑆 -> Err (Ctxt () 𝑆)
 translateStatements ctx = case syntax ctx of
@@ -68,10 +65,9 @@ translateStatements ctx = case syntax ctx of
             e' <- translateExp (varenv ctx) e
             let ctx1 =
                   ctx
-                    { chans = M.insert c e' (chans ctx),
-                      chenv = M.insert c c (chenv ctx)
+                    { chenv = M.insert c c (chenv ctx)
                     }
-            translateStatements (ss >: ctx1)
+            translateStatements (ss >: ctx1 <: Seq (curr ctx) (Def (Chan c e')))
           _ -> err $ "Channel " ++ c ++ " has no capacity."
       P.ExpS (P.Run f es) ->
         case M.lookup f (cg ctx) of
@@ -95,14 +91,12 @@ translateStatements ctx = case syntax ctx of
                       cg = cg ctx,
                       varenv = Prelude.foldl addVar (varenv ctx) pes,
                       chenv = Prelude.foldl addCh M.empty pes,
-                      chans = chans ctx,
                       curr = Skip
                     }
             ctx2 <- translateStatements ctx1
             let ctx3 =
                   ctx
-                    { nextpid = nextpid ctx2,
-                      chans = chans ctx2
+                    { nextpid = nextpid ctx2
                     }
             translateStatements (ss >: ctx3 <: Seq (curr ctx) (Go (curr ctx2)))
           _ -> err $ "Function " ++ f ++ " not in call-graph."

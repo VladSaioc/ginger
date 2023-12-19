@@ -1,5 +1,6 @@
 module Utilities.Collection where
 
+import Data.List qualified as L
 import Data.Map qualified as M
 import Data.Set qualified as S
 
@@ -10,6 +11,18 @@ type a ↦ b = M.Map a b
 -- | Short-hand for map insertion.
 (⇒) :: Ord k => M.Map k a -> (k, a) -> M.Map k a
 m ⇒ (k, v) = M.insert k v m
+
+-- | Nested map insertion
+(⊔) :: (Ord k1, Ord k2) => M.Map k1 (M.Map k2 a) -> (k1, k2, a) -> M.Map k1 (M.Map k2 a)
+m ⊔ (k1, k2, v) = m ⇒ (k1, maybe (M.singleton k2 v) (M.insert k2 v) (M.lookup k1 m))
+
+-- | Nested map multi-inner insertion
+(⨆) :: (Foldable t, Ord k1, Ord k2) => M.Map k1 (M.Map k2 v) -> (k1, t (k2, v)) -> M.Map k1 (M.Map k2 v)
+m ⨆ (k, kvs) = L.foldl (\m' (k', v) -> m' ⊔ (k, k', v)) m kvs
+
+-- | Nested map multi-outer insertion
+(⩏) :: (Foldable t, Ord k1, Ord k2) => M.Map k1 (M.Map k2 v) -> t (k1, [(k2, v)]) -> M.Map k1 (M.Map k2 v)
+m ⩏ kkvs = L.foldl (⨆) m kkvs
 
 -- | Short-hand for multi-element map insertion.
 (⭆) :: Ord k => M.Map k a -> [(k, a)] -> M.Map k a

@@ -1,9 +1,9 @@
 module Pipeline.Verification.Runner (verify) where
 
 import Control.Monad (unless)
-import Data.List (isInfixOf, intercalate)
+import Data.List (isInfixOf)
+import Data.List.Split
 import Data.Set qualified as S
-import Data.Text (pack, replace, unpack)
 import GHC.IO.Exception (ExitCode(ExitSuccess, ExitFailure))
 import System.Directory (createDirectory, doesDirectoryExist)
 import System.Process (readProcessWithExitCode)
@@ -12,6 +12,7 @@ import System.Console.ANSI
 import Backend.Simplifier (eSimplify)
 import IR.Ast
 import IR.Profiler (profileVirgo)
+import Pipeline.IRTranslation.Close
 import Pipeline.IRTranslation.Encoding
 import Pipeline.IRTranslation.Workflow (irToBackend)
 import Pipeline.Verification.Dafny
@@ -30,7 +31,7 @@ mkdir dir = do
   unless dirExists $ createDirectory dir
 
 -- | Print results in a tabular format.
-printTabular :: 𝑃 -> Oracle -> String -> IO ()
+printTabular :: 𝑆 -> Oracle -> String -> IO ()
 printTabular p oracle res = do
   putStrLn ""
   putStrLn "Final results (short)"
@@ -38,7 +39,7 @@ printTabular p oracle res = do
   return ()
 
 -- | Verify a VIRGo program encoding using Dafny.
-verify :: [String] -> String -> 𝑃 -> IO ()
+verify :: [String] -> String -> 𝑆 -> IO ()
 verify args sourceFile p = do
   -- Get Dafny binary as given by arguments
   let dafnyBin = getDafnyPath args
@@ -47,7 +48,7 @@ verify args sourceFile p = do
   -- Construct the color printing method
   let colorPrint = printColoredMsg args
   -- Construct Dafny file name from the path
-  let parseFileName = unpack . replace (pack "/") (pack "__") . pack
+  let parseFileName = last . splitOn "/"
   -- List all oracles in ascending order of precondition strength
   let oracles = [
           trivial,
@@ -140,7 +141,8 @@ verify args sourceFile p = do
                 else do
                   -- Otherwise, print the oracle success message, which includes the precondition for the non-trivial oracle.
                   putStrLn $ successMessage oracle encoding
-                  putStrLn $ unwords ["The following channels do not need to be closed:", intercalate ", " (S.toList (closes encoding))]
+                  -- Print a message if the channel is closed.
+                  putStrLn $ unlines (concatMap (closingChannelMsg $ comprojection encoding) $ S.toList (closes encoding))
                   printResults "SUCCESS"
                   return True
               else do

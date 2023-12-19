@@ -1,4 +1,4 @@
-module Pipeline.IRTranslation.Meta.If where
+module Pipeline.IRTranslation.Summary.If where
 
 import Backend.Ast
 import IR.Ast qualified as I
@@ -6,7 +6,7 @@ import Pipeline.IRTranslation.Exps (parseExp)
 import Pipeline.IRTranslation.Utilities
 import Utilities.PrettyPrint
 
--- | (Meta)data about conditional statements found in the program.
+-- | Conditional statement summary.
 data ℐ = ℐ
   { -- | Process of if statement
     iP :: P,
@@ -33,7 +33,7 @@ instance Show ℐ where
       ]
 
 -- | Collect all if statements found in the program.
-ifs :: I.𝑃 -> [ℐ]
+ifs :: I.𝑆 -> [ℐ]
 ifs = programToCollection processIfs
 
 -- | Collect all if statement found in a process.
