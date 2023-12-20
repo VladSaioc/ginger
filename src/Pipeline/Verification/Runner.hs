@@ -1,13 +1,17 @@
 module Pipeline.Verification.Runner (verify) where
 
+import Control.Exception
 import Control.Monad (unless)
 import Data.List (isInfixOf)
 import Data.List.Split
 import Data.Set qualified as S
+import Formatting
+import Formatting.Clock
 import GHC.IO.Exception (ExitCode(ExitSuccess, ExitFailure))
+import System.Console.ANSI
 import System.Directory (createDirectory, doesDirectoryExist)
 import System.Process (readProcessWithExitCode)
-import System.Console.ANSI
+import System.Clock
 
 import Backend.Simplifier (eSimplify)
 import IR.Ast
@@ -20,7 +24,7 @@ import Pipeline.Verification.Oracle
 import Pipeline.Verification.TermVerifier (unsatExpression)
 import Utilities.Args (getResultDir, getDafnyPath, skipVerification)
 import Utilities.Color
-import Utilities.Err 
+import Utilities.Err
 import Utilities.PrettyPrint
 
 -- | Make a directory. Acts as no-op if directory already exists.
@@ -161,7 +165,15 @@ verify args sourceFile p = do
           printTabular p Oracle { shortName = "-" } "VERIFICATION ERROR"
           ioError $ userError "Verification failed for all oracles."
         oracle : oracles' -> do
+          -- Get start timestamp
+          start <- getTime Monotonic
           verificationResult <- verifyOne oracle
+          -- Get verification end timestamp
+          end <- getTime Monotonic
+          -- Compute verification time (ms)
+          let t = toInteger (end - start) `div` 1000000
+          -- let _ =fprint (timeSpecs % "\n") start end
+          putStrLn $ unwords [shortName oracle, "verification time:", show t ++ "ms"]
           if verificationResult then return () else iterateOracles oracles'
   -- Skip verification if the `-skip-verification` flag was provided.
   if skipVerification args

@@ -15,12 +15,12 @@ verifyIRExample () {
     else
       if [[ $file = *".t" ]];
       then
-        echo "Skipping Dafny file $file"
-      else
-        # echo "File $dir/$file"
         echo "Now testing: $dir/$file"
         stack run -- -ir -color "$dir/$file"
         echo "Success: $dir/$file"
+      else
+        # echo "File $dir/$file"
+        echo "Skipping non-VIRGo file $file"
       fi
     fi
   done
@@ -36,13 +36,13 @@ translateIRExample () {
     then
       translateIRExample $curr/$file
     else
-      if [[ $file = *".pml" ]];
+      if [[ $file = *".t" ]];
       then
-        echo "Skipping Dafny file $file"
-      else
         echo "Now testing: $dir/$file"
         stack run -- -ir -color -skip-verification "$dir/$file"
         echo "Success: $dir/$file"
+      else
+        echo "Skipping non-VIRGo file $file"
       fi
     fi
   done
@@ -58,13 +58,13 @@ verifyPromelaExample () {
     then
       verifyPromelaExample $curr/$file
     else
-      if [[ $file = "examples__"* ]];
+      if [[ $file = *".pml" ]];
       then
-        echo "Skipping Dafny file $file"
-      else
         echo "Now testing: $dir/$file"
         stack run -- -color "$dir/$file"
         echo "Success: $dir/$file"
+      else
+        echo "Skipping non-Promela file $file"
       fi
     fi
   done
