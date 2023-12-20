@@ -10,15 +10,6 @@ import Backend.Ast
 iterations :: Exp -> Exp -> Exp
 iterations lo hi = Call 𝑥iter [lo, hi]
 
-
--- | The "ERR" Dafny variable name as a pattern.
-pattern 𝑋ERR :: String
-pattern 𝑋ERR = "ERR"
-
--- | The "ERR" Dafny variable name as a value.
-𝑥ERR :: String
-𝑥ERR = "ERR"
-
 -- | The "iter" Dafny variable name as a pattern.
 pattern 𝑋iter :: String
 pattern 𝑋iter = "iter"

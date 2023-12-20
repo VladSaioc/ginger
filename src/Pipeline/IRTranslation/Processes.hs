@@ -34,7 +34,7 @@ Produces, based on S:
 > [RETURN]:   ⟨p, 𝑛, 𝛯, return⟩ -> ⟨p, 𝑛 + 1, 𝛯[p ↦ 𝜙]⟩
 >             |- 𝜙 = 𝛯(p)[𝑛 ↦ { 𝜋(p) := Tp }]
 > [CHAN]:     ⟨p, 𝑛, 𝛯, c = [e]⟩ -> ⟨p, 𝑛 + 1, 𝛯[p ↦ 𝜙]⟩
->             |- 𝜙 = 𝛯(p)[𝑛 ↦ { 𝜋(p) := 𝑛 + 1; if e < 0 { ERR := true; } }]
+>             |- 𝜙 = 𝛯(p)[𝑛 ↦ { 𝜋(p) := 𝑛 + 1; if e < 0 { return; } }]
 > [COMM]:     ⟨p, 𝑛, 𝛯, c{!,?}⟩ -> opToPoints(𝜅, p, ⟨𝑛, 𝛯⟩, c{!,?})
 > [SEQ]:      ⟨p, 𝑛, 𝛯, 𝑆₁; 𝑆₂⟩ -> ⟨p, 𝑛', 𝛯'⟩
 >             |- ⟨p, 𝑛, 𝛯, 𝑆₁⟩ -> ⟨p, 𝑛'', 𝛯''⟩
@@ -77,7 +77,7 @@ stmtToPoints 𝜅 (𝜆@𝛬 { 𝑛 = 𝑛₀, p = p₀ }, 𝜉) s =
       goto 𝜆₀ is =
         let p' = p 𝜆₀
             𝑛' = 𝑛 𝜆₀
-         in T.Block (T.Assign [((p' ⊲), (𝑛' #))] : is)
+         in T.Block [T.Block is, T.Assign [((p' ⊲), (𝑛' #))]]
       pgoto 𝑛' = goto 𝜆 { 𝑛 = 𝑛' } []
       p'goto p' 𝑛' = T.Assign [((p' ⊲), (𝑛' #))]
    in case s of
@@ -87,9 +87,9 @@ stmtToPoints 𝜅 (𝜆@𝛬 { 𝑛 = 𝑛₀, p = p₀ }, 𝜉) s =
         Def (Chan _ e) ->
           -- Ensure that the channel is capacity-safe
           let e' = parseExp e
-              -- if e' < 0 { ERR := true }
-              check = ifNoElse (e' T.:< (0 #)) [T.Assign [("ERR", (True ?))]]
-              -- 𝜙 = 𝜉(p)[𝑛₀ ↦ { 𝜋(p) := 𝑛₀ + 1; if e' < 0 { ERR := true } }]
+              -- if e' < 0 { return }
+              check = ifNoElse (e' T.:< (0 #)) [T.Return []]
+              -- 𝜙 = 𝜉(p)[𝑛₀ ↦ { 𝜋(p) := 𝑛₀ + 1; if e' < 0 { return } }]
            in (𝜆', 𝜉 ⊔ (p₀, 𝑛₀, goto 𝜆' [check]))
         Return ->
           let exit = T.Block [T.Assign [((p₀ ⊲), 𝜒 p₀)]]

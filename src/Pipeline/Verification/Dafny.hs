@@ -150,7 +150,7 @@ centralLoop Encoding {
       -- Return statement invariants
       r = returnMonitors 𝜓 rs
       -- Channel definition invariants
-      def = [channelDefs 𝜓 cs]
+      def = channelDefs 𝜓 cs
       -- Channel bound invariants
       k = channelBounds cs
       -- Absence of rendezvous for buffered channels invariants
@@ -164,13 +164,9 @@ centralLoop Encoding {
       m = channelMonitors 𝜓 𝜅 os ls
       -- WaitGroup counter size invariants
       wg = wgMonitors 𝜓 ws ls
-      -- Condition under which progress is enabled
-      -- 1. Fuel constraint
-      hasFuel = (𝑥step @) :< (𝑥fuel @)
-      -- 2. Program has not crashed
-      notErr = Not (𝑥ERR @)
-      -- 3. Fuel + process operation disjunctions
-      enabled = hasFuel :&& notErr :&& enabledExp 𝜅 𝜉
+      -- Condition under which progress is enabled:
+      -- Has fuel + process operation disjunctions
+      enabled = ((𝑥step @) :< (𝑥fuel @)) :&& enabledExp 𝜅 𝜉
    in While
         enabled
         (concat [k, def, pc, rv, rvm, g, i, l, r, m, wg])
@@ -295,7 +291,7 @@ progEncoding Oracle { makePrecondition, makePostcondition } encoding@Encoding {
   processes = 𝜉,
   summaries = ℳ { ls } } =
     Method
-        { methodReturns = (𝑥step, TNat) : (𝑥ERR, TBool) : (L.map ((,TInt) . (⊲)) . M.keys) 𝜉,
+        { methodReturns = (𝑥step, TNat) : (L.map ((,TInt) . (⊲)) . M.keys) 𝜉,
           methodHoare =
             HoareWrap
               { ghost = True,
@@ -315,7 +311,7 @@ progEncoding Oracle { makePrecondition, makePostcondition } encoding@Encoding {
                 chanDef 𝜅,
                 wgDef ws,
                 loopVarDef ls,
-                Assign [(𝑥step, (0 #)), (𝑥ERR, (False ?))],
+                Assign [(𝑥step, (0 #))],
                 centralLoop encoding
               ]
         }

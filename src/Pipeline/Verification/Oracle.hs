@@ -30,9 +30,9 @@ data Oracle = Oracle {
   transformEncoding :: Encoding -> Encoding
 }
 
--- | Wrap postcondition construction over an entire encoding.
+-- | Wrap postcondition construction over entire encoding.
 encodingToPostcondition :: Encoding -> Exp
-encodingToPostcondition Encoding { conditions = 𝜓, processes = 𝜉, summaries = ℳ { gs } } = Not (𝑥ERR @) :&& postcondition 𝜓 𝜉 gs
+encodingToPostcondition Encoding { conditions = 𝜓, processes = 𝜉, summaries = ℳ { gs } } = postcondition 𝜓 𝜉 gs
 
 -- | Generate message from constraints.
 generateConstraintMessage :: (Encoding -> Exp) -> Encoding -> String
