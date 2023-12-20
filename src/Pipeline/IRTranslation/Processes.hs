@@ -212,9 +212,7 @@ Produces:
 4. If o = w.Add(e) then:
 
 >  ⟨n + 1, 𝜙 = [
->    if w + e < 0 {
->      ∀ p ∈ dom(𝛯). 𝜋(p) := -2;
->    } else {
+>    if w + e >= 0 {
 >      w := w + e
 >      𝜋(p) := n + 1;
 >    }
@@ -286,9 +284,9 @@ opToPoint 𝜅 (𝜆@𝛬 { 𝑛 = 𝑛₀, p }, 𝜉) op =
               -- point 𝑛+1
               (𝜆 { 𝑛 = 𝑛₀ + 1 }, 𝜉 ⊔ (p, 𝑛₀, opPoint))
         Wait _ ->
-          let -- c == 0
+          let -- w == 0
               guard = (c @) T.:== (0 #)
-              -- if c == 0 { 𝜋(p) := 𝑛 + 1 }
+              -- if w == 0 { 𝜋(p) := 𝑛 + 1 }
               opPoint = ifNoElse guard [nextInstruction (𝑛₀ + 1)]
             in -- Return program points and next available instruction
                -- point 𝑛+1
@@ -297,10 +295,7 @@ opToPoint 𝜅 (𝜆@𝛬 { 𝑛 = 𝑛₀, p }, 𝜉) op =
           let e' = parseExp e
               -- w + e >= 0
               guard = ((c @) T.:+ e') T.:>= (0 #)
-              -- ∀ p ∈ dom(𝛯). 𝜋(p) := -2;
-              -- crashProcess p' = T.Assign [((p' ⊲), (CRASHED #))]
-              -- crashed = T.Block $ L.map crashProcess $ M.keys 𝜉
-              -- if c + e >= 0 { w := w + e; 𝜋(p) := 𝑛 + 1 }
+              -- if w + e >= 0 { w := w + e; 𝜋(p) := 𝑛 + 1 }
               opPoint = ifNoElse guard [assignChan ((c @) T.:+ e'), nextInstruction (𝑛₀ + 1)]
             in -- Return program points and next available instruction
                -- point 𝑛+1
