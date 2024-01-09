@@ -83,8 +83,15 @@ verify args sourceFile p = do
         -- Write Dafny to output file
         putStrLn $ "\nAttempting to run oracle " ++ oname oracle
         outputFile <- printDafny oracle
+        -- Get start timestamp
+        start <- getTime Monotonic
         -- Run Dafny on output file and fetch results
         (exitCode, outMsg, errMsg) <- readProcessWithExitCode dafnyBin [outputFile] ""
+        -- Get verification end timestamp
+        end <- getTime Monotonic
+        -- Compute verification time (ms)
+        let t = toInteger (end - start) `div` 1000000
+        putStrLn $ unwords [shortName oracle, "verification time:", show t ++ "ms"]
         case exitCode of
           ExitFailure 1 -> do
             -- Exit code 1 means command-line argument error
@@ -165,15 +172,7 @@ verify args sourceFile p = do
           printTabular p Oracle { shortName = "-" } "VERIFICATION ERROR"
           ioError $ userError "Verification failed for all oracles."
         oracle : oracles' -> do
-          -- Get start timestamp
-          start <- getTime Monotonic
           verificationResult <- verifyOne oracle
-          -- Get verification end timestamp
-          end <- getTime Monotonic
-          -- Compute verification time (ms)
-          let t = toInteger (end - start) `div` 1000000
-          -- let _ =fprint (timeSpecs % "\n") start end
-          putStrLn $ unwords [shortName oracle, "verification time:", show t ++ "ms"]
           if verificationResult then return () else iterateOracles oracles'
   -- Skip verification if the `-skip-verification` flag was provided.
   if skipVerification args
