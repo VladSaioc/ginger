@@ -7,16 +7,16 @@ import Backend.Utilities
 import Pipeline.IRTranslation.Summary.WgOp
 
 {- | Composes all channel bound invariants.
-Depends on: 𝜅
+Depends on: 𝑊
 
 Produces:
 
-> ∀ c ∈ dom(𝜅). channelBound(c, 𝜅(c))
+> ∀ w ∈ 𝑊. w ≥ 0
 -}
 wgBounds :: 𝑊 -> [Exp]
 wgBounds = map wgBound . S.toList
 
-{- | Constructs a channel bound invariant.
+{- | Constructs a wait group bound invariant.
 Depends on: w ∈ 𝑊
 
 Produces:

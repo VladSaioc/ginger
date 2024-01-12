@@ -20,6 +20,7 @@ import Pipeline.IRTranslation.Invariant.Go (goMonitors)
 import Pipeline.IRTranslation.Invariant.RendezvousMutex (rendezvousMutexes)
 import Pipeline.IRTranslation.Invariant.RendezvousNoAsync (noAsyncRendezvous)
 import Pipeline.IRTranslation.Invariant.Return (returnMonitors)
+import Pipeline.IRTranslation.Invariant.WgBound (wgBounds)
 import Pipeline.IRTranslation.Invariant.WgMonitor (wgMonitors)
 import Pipeline.IRTranslation.Summary.Chan
 import Pipeline.IRTranslation.Summary.Loop
@@ -140,6 +141,7 @@ centralLoop Encoding {
   conditions = 𝜓,
   capacities = 𝜅,
   processes = 𝜉,
+  waitgroups = wgs,
   summaries = ℳ { cs, os, gs, is, ls, rs, ws }} =
   let -- Go statement invariants
       g = goMonitors 𝜓 gs
@@ -153,6 +155,8 @@ centralLoop Encoding {
       def = channelDefs 𝜓 cs
       -- Channel bound invariants
       k = channelBounds cs
+      -- WaitGroup bound invariants
+      w = wgBounds wgs
       -- Absence of rendezvous for buffered channels invariants
       rv = noAsyncRendezvous 𝜅 os ls
       -- Mutual exclusion between rendezvous points of different process
@@ -169,7 +173,7 @@ centralLoop Encoding {
       enabled = ((𝑥step @) :< (𝑥fuel @)) :&& enabledExp 𝜅 𝜉
    in While
         enabled
-        (concat [k, def, pc, rv, rvm, g, i, l, r, m, wg])
+        (concat [k, w, def, pc, rv, rvm, g, i, l, r, m, wg])
         []
         ( Block
             [ -- Central loop case analysis

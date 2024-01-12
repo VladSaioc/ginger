@@ -294,9 +294,9 @@ opToPoint 𝜅 (𝜆@𝛬 { 𝑛 = 𝑛₀, p }, 𝜉) op =
         Add _ e ->
           let e' = parseExp e
               -- w + e >= 0
-              guard = ((c @) T.:+ e') T.:>= (0 #)
-              -- if w + e >= 0 { w := w + e; 𝜋(p) := 𝑛 + 1 }
-              opPoint = ifNoElse guard [assignChan ((c @) T.:+ e'), nextInstruction (𝑛₀ + 1)]
+              guard = (c @) T.:< (((-1) #) T.:* e')
+              -- { if w < -e { return; }; w := w + e; 𝜋(p) := 𝑛 + 1; }
+              opPoint = T.Block [ifNoElse guard [T.Return []], assignChan ((c @) T.:+ e'), nextInstruction (𝑛₀ + 1)]
             in -- Return program points and next available instruction
                -- point 𝑛+1
                (𝜆 { 𝑛 = 𝑛₀ + 1 }, 𝜉 ⊔ (p, 𝑛₀, opPoint))

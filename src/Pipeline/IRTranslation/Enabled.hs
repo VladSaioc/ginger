@@ -34,9 +34,6 @@ Let the following:
 > C? = ⋃ ∀ (c, !, 𝑛) ∈ chanOps(𝜙). [
 >    𝑛 ↦ if 0 < 𝜅(c) then c > 0 else c == 1
 >  ]
-> Add(W) = ⋃ ∀ (w, Add(e), 𝑛) ∈ wgOps(𝜙). [
->    𝑛 ↦ w + e >= 0
->  ]
 > Wait(W) = ⋃ ∀ (w, Wait, 𝑛) ∈ wgOps(𝜙). [
 >    𝑛 ↦ w == 0
 >  ]
@@ -86,21 +83,14 @@ enabled 𝜅 p 𝜙 =
                 ]
          in opEnabled
       -- Process has not reached termination point
-      subExpWg 𝒲 {w𝐶 = cn, w𝑛 = 𝑛, wDir = d, wE = e} =
+      subExpWg 𝒲 {w𝐶 = cn, w𝑛 = 𝑛, wDir = d} =
         let c = (cn @)
             -- If the process is at instruction 𝑛', check e
             -- case 𝑛' => e
             executing 𝑛' e' = (PCon (CNum 𝑛'), e')
             opEnabled = case d of
               -- Wait operations are enabled if the WaitGroup counter is 0.
-              W ->
-                [ executing 𝑛 (c :== (0 #))
-                ]
-              -- FIXME: Add operations are always enabled no matter what.
-              -- WaitGroup panics are not modeled temporarily, so adds are modeled
-              -- as blocking until the resulting expression is non-negative.
-              A ->
-                [ executing 𝑛 (c :+ e :>= (0 #))
-                ]
+              W -> [executing 𝑛 (c :== (0 #))]
+              _ -> []
          in opEnabled
    in match $ concatMap subExpCh chsops ++ concatMap subExpWg wgops
