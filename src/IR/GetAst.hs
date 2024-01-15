@@ -94,7 +94,7 @@ pExp =
         R'.Plus e1 _ e2 -> bin (:+) e1 e2
         R'.Minus e1 _ e2 -> bin (:-) e1 e2
         R'.Mult e1 _ e2 -> bin (:*) e1 e2
-        R'.Div {} -> Bad "Unsupported division"
+        R'.Div e1 _ e2 -> bin (:/) e1 e2
         R'.Const n -> return (Const (n #))
         R'.Var x -> return (Var (x &))
         R'.Tru {} -> return BTrue
