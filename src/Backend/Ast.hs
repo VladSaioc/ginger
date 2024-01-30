@@ -6,7 +6,7 @@ import Utilities.PrettyPrint
 
 -- | Back-end type syntax:
 --
--- > T ::= int | nat | bool | x | set<T> | T -> T | ({T, ...}*)
+-- > 𝑇 ::= int | nat | bool | 𝑥 | set<𝑇> | 𝑇 -> 𝑇 | ({𝑇, ...}*)
 data Type
   = TBad
   | -- int
@@ -15,58 +15,58 @@ data Type
     TNat
   | -- bool
     TBool
-  |  -- set<T>
+  |  -- set<𝑇>
     TSet Type
-  | -- T
+  | -- 𝑇
     TVar String
-  | -- Type -> Type
+  | -- 𝑇 -> 𝑇
     Type :-> Type
-  | -- (Type, ...)
+  | -- (𝑇, ...)
     Tuple [Type]
   deriving (Eq, Ord, Read)
 
 -- | Back-end pattern matching syntax:
 --
--- > P ::= _ | c | x | C(p, ...) | (p, ...)
+-- > 𝑃 ::= _ | 𝑐 | 𝑥 | C(𝑃, ...) | (𝑃, ...)
 data Pattern
   = -- | >  _
     Wildcard
-  | -- | > c
+  | -- | > 𝑐
     PCon Const
-  | -- | > x
+  | -- | > 𝑥
     PVar String
-  | -- | > C(p, ...)
+  | -- | > C(𝑃, ...)
     PAdt String [Pattern]
-  | -- | > (p, ...)
+  | -- | > (𝑃, ...)
     PTuple [Pattern]
   deriving (Eq, Ord, Show, Read)
 
 -- | Back-end statement syntax:
 --
--- > S ::= {x, ...}* := {e, ...}*
--- >    | { S; ... }
--- >    | [ghost] var {x [: T], ...}* := {e, ...}*
--- >    | if e { S } else { S }
--- >    | assert e
--- >    | match e { {case p => S ...}* }
--- >    | while e {invariant e ...}* {decreases e}* { S }
--- >    | return {e, ...}*
+-- > 𝑆 ::= {x, ...}* := {𝐸, ...}*
+-- >    | { 𝑆; ... }
+-- >    | [ghost] var {x [: 𝑇], ...}* := {𝐸, ...}*
+-- >    | if 𝐸 { 𝑆 } else { 𝑆 }
+-- >    | assert 𝐸
+-- >    | match 𝐸 { {case p => 𝑆 ...}* }
+-- >    | while 𝐸 {invariant 𝐸 ...}* {decreases 𝐸}* { 𝑆 }
+-- >    | return {𝐸, ...}*
 data Stmt
-  = -- | > {x, ...}* := {e, ...}*
+  = -- | > {𝑥, ...}* := {𝐸, ...}*
     Assign [(String, Exp)]
-  | -- | > { S; ... }
+  | -- | > { 𝑆; ... }
     Block [Stmt]
-  | -- | > [ghost] var {x [: T], ...}* := {e, ...}*
+  | -- | > [ghost] var {x [: 𝑇], ...}* := {𝐸, ...}*
     VarDef Bool [(String, Maybe Type, Exp)]
-  | -- | > if e { S } else { S }
+  | -- | > if 𝐸 { 𝑆 } else { 𝑆 }
     If Exp Stmt (Maybe Stmt)
-  | -- | > assert e
+  | -- | > assert 𝐸
     Assert Exp
-  | -- | > match e { {case p => S ...}* }
+  | -- | > match 𝐸 { {case 𝑃 => 𝑆 ...}* }
     MatchStmt Exp [(Pattern, Stmt)]
-  | -- | > while e {invariant e ...}* {decreases e}* { S }
+  | -- | > while 𝐸 {invariant 𝐸 ...}* {decreases 𝐸}* { 𝑆 }
     While Exp [Exp] [Exp] Stmt
-  | -- | > return {e, ...}*
+  | -- | > return {𝐸, ...}*
     Return [Exp]
   deriving (Eq, Ord, Read)
 
@@ -83,72 +83,72 @@ data Const
 
 -- | Back-end expressions:
 --
--- > e ::= match e1 { {case p => e ...}* }
--- >    | if e1 then e2 else e3
--- >    | exists {x [: T], ...}* :: e
--- >    | forall {x [: T], ...}* :: e
--- >    | e1 in e2
--- >    | {{e, ...} *}
--- >    | e1 <==> e2 | e1 ==> e2
--- >    | e1 && e2 | e1 || e2
--- >    | e1 == e2 | e1 != e2
--- >    | e1 >= e2 | e1 > e2
--- >    | e1 <= e2 | e1 < e2
--- >    | exists {x [: T], ...}* :: e
+-- > 𝐸 ::= match 𝐸 { {case p => 𝐸 ...}* }
+-- >    | if 𝐸 then 𝐸 else 𝐸
+-- >    | exists {x [: 𝑇], ...}* :: 𝐸
+-- >    | forall {x [: 𝑇], ...}* :: 𝐸
+-- >    | 𝐸 in 𝐸
+-- >    | {{𝐸, ...} *}
+-- >    | 𝐸 <==> 𝐸 | 𝐸 ==> 𝐸
+-- >    | 𝐸 && 𝐸 | 𝐸 || 𝐸
+-- >    | 𝐸 == 𝐸 | 𝐸 != 𝐸
+-- >    | 𝐸 >= 𝐸 | 𝐸 > 𝐸
+-- >    | 𝐸 <= 𝐸 | 𝐸 < 𝐸
+-- >    | exists {x [: 𝑇], ...}* :: 𝐸
 data Exp
   = -- COMPOUND EXPRESSIONS
-    -- | > match e1 { {case p => e ...}* }
+    -- | > match 𝐸 { {case p => 𝐸 ...}* }
     Match Exp [(Pattern, Exp)]
-  | -- | > if e1 then e2 else e3
+  | -- | > if 𝐸 then 𝐸 else 𝐸
     IfElse Exp Exp Exp
   | -- PROPOSITIONAL QUANTIFIERS
-    -- | > exists {x [: T], ...}* :: e
+    -- | > exists {x [: 𝑇], ...}* :: 𝐸
     Exists [(String, Maybe Type)] Exp
-  | -- | > forall {x [: T], ...}* :: e
+  | -- | > forall {x [: 𝑇], ...}* :: 𝐸
     Forall [(String, Maybe Type)] Exp
-  | -- | > e1 in e2
+  | -- | > 𝐸 in 𝐸
     In Exp Exp
-  | -- | > {{e, ...} *}
+  | -- | > {{𝐸, ...} *}
     ESet [Exp]
   | -- BINARY OPERATORS
     -- Propositional logic
-    -- | > e1 <==> e2
+    -- | > 𝐸 <==> 𝐸
     Exp :<==> Exp
-  | -- | > e1 ==> e2
+  | -- | > 𝐸 ==> 𝐸
     Exp :==> Exp
   | -- Boolean arithmetic
-    -- | > e1 && e2
+    -- | > 𝐸 && 𝐸
     Exp :&& Exp
-  | -- | > e1 || e2
+  | -- | > 𝐸 || 𝐸
     Exp :|| Exp
   | -- Comparison
-    -- | > e1 == e2
+    -- | > 𝐸 == 𝐸
     Exp :== Exp
-  | -- | > e1 != e2
+  | -- | > 𝐸 != 𝐸
     Exp :!= Exp
-  | -- | > e1 >= e2
+  | -- | > 𝐸 >= 𝐸
     Exp :>= Exp
-  | -- | > e1 > e2
+  | -- | > 𝐸 > 𝐸
     Exp :> Exp
-  | -- | > e1 <= e2
+  | -- | > 𝐸 <= 𝐸
     Exp :<= Exp
-  | -- | > e1 < e2
+  | -- | > 𝐸 < 𝐸
     Exp :< Exp
   | -- Arithmetic
-    -- | > e1 + e2
+    -- | > 𝐸 + 𝐸
     Exp :+ Exp
-  | -- | > e1 - e2
+  | -- | > 𝐸 - 𝐸
     Exp :- Exp
-  | -- | > e1 * e2
+  | -- | > 𝐸 * 𝐸
     Exp :* Exp
-  | -- | > e1 / e2
+  | -- | > 𝐸 / 𝐸
     Exp :/ Exp
-  | -- | > e1 % e2
+  | -- | > 𝐸 % 𝐸
     Exp :% Exp
   | -- UNARY OPERATORS
-    -- | > !e
+    -- | > !𝐸
     Not Exp
-  | -- | > (e1, ... en)
+  | -- | > (𝐸, ... 𝐸)
     ETuple [Exp]
   | -- TERMINAL EXPRESSIONS
     -- | > *
@@ -157,21 +157,21 @@ data Exp
     EVar String
   | -- | > c
     ECon Const
-  | -- | > f({e, ...}*)
+  | -- | > f({𝐸, ...}*)
     Call String [Exp]
   deriving (Eq, Ord, Read)
 
 -- | Back-end record type definition:
 --
--- > T({field : type, ...}*)
+-- > 𝑇({field : type, ...}*)
 data Cons = Cons String [(String, Type)] deriving (Eq, Ord, Read)
 
 -- | Back-end Hoare triple syntax. Uses holes for keyword and return type:
 --
--- > H<_, _> ::= _ x[\<{T, ...}>]({x : T, ...}*) _
--- >      {requires e\n...}*
--- >      {ensures e\n...}*
--- >      {decreases e\n...}*
+-- > H<_, _> ::= _ 𝑥[\<{𝑇, ...}>]({𝑥 : 𝑇, ...}*) _
+-- >      {requires 𝐸\n...}*
+-- >      {ensures 𝐸\n...}*
+-- >      {decreases 𝐸\n...}*
 data HoareWrap = HoareWrap
   { ghost :: Bool,
     name :: String,
@@ -185,7 +185,7 @@ data HoareWrap = HoareWrap
 
 -- | Back-end function declaration syntax:
 --
--- > F ::= H<[ghost] function, : T> E
+-- > F ::= H<[ghost] function, : 𝑇> 𝐸
 data Function = Function
   { yields :: Type,
     funcHoare :: HoareWrap,
@@ -195,7 +195,7 @@ data Function = Function
 
 -- | Method declaration syntax:
 --
--- > M ::= H<lemma | method, returns ({ x : T, ...}*)> { {S; ...}* }
+-- > M ::= H<lemma | method, returns ({ 𝑥 : 𝑇, ...}*)> { {𝑆; ...}* }
 data Method = Method
   { methodReturns :: [(String, Type)],
     methodHoare :: HoareWrap,
@@ -205,22 +205,27 @@ data Method = Method
 
 -- | Back-end top-level declaration:
 --
--- > D ::= datatype x<{T, ...}> = {Cons | ...}
--- >    | type x = T
+-- > 𝐷 ::= datatype 𝑥<{𝑇, ...}> = {Cons | ...}
+-- >    | const 𝑥 := 𝐸
+-- >    | type 𝑥 = 𝑇
+-- >    | [ghost] function f({𝑥 : 𝑇, ...}*) : 𝑇 {requires 𝐸}* {ensures 𝐸}* { 𝐸 }
+-- >    | (lemma | method) function f({𝑥 : 𝑇, ...}*) : 𝑇 {requires 𝐸}* {ensures 𝐸}* { 𝐸 }
 data Decl
-  = -- | > datatype x<{Type, ...}> = {Cons | ...}
+  = -- | > datatype 𝑥<{𝑇, ...}> = {Cons | ...}
     Datatype String [Type] [Cons]
-  | -- | > type x = Type
+  | -- | > const 𝑥 := 𝐸
+    CDecl String Exp
+  | -- | > type 𝑥 = Type
     TypeDecl String Type
-  | -- [ghost] function f({x : T, ...}*) : T {requires e}* {ensures e}* { e }
+  | -- [ghost] function f({𝑥 : 𝑇, ...}*) : 𝑇 {requires 𝐸}* {ensures 𝐸}* { 𝐸 }
     FDecl Function
-  | -- (lemma | method) f({x : T, ...}*) returns ({x : T, ...}*)  {requires e ...}* {ensures e ...}* {decreases e ...}* { {S; ...}* }
+  | -- (lemma | method) f({𝑥 : 𝑇, ...}*) returns ({𝑥 : 𝑇, ...}*)  {requires 𝐸 ...}* {ensures 𝐸 ...}* {decreases 𝐸 ...}* { {𝑆; ...}* }
     MDecl Method
   deriving (Eq, Ord, Read)
 
 -- | Back-end program syntax:
 --
--- > P ::= {D \n D}*
+-- > P ::= {𝐷\n 𝐷}*
 newtype Program = Program [Decl] deriving (Eq, Ord, Read)
 
 -- | Unparser precedence order helper for binary operations.
@@ -279,6 +284,9 @@ newtype Program = Program [Decl] deriving (Eq, Ord, Read)
    in trans e2
 
 instance Show Type where
+  show = prettyPrint 0
+
+instance Show Cons where
   show = prettyPrint 0
 
 instance Show Exp where
@@ -469,9 +477,10 @@ instance PrettyPrint Method where
 instance PrettyPrint Decl where
   prettyPrint _ = \case
     Datatype s ts cs ->
-      let ts' = intercalate ", " (map (prettyPrint 0) ts)
-          cs' = intercalate " | " (map (prettyPrint 0) cs)
+      let ts' = intercalate ", " (map show ts)
+          cs' = intercalate " | " (map show cs)
        in unwords ["datatype", s, "<" ++ ts' ++ ">", "=", cs']
+    CDecl x e -> unwords ["const", x, ":=", show e]
     TypeDecl x t -> unwords ["type", x, "=", prettyPrint 0 t]
     FDecl f -> prettyPrint 0 f
     MDecl m -> prettyPrint 0 m

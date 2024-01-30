@@ -222,13 +222,10 @@ Produces:
 
 > ∀ (p, 𝜙) ∈ 𝛯. var 𝜒(p) = (max ∘ dom)(𝜙)
 -}
-terminationVars :: 𝛯 -> Stmt
+terminationVars :: 𝛯 -> [Decl]
 terminationVars 𝜉 =
-  if M.size 𝜉 > 0
-    then
-      let def p 𝜙 = ((p ▽), Nothing, (𝜙 -|))
-       in VarDef False . M.elems . M.mapWithKey def $ 𝜉
-    else Assert (True ?)
+  let def p 𝜙 = CDecl (p ▽) (𝜙 -|)
+   in M.elems . M.mapWithKey def $ 𝜉
 
 {- | Constructs an initial assignment for all channel variables.
 Depends on: 𝜅
@@ -311,7 +308,6 @@ progEncoding Oracle { makePrecondition, makePostcondition } encoding@Encoding {
           methodBody =
             Block
               [ counterDef 𝜉,
-                terminationVars 𝜉,
                 chanDef 𝜅,
                 wgDef ws,
                 loopVarDef ls,
@@ -325,8 +321,8 @@ all the necessary functions, and the program encoding.
 -}
 encodingToDafny :: Oracle -> Encoding -> Program
 encodingToDafny oracle encoding@Encoding { processes = 𝜉 } =
-  simplify $ Program
-    [ FDecl iterationsFunc,
+  simplify $ Program (terminationVars 𝜉 ++ [
+      FDecl iterationsFunc,
       FDecl (isScheduleFunc 𝜉),
       MDecl (progEncoding oracle encoding)
-    ]
+    ])
