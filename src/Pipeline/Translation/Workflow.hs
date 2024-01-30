@@ -12,6 +12,7 @@ import Pipeline.Sanity.CallgraphOk (noRecursion)
 import Pipeline.Sanity.GoAllowed (allowed)
 import Pipeline.Translation.AlphaConversion (alphaConvert)
 import Pipeline.Translation.GoToIR (getIR)
+import Pipeline.Translation.Metrics
 import Pipeline.Translation.PromelaToGo (getGo)
 import Promela.Ast (Spec)
 import Utilities.Err
@@ -27,7 +28,7 @@ promelaToGo p = do
 -- | Convert simple Go to VIRGo.
 -- Can fail if the simple Go program uses unsupported constructs,
 -- or supported constructs in unsupported ways.
-goToIR :: Prog -> Err 𝑆
+goToIR :: Prog -> Err (𝑆, TranslationMetrics)
 goToIR g = do
   let zimplify g1 =
         let g' = (zipCases . S.simplify) g1
@@ -37,4 +38,4 @@ goToIR g = do
   _ <- trace (unlines ["", "Go represention of program:", "", show g']) (return ())
   _ <- allowed g'
   ir <- getIR g'
-  return $ S'.simplify ir
+  return (S'.simplify ir, goForCommuteMetrics g1)

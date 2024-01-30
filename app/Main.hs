@@ -8,6 +8,7 @@ import IR.GetAst qualified as I
 import IR.Profiler (profileVirgo)
 import IR.Simplifier (simplify)
 import IR.Utilities (interesting)
+import Pipeline.Translation.Metrics (metrics₀)
 import Pipeline.Translation.Workflow (promelaToGo, goToIR)
 import Pipeline.Verification.Runner (verify)
 import Promela.GetAst qualified as P
@@ -23,7 +24,11 @@ main = do
   source <- readFile filePath
   ir <-
         if hasIRFlag args
-          then return $ I.getAst source
+          then
+              let ir = do
+                    source' <- I.getAst source
+                    return (source', metrics₀)
+               in return ir
           else do
               let mg = do
                     prom <- P.getAst source
@@ -33,9 +38,9 @@ main = do
                   let msg = profileProgram g
                   putStrLn $ unlines ["Profiling Go program parametricity:", msg]
                   return (goToIR g)
-                Bad msg -> return (Bad msg)
+                Bad msg -> return $ Bad msg
   p <- case ir of
-    Ok ir' -> do
+    Ok (ir', m) -> do
       let ir'' = simplify ir'
       unless (interesting ir'') $ ioError $ userError "Program is not interesting."
       putStrLn "\n"
@@ -43,6 +48,7 @@ main = do
       print ir''
       putStrLn "\n"
       putStrLn $ unwords ["VirGo program parametricity:", profileVirgo ir']
+      unless (m == metrics₀) $ print m
       return ir''
     Bad msg -> ioError $ userError $ "VIRGo translation failed: " ++ msg
   verify args filePath p
