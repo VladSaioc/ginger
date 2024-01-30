@@ -220,7 +220,7 @@ Depends on: 𝛯
 
 Produces:
 
-> ∀ (p, 𝜙) ∈ 𝛯. var 𝜒(p) = (max ∘ dom)(𝜙)
+> ∀ (p, 𝜙) ∈ 𝛯. const 𝜏(p) := (max ∘ dom)(𝜙)
 -}
 terminationVars :: 𝛯 -> [Decl]
 terminationVars 𝜉 =
@@ -270,13 +270,11 @@ Produces:
 > lemma Program(S : nat -> nat, ∀ (x, t) ∈ fv(P). x : int)
 > returns (∀ p ∈ dom(𝛯). 𝜋(p) : int)
 >
-> requires capPreconditions(𝜅)
 > requires preconditions(𝜅, nonloop(ℳ), loop(ℳ))
 >
-> ensures postconditions(𝜓, 𝛯, go(ℳ))
+> ensures postconditions(go(ℳ))
 > {
 >   counterDef(𝛯);
->   terminationVars(𝛯);
 >   chanDef(𝜅);
 >   loopVarDef(loop(P));
 >   step := 0;

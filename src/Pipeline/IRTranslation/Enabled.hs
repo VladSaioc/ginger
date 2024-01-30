@@ -50,7 +50,7 @@ enabled 𝜅 p 𝜙 =
   let -- Process id variable
       pc = 𝜋 p
       -- Construct match over process id
-      match cs = Match pc (cs ++ [(Wildcard, ((-1) #) :< pc :< 𝜒 p)])
+      match cs = Match pc (cs ++ [(Wildcard, ((-1) #) :< pc :< 𝜏 p)])
       chsops = processChanOps p 𝜙
       wgops = processWgOps p 𝜙
       -- Process has not reached termination point

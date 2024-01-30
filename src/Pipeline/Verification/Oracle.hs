@@ -6,7 +6,6 @@ import Backend.Simplifier (eSimplify)
 import Pipeline.IRTranslation.Encoding
 import Pipeline.IRTranslation.Clauses.CapPrecondition (capPreconditions)
 import Pipeline.IRTranslation.Clauses.Postcondition (postcondition)
-import Pipeline.IRTranslation.Clauses.Utilities
 import Pipeline.IRTranslation.Summary.Summary
 import Utilities.PrettyPrint
 
@@ -32,7 +31,7 @@ data Oracle = Oracle {
 
 -- | Wrap postcondition construction over entire encoding.
 encodingToPostcondition :: Encoding -> Exp
-encodingToPostcondition Encoding { conditions = 𝜓, processes = 𝜉, summaries = ℳ { gs } } = postcondition 𝜓 𝜉 gs
+encodingToPostcondition Encoding { summaries = ℳ { gs } } = postcondition gs
 
 -- | Generate message from constraints.
 generateConstraintMessage :: (Encoding -> Exp) -> Encoding -> String

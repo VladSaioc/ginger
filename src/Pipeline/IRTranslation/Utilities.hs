@@ -75,8 +75,8 @@ data 𝛬 = 𝛬 {
 -- | Program id to exit variable expression.
 --
 -- > T{p}
-𝜒 :: P -> T.Exp
-𝜒 p = ((p ▽) @)
+𝜏 :: P -> T.Exp
+𝜏 p = ((p ▽) @)
 
 -- | Given a set of program points, produces the next available program point.
 (-|) :: 𝛷 -> T.Exp

@@ -45,5 +45,5 @@ irToBackend p' = do
       comprojection = projectedCommunication 𝜓 𝓂,
       wgprojection = projectedConcurrency 𝜓 𝓂,
       closes = closingChannels p,
-      post = postcondition 𝜓 𝜉 (gs 𝓂)
+      post = postcondition (gs 𝓂)
     }

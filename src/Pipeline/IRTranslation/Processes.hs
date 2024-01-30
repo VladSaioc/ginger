@@ -92,7 +92,7 @@ stmtToPoints 𝜅 (𝜆@𝛬 { 𝑛 = 𝑛₀, p = p₀ }, 𝜉) s =
               -- 𝜙 = 𝜉(p)[𝑛₀ ↦ { 𝜋(p) := 𝑛₀ + 1; if e' < 0 { return } }]
            in (𝜆', 𝜉 ⊔ (p₀, 𝑛₀, goto 𝜆' [check]))
         Return ->
-          let exit = T.Block [T.Assign [((p₀ ⊲), 𝜒 p₀)]]
+          let exit = T.Block [T.Assign [((p₀ ⊲), 𝜏 p₀)]]
            in (𝜆', 𝜉 ⊔ (p₀, 𝑛₀, exit))
         Atomic op -> opToPoint 𝜅 (𝜆, 𝜉) op
         Seq s1 s2 ->
