@@ -216,15 +216,14 @@ alphaLVal :: Env -> LVal -> LVal
 alphaLVal env = \case
   -- Simple variables
   Var x ->
-    let -- The variable is guaranteed to have been
-        -- declared in an earlier statement, or passed
-        -- as a parameter.
-        -- Its absence from the name environment
-        -- warrants a fatal exception.
-        x' = case M.lookup x env of
-         Just x' -> x'
-         Nothing -> error $ unwords ["Variable", x, "missing during alpha conversion."]
-     in Var x'
+    -- The variable is guaranteed to have been
+    -- declared in an earlier statement, or passed
+    -- as a parameter.
+    -- Its absence from the name environment
+    -- warrants a fatal exception.
+    Var (case M.lookup x env of
+      Just x' -> x'
+      Nothing -> error $ unwords ["Variable", x, "missing during alpha conversion."])
   -- Field names remain unchanged, but object names
   -- are recursively alpha converted.
   Field x f -> Field (alphaLVal env x) f
