@@ -128,6 +128,7 @@ StmtAssert. Stmt ::= ASSERT Cond;
 coercions Cond 2;
 CondOr. Cond ::= Cond OR Cond1;
 CondAnd. Cond1 ::= Cond1 AND Cond2;
+CondNot. Cond2 ::= BANG Cond2;
 CondExp. Cond2 ::= Exp;
 
 ---- Range expression
@@ -152,7 +153,6 @@ ExpDiv. Exp2 ::= Exp2 DIV Exp3;
 
 ---- Unary expressions
 ExpNeg. Exp3 ::= MINUS Exp4;
-ExpNot. Exp3 ::= BANG Exp4;
 
 ---- Calls
 ExpRun. Exp4 ::= RUN ID "(" [Exp] ")";

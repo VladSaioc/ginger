@@ -271,9 +271,14 @@ pType = \case
 pCond :: Raw.Cond -> Pos Exp
 pCond =
   let bin = binaryCons pCond
+      un = unaryCons pCond
    in \case
+        -- e1 || e2
         Raw.CondOr e1 _ e2 -> bin Or e1 e2
+        -- e1 && e2
         Raw.CondAnd e1 _ e2 -> bin And e1 e2
+        -- !e1
+        Raw.CondNot _ e -> un Not e
         Raw.CondExp e -> pExp e
 
 pExp :: Raw.Exp -> Pos Exp
@@ -304,8 +309,6 @@ pExp =
         Raw.ExpDiv e1 _ e2 -> bin Div e1 e2
         -- -e1
         Raw.ExpNeg _ e -> un Neg e
-        -- !e1
-        Raw.ExpNot _ e -> un Not e
         -- len(v)
         Raw.ExpLen _ v -> unVar Len v
         -- v
