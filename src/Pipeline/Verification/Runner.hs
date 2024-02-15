@@ -71,9 +71,13 @@ verify args sourceFile p = do
   let printDafny oracle = do
         -- Construct output file name from the input file path
         let outputFile = outputDir ++ "/" ++ parseFileName sourceFile ++ "-" ++ shortName oracle ++ ".dfy"
+        let smtOutputFile = outputDir ++ "/" ++ parseFileName sourceFile ++ "-" ++ shortName oracle ++ ".sl"
         -- Write to output file
-        writeFile outputFile (show $ encodingToDafny oracle encoding)
+        let progEncoding = encodingToDafny oracle encoding
+        writeFile outputFile (show $ progEncoding)
         putStrLn $ "Dafny encoding found at: " ++ outputFile
+        writeFile smtOutputFile (show $ encodingToDafny oracle encoding)
+        putStrLn $ "Temporary SMTLib encoding found at: " ++ smtOutputFile
         -- Get output file path
         return outputFile
   -- Run one oracle

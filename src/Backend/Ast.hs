@@ -487,3 +487,35 @@ instance PrettyPrint Decl where
 
 instance PrettyPrint Program where
   prettyPrint _ (Program ds) = intercalate "\n\n" (map (prettyPrint 0) ds)
+
+
+generateSMTLibConst CTrue = "true"
+generateSMTLibConst CFalse = "false"
+generateSMTLibConst (CNum i) = show i
+
+-- will need Stmt (Block) in particular, eventually
+generateSMTLib :: Exp -> String
+generateSMTLib e = case e of
+  (Match exp (z:xs)) ->  foldr (\x y -> "(or "++(generateSMTLib (snd x))++" "++y++")") (generateSMTLib $ snd z) xs -- We'll need do something with the pattern here
+  (IfElse be te fe) -> "(and (or (not ("++generateSMTLib be++")) ("++generateSMTLib te++")) (or ("++generateSMTLib be++") ("++generateSMTLib fe++")))"
+  (e1 :== e2) -> "(= "++(generateSMTLib e1)++" "++(generateSMTLib e2)++")"
+  (e1 :&& e2) -> "(and "++(generateSMTLib e1)++" "++(generateSMTLib e2)++")"
+  (e1 :> e2) -> "(> "++(generateSMTLib e1)++" "++(generateSMTLib e2)++")"
+  (e1 :< e2) -> "(< "++(generateSMTLib e1)++" "++(generateSMTLib e2)++")"
+  (e1 :+ e2) -> "(+ "++(generateSMTLib e1)++" "++(generateSMTLib e2)++")"
+  (e1 :- e2) -> "(- "++(generateSMTLib e1)++" "++(generateSMTLib e2)++")"
+  (EVar s) -> s
+  (ECon c) -> (generateSMTLibConst c)
+  e -> "(Exp) Not yet supported:"++(show e)
+  
+
+
+generateSMTLibStmt :: Stmt -> String  
+generateSMTLibStmt (Assign [(v,e)]) = "(= v"++"!"++" "++(generateSMTLib e)++")"
+generateSMTLibStmt (Block (z:xs)) = foldr (\x y -> "(and "++(generateSMTLibStmt x)++" "++y++")") (generateSMTLibStmt z) xs
+generateSMTLibStmt (If be te Nothing) = "(or (not ("++generateSMTLib be++")) ("++generateSMTLibStmt te++"))"
+generateSMTLibStmt (If be te (Just fe)) =  "(and (or (not ("++generateSMTLib be++")) ("++generateSMTLibStmt te++")) (or ("++generateSMTLib be++") ("++generateSMTLibStmt fe++")))"
+generateSMTLibStmt (MatchStmt exp (z:xs)) =  foldr (\x y -> "(or "++(generateSMTLibStmt (snd x))++" "++y++")") (generateSMTLibStmt $ snd z) xs -- We'll need do something with the pattern here
+generateSMTLibStmt (While be _ _ s) = "(and "++(generateSMTLib be)++" "++(generateSMTLibStmt s)++")"
+generateSMTLibStmt e = "(Stmt) Not yet supported:"++(show e)
+  
