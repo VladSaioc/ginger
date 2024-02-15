@@ -18,6 +18,9 @@ case $(arch) in
   "x86_64")
     ARCH="x64"
     ;;
+  "i386")
+    ARCH="x64"
+    ;;
   "arm64")
     ARCH="arm64"
 esac
