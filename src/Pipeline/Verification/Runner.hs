@@ -76,7 +76,7 @@ verify args sourceFile p = do
         let progEncoding = encodingToDafny oracle encoding
         writeFile outputFile (show $ progEncoding)
         putStrLn $ "Dafny encoding found at: " ++ outputFile
-        writeFile smtOutputFile (show $ encodingToDafny oracle encoding)
+       -- writeFile smtOutputFile (show $ generateSMTLibStmt $ getMainMethod progEncoding)
         putStrLn $ "Temporary SMTLib encoding found at: " ++ smtOutputFile
         -- Get output file path
         return outputFile

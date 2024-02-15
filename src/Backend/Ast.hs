@@ -228,6 +228,10 @@ data Decl
 -- > P ::= {𝐷\n 𝐷}*
 newtype Program = Program [Decl] deriving (Eq, Ord, Read)
 
+-- getMainMethod :: Program -> Stmt
+-- getMainMethod (Program xs) = getMainMethodBody $ last xs
+--   where getMainMethodBody (MDecl m) = methodBody m
+
 -- | Unparser precedence order helper for binary operations.
 -- Does not wrap sub-tree expressions operations
 (<.|.>) :: (Exp -> String) -> Exp -> Either Exp Exp -> String
