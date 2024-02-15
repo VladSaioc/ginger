@@ -317,7 +317,7 @@ progEncoding Oracle { makePrecondition, makePostcondition } encoding@Encoding {
 {- | Constructs the complete CoreDafny program, by emitting
 all the necessary functions, and the program encoding.
 -}
-encodingToDafny :: Oracle -> Encoding -> Program
+ :: Oracle -> Encoding -> Program
 encodingToDafny oracle encoding@Encoding { processes = 𝜉 } =
   simplify $ Program (terminationVars 𝜉 ++ [
       FDecl iterationsFunc,
