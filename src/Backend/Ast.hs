@@ -3,6 +3,9 @@ module Backend.Ast where
 import Data.List (intercalate)
 
 import Utilities.PrettyPrint
+import IR.ChanString (canonicalForm)
+import Data.Sequence (Seq)
+import Text.Printf (FormatSign(SignPlus))
 
 -- | Back-end type syntax:
 --
@@ -228,9 +231,9 @@ data Decl
 -- > P ::= {𝐷\n 𝐷}*
 newtype Program = Program [Decl] deriving (Eq, Ord, Read)
 
--- getMainMethod :: Program -> Stmt
--- getMainMethod (Program xs) = getMainMethodBody $ last xs
---   where getMainMethodBody (MDecl m) = methodBody m
+getMainMethod :: Program -> Stmt
+getMainMethod (Program xs) = getMainMethodBody $ last xs
+  where getMainMethodBody (MDecl m) = methodBody m
 
 -- | Unparser precedence order helper for binary operations.
 -- Does not wrap sub-tree expressions operations
@@ -493,33 +496,102 @@ instance PrettyPrint Program where
   prettyPrint _ (Program ds) = intercalate "\n\n" (map (prettyPrint 0) ds)
 
 
-generateSMTLibConst CTrue = "true"
-generateSMTLibConst CFalse = "false"
-generateSMTLibConst (CNum i) = show i
+data SExp = 
+  SBin SBinOp SExp SExp  | SUn SUnOp SExp | SC String | SCall String [SExp]
+
+data SBinOp = SAnd | SOr | SEq | SMinus | SPlus | SGt | SLe
+data SUnOp = SNot | SUMin
+
+instance Show SExp where
+  show (SBin op e1 e2) = "("++(show op)++" "++(show e1)++" "++(show e2)++")"
+  show (SUn op e) = "("++(show op)++" "++show e++")"
+  show (SC v) = v
+  show (SCall f xs) = "("++f++" "++(intercalate " " $ map show xs)++")"
+
+instance Show SBinOp where
+  show SAnd = "and"  
+  show SOr = "or"
+  show SEq = "="
+  show SMinus = "-"
+  show SPlus = "+"
+  show SLe = "<"
+  show SGt = ">"
+
+
+instance Show SUnOp where
+  show SNot = "not"
+  show SUMin = "-"
+
+generateSMTLibConst :: Const -> SExp
+generateSMTLibConst CTrue = SC "true"
+generateSMTLibConst CFalse = SC "false"
+generateSMTLibConst (CNum i) = if i >= 0
+                                then SC $ show i
+                                else SUn SUMin (SC $ show (-i))
+
+
+
+mkSExpImp :: SExp -> SExp -> SExp
+mkSExpImp e1 e2 = SBin SOr (SUn SNot (e1)) (e2)
+
+generateSMTLibEPat :: Exp -> (Pattern, Exp) -> SExp
+generateSMTLibEPat e (PCon c, e')  = SBin SOr (SUn SNot (SBin SEq (generateSMTLib e) (generateSMTLibConst c))) (generateSMTLib e') 
+generateSMTLibEPat e (PVar s, e')  = 
+  SBin SOr (SUn SNot (SBin SEq (generateSMTLib e) (SC s))) (generateSMTLib e') 
+  
+generateSMTLibEPat _ (Wildcard, e')  = generateSMTLib e'
+generateSMTLibEPat _ (_,_) = SC "not supported"
+
 
 -- will need Stmt (Block) in particular, eventually
-generateSMTLib :: Exp -> String
+generateSMTLib :: Exp -> SExp
 generateSMTLib e = case e of
-  (Match exp (z:xs)) ->  foldr (\x y -> "(or "++(generateSMTLib (snd x))++" "++y++")") (generateSMTLib $ snd z) xs -- We'll need do something with the pattern here
-  (IfElse be te fe) -> "(and (or (not ("++generateSMTLib be++")) ("++generateSMTLib te++")) (or ("++generateSMTLib be++") ("++generateSMTLib fe++")))"
-  (e1 :== e2) -> "(= "++(generateSMTLib e1)++" "++(generateSMTLib e2)++")"
-  (e1 :&& e2) -> "(and "++(generateSMTLib e1)++" "++(generateSMTLib e2)++")"
-  (e1 :> e2) -> "(> "++(generateSMTLib e1)++" "++(generateSMTLib e2)++")"
-  (e1 :< e2) -> "(< "++(generateSMTLib e1)++" "++(generateSMTLib e2)++")"
-  (e1 :+ e2) -> "(+ "++(generateSMTLib e1)++" "++(generateSMTLib e2)++")"
-  (e1 :- e2) -> "(- "++(generateSMTLib e1)++" "++(generateSMTLib e2)++")"
-  (EVar s) -> s
+  (Match e' xs) ->  foldr1 (SBin SOr) $ map (generateSMTLibEPat e') xs
+  (IfElse be te fe) -> SBin SAnd (mkSExpImp (generateSMTLib be) (generateSMTLib te) ) (SBin SOr (generateSMTLib be) (generateSMTLib fe))
+  (e1 :== e2) -> SBin SEq (generateSMTLib e1) (generateSMTLib e2)
+  (e1 :&& e2) -> SBin SAnd (generateSMTLib e1) (generateSMTLib e2)
+  (e1 :|| e2) -> SBin SOr (generateSMTLib e1) (generateSMTLib e2)
+  (e1 :> e2) -> SBin SGt (generateSMTLib e1) (generateSMTLib e2)
+  (e1 :< e2) -> SBin SLe (generateSMTLib e1) (generateSMTLib e2)
+  (e1 :+ e2) -> SBin SPlus (generateSMTLib e1) (generateSMTLib e2)
+  (e1 :- e2) -> SBin SMinus (generateSMTLib e1) (generateSMTLib e2)
+  (EVar s) -> SC s
   (ECon c) -> (generateSMTLibConst c)
-  e -> "(Exp) Not yet supported:"++(show e)
+  (Call f vs) -> SCall f (map generateSMTLib vs)
+  _ -> SC "not supported"
   
 
+generateSMTLibSPat :: Exp -> (Pattern, Stmt) -> SExp
+generateSMTLibSPat e (PCon c, e')  =
+  mkSExpImp (SBin SEq (generateSMTLib e) (generateSMTLibConst c)) (generateSMTLibStmt e') 
+generateSMTLibSPat e (PVar s, e')  = 
+  mkSExpImp (SBin SEq (generateSMTLib e) (SC s)) (generateSMTLibStmt e') 
+generateSMTLibSPat _ (Wildcard, e')  = generateSMTLibStmt e'
+generateSMTLibSPat _ (_,_) = SC "(Pat) Not yet supported"
 
-generateSMTLibStmt :: Stmt -> String  
-generateSMTLibStmt (Assign [(v,e)]) = "(= v"++"!"++" "++(generateSMTLib e)++")"
-generateSMTLibStmt (Block (z:xs)) = foldr (\x y -> "(and "++(generateSMTLibStmt x)++" "++y++")") (generateSMTLibStmt z) xs
-generateSMTLibStmt (If be te Nothing) = "(or (not ("++generateSMTLib be++")) ("++generateSMTLibStmt te++"))"
-generateSMTLibStmt (If be te (Just fe)) =  "(and (or (not ("++generateSMTLib be++")) ("++generateSMTLibStmt te++")) (or ("++generateSMTLib be++") ("++generateSMTLibStmt fe++")))"
-generateSMTLibStmt (MatchStmt exp (z:xs)) =  foldr (\x y -> "(or "++(generateSMTLibStmt (snd x))++" "++y++")") (generateSMTLibStmt $ snd z) xs -- We'll need do something with the pattern here
-generateSMTLibStmt (While be _ _ s) = "(and "++(generateSMTLib be)++" "++(generateSMTLibStmt s)++")"
-generateSMTLibStmt e = "(Stmt) Not yet supported:"++(show e)
+
+-- probably will need to have a version of main loop (with var updates)
+-- and another version for initialisation things (would become pre?)
+generateSMTLibStmt :: Stmt -> SExp  
+generateSMTLibStmt (Assign [(v,e)]) = 
+  SBin SEq (SC v) (generateSMTLib e) -- will need to differentiate output vars here?
+generateSMTLibStmt (Block []) = SC "true"
+generateSMTLibStmt (Block xs) = foldr1 (SBin SAnd) $ map generateSMTLibStmt xs
+generateSMTLibStmt (If be te Nothing) = 
+  mkSExpImp (generateSMTLib be) (generateSMTLibStmt te)
+generateSMTLibStmt (If be te (Just fe)) = 
+  SBin SAnd 
+  (mkSExpImp (generateSMTLib be) (generateSMTLibStmt te))
+  (SBin SOr (generateSMTLib be) (generateSMTLibStmt fe))
+generateSMTLibStmt (MatchStmt e' xs) =  foldr1 (SBin SOr) $ map (generateSMTLibSPat e') xs
+
+generateSMTLibStmt (While be _ _ s) = SBin SAnd (generateSMTLib be) (generateSMTLibStmt s)
+generateSMTLibStmt (Return _) = SBin SEq (SC "RETURN") (SC "1")
+generateSMTLibStmt (VarDef _ xs) = 
+  foldr1 (SBin SAnd) $
+  map (\(v,_,e) -> SBin SEq (SC v) (generateSMTLib e)) xs
+generateSMTLibStmt (Assign xs) = 
+ foldr1 (SBin SAnd) $
+  map (\(v,e) -> SBin SEq (SC v) (generateSMTLib e)) xs
+generateSMTLibStmt (Assert _) = SC "true"
   

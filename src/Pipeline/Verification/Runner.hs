@@ -14,6 +14,7 @@ import System.Process (readProcessWithExitCode)
 import System.Clock
 
 import Backend.Simplifier (eSimplify)
+import Backend.Ast (generateSMTLibStmt, getMainMethod)
 import IR.Ast
 import IR.Profiler (profileVirgo)
 import Pipeline.IRTranslation.Close
@@ -76,7 +77,7 @@ verify args sourceFile p = do
         let progEncoding = encodingToDafny oracle encoding
         writeFile outputFile (show $ progEncoding)
         putStrLn $ "Dafny encoding found at: " ++ outputFile
-       -- writeFile smtOutputFile (show $ generateSMTLibStmt $ getMainMethod progEncoding)
+        writeFile smtOutputFile (show $ generateSMTLibStmt $ getMainMethod progEncoding)
         putStrLn $ "Temporary SMTLib encoding found at: " ++ smtOutputFile
         -- Get output file path
         return outputFile
