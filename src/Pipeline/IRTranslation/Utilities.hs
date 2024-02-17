@@ -64,7 +64,7 @@ data 𝛬 = 𝛬 {
 --
 -- > P{p}'{x}
 (%) :: P -> 𝑋 -> 𝑋
-(%) p x = (p ⊲) ++ "'" ++ x
+(%) p x = (p ⊲) ++ "_" ++ x
 
 -- | Program id to program counter variable expression.
 --

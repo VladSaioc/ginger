@@ -71,7 +71,7 @@ isScheduleFunc :: 𝛯 -> Function
 isScheduleFunc 𝜉 =
   let n = "n"
       domPi = ((M.size 𝜉 - 1) #)
-      callS = Call "S" [(n @)]
+      callS = Call "sch" [(n @)]
    in Function
         { yields = TBool,
           funcBody = Forall [(n, Nothing)] (callS :<= domPi),
@@ -80,7 +80,7 @@ isScheduleFunc 𝜉 =
               { ghost = True,
                 name = "isSchedule",
                 types = [],
-                params = [("S", TNat :-> TNat)],
+                params = [("sch", TNat :-> TNat)],
                 requires = [],
                 ensures = [],
                 decreases = []
@@ -117,7 +117,7 @@ scheduleSwitch :: 𝛯 -> Stmt
 scheduleSwitch =
   let iguard pid = PCon (CNum pid)
       cases = M.toList . M.mapKeys iguard . M.mapWithKey processSwitch
-      step = Call "S" [(𝑥step @)]
+      step = Call "sch" [(𝑥step @)]
    in MatchStmt step . cases
 
 {- | Constructs the central loop which emulates the execution
@@ -260,7 +260,7 @@ wgDef ws =
 {- | Construcs the "isSchedule(S)" precondition.
 -}
 isSchedule :: Exp
-isSchedule = Call "isSchedule" [("S" @)]
+isSchedule = Call "isSchedule" [("sch" @)]
 
 {- | Constructs the main program encoding.
 Depends on: 𝜓, 𝜅, 𝛯, ℳ
@@ -296,7 +296,7 @@ progEncoding Oracle { makePrecondition, makePostcondition } encoding@Encoding {
               { ghost = True,
                 name = "Program",
                 types = ts,
-                params = (𝑥fuel, TNat) : ("S", TNat :-> TNat) : M.toList 𝛾,
+                params = (𝑥fuel, TNat) : ("sch", TNat :-> TNat) : M.toList 𝛾,
                 ensures =
                   [ ((𝑥step @) :< (𝑥fuel @)) :==> makePostcondition encoding
                   ],
