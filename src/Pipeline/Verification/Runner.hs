@@ -14,7 +14,7 @@ import System.Process (readProcessWithExitCode)
 import System.Clock
 
 import Backend.Simplifier (eSimplify)
-import Backend.Ast (genSMTLibProg)
+import Backend.SMTLib (genSMTLibInvSynth, genSMTLibHoareTriple)
 import IR.Ast
 import IR.Profiler (profileVirgo)
 import Pipeline.IRTranslation.Close
@@ -72,13 +72,17 @@ verify args sourceFile p = do
   let printDafny oracle = do
         -- Construct output file name from the input file path
         let outputFile = outputDir ++ "/" ++ parseFileName sourceFile ++ "-" ++ shortName oracle ++ ".dfy"
-        let smtOutputFile = outputDir ++ "/" ++ parseFileName sourceFile ++ "-" ++ shortName oracle ++ ".sl"
+        let smtSynthOutputFile = outputDir ++ "/" ++ parseFileName sourceFile ++ "-" ++ shortName oracle ++ "-synth.sl"
+        let smtVerifOutputFile = outputDir ++ "/" ++ parseFileName sourceFile ++ "-" ++ shortName oracle ++ "-verif.smt2"
+
         -- Write to output file
         let progEncoding = encodingToDafny oracle encoding
         writeFile outputFile (show $ progEncoding)
         putStrLn $ "Dafny encoding found at: " ++ outputFile
-        writeFile smtOutputFile (genSMTLibProg progEncoding)
-        putStrLn $ "Temporary SMTLib encoding found at: " ++ smtOutputFile
+        writeFile smtSynthOutputFile (genSMTLibInvSynth progEncoding)
+        putStrLn $ "Temporary synth SMTLib encoding found at: " ++ smtSynthOutputFile
+        writeFile smtVerifOutputFile (genSMTLibHoareTriple progEncoding)
+        putStrLn $ "Temporary verif SMTLib encoding found at: " ++ smtVerifOutputFile
         -- Get output file path
         return outputFile
   -- Run one oracle
