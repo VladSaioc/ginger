@@ -8,8 +8,9 @@ import Data.Text (pack, unpack, replace)
 
 
 data SExp =
-  SBin SBinOp SExp SExp  | SUn SUnOp SExp | SC String | SCall String [SExp] 
+  SBin SBinOp SExp SExp  | SUn SUnOp SExp | SC String | SCall String [SExp]
   | SIte SExp SExp SExp
+  | SOList SBinOp [SExp]
 
 data SBinOp = SAnd | SOr | SEq | SMinus | SPlus | SGt | SLe | SImp | SGeq | SLeq | STimes
 data SUnOp = SNot | SUMin
@@ -18,8 +19,9 @@ instance Show SExp where
   show (SBin op e1 e2) = "("++(show op)++" "++(show e1)++" "++(show e2)++")"
   show (SUn op e) = "("++(show op)++" "++show e++")"
   show (SC v) = v
-  show (SCall f xs) = "("++f++" "++(intercalate " " $ map show xs)++")"
+  show (SCall f xs) = "("++f++" "++intercalate " " (map show xs)++")"
   show (SIte b et ef) = "(ite "++(show b)++" "++(show et)++" "++(show ef)++")"
+  show (SOList op xs) = "("++(show op)++" "++intercalate " " (map show xs)++")"
 
 instance Show SBinOp where
   show SAnd = "and"
@@ -63,7 +65,7 @@ generateSMTLibEPat _ (_,_) = SC "not supported"
 -- will need Stmt (Block) in particular, eventually
 generateSMTLib :: Exp -> SExp
 generateSMTLib e = case e of
-  (Match e' xs) ->  foldr1 (SBin SOr) $ map (generateSMTLibEPat e') xs
+  (Match e' xs) ->  SOList SOr $ map (generateSMTLibEPat e') xs
   (IfElse be te fe) -> SIte (generateSMTLib be) (generateSMTLib te) (generateSMTLib fe)
   (e1 :== e2) -> SBin SEq (generateSMTLib e1) (generateSMTLib e2)
   (e1 :&& e2) -> SBin SAnd (generateSMTLib e1) (generateSMTLib e2)
@@ -86,7 +88,7 @@ generateSMTLib e = case e of
   (EVar s) -> SC s
   (ECon c) -> generateSMTLibConst c
   (Call f vs) -> SCall f (map generateSMTLib vs)
-  (In e1 (ESet xs)) -> foldr (SBin SOr . (SBin SEq (generateSMTLib e1) . generateSMTLib)) (SC "false") xs
+  (In e1 (ESet xs)) -> SOList SOr $ map (SBin SEq (generateSMTLib e1) . generateSMTLib) xs
   ex -> SC ("not supported: "++show ex)
 
 
@@ -113,16 +115,16 @@ generateSMTLibStmt b (Assign xs) =
   foldr1 (SBin SAnd) $
   map (\(v,e) -> SBin SEq (SC (mkPrimeIf b v)) (generateSMTLib e)) xs
 generateSMTLibStmt _ (Block []) = SC "true"
-generateSMTLibStmt b (Block xs) = foldr1 (SBin SAnd) $ map (generateSMTLibStmt b) xs
+generateSMTLibStmt b (Block xs) = SOList SAnd $ map (generateSMTLibStmt b) xs
 generateSMTLibStmt b (If be te Nothing) =
   mkSExpImp (generateSMTLib be) (generateSMTLibStmt b te)
 generateSMTLibStmt b (If be te (Just fe)) = SIte (generateSMTLib be) (generateSMTLibStmt b te) (generateSMTLibStmt b fe)
-generateSMTLibStmt b (MatchStmt e' xs) =  foldr1 (SBin SOr) $ map (generateSMTLibSPat b e') xs
+generateSMTLibStmt b (MatchStmt e' xs) =  SOList SOr $ map (generateSMTLibSPat b e') xs
 
 generateSMTLibStmt b (While be _ _ s) = SBin SAnd (generateSMTLib be) (generateSMTLibStmt b s)
 generateSMTLibStmt _ (Return _) = SC "true" -- SBin SEq (SC "RETURN") (SC "1") -- FIXME
 generateSMTLibStmt b (VarDef _ xs) =
-  foldr1 (SBin SAnd) $
+  SOList SAnd $
   map (\(v,_,e) -> SBin SEq (SC (mkPrimeIf b v)) (generateSMTLib e)) xs
 generateSMTLibStmt _ (Assert _) = SC "true"
 
@@ -143,6 +145,9 @@ genSMTLibInit st = case st of
   (Assert e) -> generateSMTLib e
   _ -> SC "true"
 
+
+
+
 genSMTLibLoop :: Stmt -> SExp
 genSMTLibLoop st = case st of
   (Block []) -> SC "true"
@@ -158,9 +163,23 @@ genSMTLibLoopInvariants st = case st of
   (Block (_:xs)) -> genSMTLibLoopInvariants (Block xs)
   _ -> [SC "true"]
 
+genSMTLibLoopCond :: Stmt -> SExp
+genSMTLibLoopCond st = case st of
+  (Block []) -> SC "true"
+  (Block ((While ec _ _ _):_)) -> generateSMTLib ec
+  (Block (_:xs)) -> genSMTLibLoopCond (Block xs)
+  _ -> SC "true"
+
 getMainMethod :: Program -> Stmt
 getMainMethod (Program xs) = getMainMethodBody $ last xs
   where getMainMethodBody (MDecl m) = methodBody m
+
+-- getTermVars :: Program -> [(String, String)]
+getTermVars (Program xs) = helper xs
+    where helper [] = []
+          helper ((CDecl s (ECon (CNum i))):ys) = (s,show i):helper ys
+          helper (_:ys) = helper ys
+
 
 getPostCondition :: Program -> [Exp]
 getPostCondition (Program xs) = helper $ last xs
@@ -171,6 +190,9 @@ getMethodParams (Program xs) = helper $ last xs
   where helper (MDecl m) = params $ methodHoare m
 
 
+replacement ((s,v):xs) = (replace s v) . (replacement xs)
+replacement [] = id
+
 -- to check
 -- Pre => Inv
 -- not termination && Inv(x) && Trans ==> Inv(x!)
@@ -178,11 +200,13 @@ getMethodParams (Program xs) = helper $ last xs
 genSMTLibHoareTriple :: Program -> String
 genSMTLibHoareTriple prog =
   let st = getMainMethod prog
-      postc = foldr (SBin SAnd) (SC "true") (map generateSMTLib $ getPostCondition prog)
-      vars = delete "sch" $ (map fst $ getMethodParams prog)++(genSMTLibVars st)
+      tvs = replacement $ map (\(x,y) -> (pack x, pack y)) (getTermVars prog)
+      postc = SOList SAnd (map generateSMTLib $ getPostCondition prog)
+      vars = delete "sch" $ map fst (getMethodParams prog)++genSMTLibVars st
       inits = genSMTLibInit st
       loop = genSMTLibLoop st
-      inv = foldr (SBin SAnd) (SC "true") $ genSMTLibLoopInvariants st
+      loopcond = genSMTLibLoopCond st
+      inv = SOList SAnd $ genSMTLibLoopInvariants st
       varsig b = unwords $ map (\x -> "("++mkPrimeIf b x++" Int)") vars
       sorts = unwords $ map (const "Int") vars
       varsNames b = unwords $ map (mkPrimeIf b) vars
@@ -190,29 +214,43 @@ genSMTLibHoareTriple prog =
       invSig = "(declare-fun inv_fun ("++sorts++") Bool)"
       invBody = "(assert (forall ("++varsig False++") (= (inv_fun "++varsNames False++") "++(show inv)++") ))"
 
-      vardecl = intercalate "\n" $ map (\x -> "(declare-const "++x++" Int)") vars
       preSig = "(declare-fun pre_fun ("++sorts++") Bool)"
       preBody = "(assert (forall ("++varsig False++") (= (pre_fun "++varsNames False++") "++(show inits)++") ))"
-    
+
+      postSig = "(declare-fun post_fun ("++sorts++") Bool)"
+      postBody = "(assert (forall ("++varsig False++") (= (post_fun "++varsNames False++") "++(show postc)++") ))"
+
+      condSig = "(declare-fun loopcond_fun ("++sorts++") Bool)"
+      condBody = "(assert (forall ("++varsig False++") (= (loopcond_fun "++varsNames False++") "++(show loopcond)++") ))"
+
 
       transdecl = "(define-fun trans_fun ("++(varsig False)++" "++(varsig True)++") Bool \n "++(show loop)++")"
       postdecl = "(define-fun post_fun ("++(varsig False)++") Bool "++(show postc)++")"
+
+      vardecl = intercalate "\n" $ map (\x -> "(declare-const "++x++" Int)") vars
+
       stdhead = "(set-logic ALL)" -- should choose a logic eventually ?
       preInv = "(assert (=> (pre_fun "++varsNames False++") (inv_fun "++varsNames False++")))"
+      invPost = "(assert (=> (and (inv_fun "++varsNames False++") (not (loopcond_fun "++varsNames False++"))) (post_fun "++varsNames False++")))"
       stdfoot = "(check-sat)"
-      
+
   in unpack $
-     replace "T0" "2" $
-     replace "T1" "3" $
-     replace "T2" "5" $
-     pack $
-     intercalate "\n\n" [stdhead, preSig, preBody, invSig, invBody, vardecl, preInv, stdfoot]
+     tvs $
+     pack $ 
+     intercalate "\n\n" [stdhead
+                        , preSig, preBody
+                        , invSig, invBody
+                        , postSig, postBody
+                        , condSig, condBody
+                        , vardecl
+                        , preInv, invPost
+                        , stdfoot]
 
 
 genSMTLibInvSynth :: Program -> String
 genSMTLibInvSynth prog =
   let st = getMainMethod prog
-      postc = foldr (SBin SAnd) (SC "true") (map generateSMTLib $ getPostCondition prog)
+      postc = SOList SAnd (map generateSMTLib $ getPostCondition prog)
       vars = delete "sch" $ (map fst $ getMethodParams prog)++(genSMTLibVars st)
       inits = genSMTLibInit st
       loop = genSMTLibLoop st
@@ -227,8 +265,8 @@ genSMTLibInvSynth prog =
       stdhead = "(set-logic ALL)" -- should choose a logic eventually ?
       stdfoot = "(inv-constraint inv_fun pre_fun trans_fun post_fun) \n (check-synth)"
   in unpack $
-     replace "T0" "2" $ 
-     replace "T1" "3" $
-     replace "T2" "5" $
+     replace "T0" "2" $
+     replace "T1" "5" $
+     replace "T2" "3" $
      pack $
      intercalate "\n\n" [stdhead, invdecl, stddcl, cstsch, predecl, transdecl, postdecl, stdfoot]
