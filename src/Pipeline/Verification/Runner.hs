@@ -1,12 +1,9 @@
 module Pipeline.Verification.Runner (verify) where
 
-import Control.Exception
 import Control.Monad (unless)
 import Data.List (isInfixOf)
 import Data.List.Split
 import Data.Set qualified as S
-import Formatting
-import Formatting.Clock
 import GHC.IO.Exception (ExitCode(ExitSuccess, ExitFailure))
 import System.Console.ANSI
 import System.Directory (createDirectory, doesDirectoryExist)
