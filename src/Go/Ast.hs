@@ -10,7 +10,7 @@ newtype Prog = Prog [Pos Stmt] deriving (Eq, Ord, Read)
 -- > S ::= skip
 -- >    | return
 -- >    | c := make(chan, E)
--- >    | w := sync.WaitGroup
+-- >    | w := WaitGroup
 -- >    | break
 -- >    | continue
 -- >    | w.Add(E)
@@ -39,7 +39,7 @@ data Stmt -- | Represents a skip statement
   | Chan String Exp
   -- | Represents a WaitGroup declaration
   --
-  -- > sync.WaitGroup w
+  -- > WaitGroup w
   | Wgdef String
   -- | Represents a break statement
   --
@@ -239,7 +239,7 @@ instance PrettyPrint Stmt where
           Decl x e -> tab x ++ " := " ++ show e
           As x e -> tab x ++ " = " ++ show e
           Chan c e -> unwords [tab c, ":=", "make(chan,", show e ++ ")"]
-          Wgdef w -> unwords [tab w, ":=", "sync.WaitGroup"]
+          Wgdef w -> unwords [tab w, ":=", "WaitGroup"]
           Add e w -> tab $ w ++ ".Add(" ++ show e ++ ")"
           Wait w -> tab $ w ++ ".Wait()"
           Atomic o -> tab $ show o

@@ -27,11 +27,11 @@ class ProgramPointOffset a where
 
 -- | Production rules for VIRGo definitions:
 -- > 𝐷 ::= c = [e]
--- >  | x = sync.WaitGroup
+-- >  | x = WaitGroup
 data 𝐷
   = -- | > c = [e]
     Chan String 𝐸
-  | -- | > x = sync.WaitGroup
+  | -- | > x = WaitGroup
     Wg String
   deriving (Eq, Ord, Read)
 
@@ -131,7 +131,7 @@ data 𝐸
 instance Show 𝐷 where
   show = \case
     Chan c e -> unwords [c, "=", "[" ++ show e ++ "]"]
-    Wg x -> unwords [x, "=", "sync.WaitGroup"]
+    Wg x -> unwords [x, "=", "WaitGroup"]
 
 instance Show 𝑆 where
   show = prettyPrint 0

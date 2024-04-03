@@ -41,7 +41,7 @@ Prog. Prog ::= [Stm];
 -- Statement
 separator Stm ";";
 Chan. Stm ::= ID "=" "[" Exp "]";
-Wgdef. Stm ::= ID "=" "sync.WaitGroup";
+Wgdef. Stm ::= ID "=" "WaitGroup";
 Skip. Stm ::= SKIP;
 Return. Stm ::= RETURN;
 SOp. Stm ::= Op;
