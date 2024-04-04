@@ -1,9 +1,10 @@
-module Go.Simplifier where
+module Go.Simplifier (simplify) where
 
 import Data.Bifunctor
 
 import Go.Ast
 import Go.Utilities
+import Utilities.General
 import Utilities.Position
 
 -- | Simplifies a program by recursively simplifying its statements.
@@ -20,21 +21,22 @@ simplifyStatements = \case
   [] -> []
   Pos p s : ss ->
     let pos = Pos p
+        expr = fix simplifyExpression
         un c ss' = c (simplifyStatements ss')
         bin c ss1 ss2 = c (simplifyStatements ss1) (simplifyStatements ss2)
      in case s of
           -- Close statement: No change.
           Close c -> pos (Close c) : simplifyStatements ss
           -- As statement: No change.
-          As x e -> pos (As x e) : simplifyStatements ss
+          As x e -> pos (As x (expr e)) : simplifyStatements ss
           -- Declaration statement: No change.
-          Decl x e -> pos (Decl x e) : simplifyStatements ss
+          Decl x e -> pos (Decl x (expr e)) : simplifyStatements ss
           -- Channel declaration statement: No change.
-          Chan c e -> pos (Chan c e) : simplifyStatements ss
+          Chan c e -> pos (Chan c (expr e)) : simplifyStatements ss
           -- WaitGroup declaration statement: No change.
           Wgdef w -> pos (Wgdef w) : simplifyStatements ss
           -- WaitGroup add: No change.
-          Add e w -> pos (Add e w) : simplifyStatements ss
+          Add e w -> pos (Add (expr e) w) : simplifyStatements ss
           -- WaitGroup wait: No change.
           Wait w -> pos (Wait w) : simplifyStatements ss
           -- Channel operation statement: No change.
@@ -56,7 +58,7 @@ simplifyStatements = \case
           If _ [] [] -> simplifyStatements ss
           If CTrue ss' _ -> simplifyStatements $ ss' ++ ss
           If CFalse _ ss' -> simplifyStatements $ ss' ++ ss
-          If e ss1 ss2 -> pos (bin (If e) ss1 ss2) : simplifyStatements ss
+          If e ss1 ss2 -> pos (bin (If (expr e)) ss1 ss2) : simplifyStatements ss
           -- Select statement:
           -- - Reduce empty select to itself. No continuation is possible.
           -- - Remove redundant empty non-blocking select.
@@ -88,4 +90,53 @@ simplifyStatements = \case
           -- While loop:
           -- - Remove redundant empty while loop.
           While _ [] -> simplifyStatements ss
-          While e ss' -> pos (un (While e) ss') : simplifyStatements ss
+          While e ss' -> pos (un (While (expr e)) ss') : simplifyStatements ss
+
+simplifyExpression :: Exp -> Exp
+simplifyExpression =
+  let simp = fix simplifyExpression
+      bin c e1 e2 = c (simp e1) (simp e2)
+    in \case
+        -- n1 + n2 ==> n
+        Plus (CNum n1) (CNum n2) -> (CNum (n1 + n2))
+        -- (e + e') - e' ==> e
+        -- (e + e') - e ==> e'
+        Minus (Plus e e1) e2 ->
+          if e1 == e2 then simp e
+          else if e == e2 then simp e1
+            else bin Minus (bin Plus e1 e2) e2
+        -- e + (e' - e) ==> e
+        Plus e (Minus e1 e2) -> bin Minus (bin Plus e e1) e2
+        -- e + 0 ==> e
+        Plus e (CNum 0) -> simp e
+        -- 0 + e ==> e
+        Plus (CNum 0) e -> simp e
+        -- e1 + (e2 + e3) ==> (e1 + e2) + e3
+        Plus e1 (Plus e2 e3) -> simp (Plus (Plus e1 e2) e3)
+        -- e1 + e2 ==> e2 + e1, if e2 < e1 (move constants)
+        Plus e1 e2 -> uncurry (bin Plus) (if e1 < e2 then (e1, e2) else (e2, e1))
+        -- n1 - n2 ==> n
+        Minus (CNum n1) (CNum n2) -> (CNum (n1 - n2))
+        -- e - 0 ==> e
+        Minus e (CNum 0) -> simp e
+        -- e - e ==> 0
+        Minus e1 e2 -> if e1 == e2 then CNum 0 else bin Minus e1 e2
+        -- n1 * n2 ==> n
+        Mult (CNum n1) (CNum n2) -> CNum (n1 * n2)
+        -- 1 * e ==> e
+        Mult (CNum 1) e -> simp e
+        -- e * 1 ==> e
+        Mult e (CNum 1) -> simp e
+        -- -1 * e ==> -e
+        Mult (CNum (-1)) e -> simp (Neg e)
+        -- e * -1 ==> -e
+        Mult e (CNum (-1)) -> simp (Neg e)
+        -- e * 0 ==> 0
+        Mult _ (CNum 0) -> CNum 0
+        -- 0 * e ==> e
+        Mult (CNum 0) _ -> CNum 0
+        Mult e1 e2 -> bin Mult e1 e2
+        -- e / 1 ==> e
+        Div e (CNum 1) -> e
+        Div e1 e2 -> bin Div e1 e2
+        e -> e

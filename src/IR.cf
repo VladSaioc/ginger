@@ -40,7 +40,7 @@ Prog. Prog ::= [Stm];
 
 -- Statement
 separator Stm ";";
-Chan. Stm ::= ID "=" "[" Exp "]";
+Chan. Stm ::= ID "=" "chan" "[" Exp "]";
 Wgdef. Stm ::= ID "=" "WaitGroup";
 Skip. Stm ::= SKIP;
 Return. Stm ::= RETURN;

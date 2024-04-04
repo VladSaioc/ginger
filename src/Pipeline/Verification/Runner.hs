@@ -1,7 +1,7 @@
 module Pipeline.Verification.Runner (verify) where
 
 import Control.Monad (unless)
-import Data.List (isInfixOf)
+import Data.List (isInfixOf, intercalate)
 import Data.List.Split
 import Data.Set qualified as S
 import GHC.IO.Exception (ExitCode(ExitSuccess, ExitFailure))
@@ -10,9 +10,18 @@ import System.Directory (createDirectory, doesDirectoryExist)
 import System.Process (readProcessWithExitCode)
 import System.Clock
 
+import Backend.Profiler (sizeOfExpr)
 import Backend.Simplifier (eSimplify)
 import IR.Ast
-import IR.Profiler (profileVirgo)
+import IR.Profiler (
+  countVirgoFVOccurrences,
+  countVirgoFVs,
+  getVirgoParametricity,
+  countVirgoFVOccurrencesLoop,
+  countVirgoFVOccurrencesCaps,
+  countVirgoFVOccurrencesIf,
+  countVirgoFVOccurrencesAdd
+  )
 import Pipeline.IRTranslation.Close
 import Pipeline.IRTranslation.Encoding
 import Pipeline.IRTranslation.Workflow (irToBackend)
@@ -36,7 +45,18 @@ printTabular :: 𝑆 -> Oracle -> String -> IO ()
 printTabular p oracle res = do
   putStrLn ""
   putStrLn "Final results (short)"
-  putStrLn $ unwords ["[", res, "|", shortName oracle, "|", profileVirgo p, "]"]
+  putStrLn $ unwords ["[",
+      intercalate " | " [res,
+      shortName oracle,
+      "FV occurrences: " ++ show (countVirgoFVOccurrences p),
+      "Unique FVs: " ++ show (countVirgoFVs p),
+      "FVs in loops: " ++ show (countVirgoFVOccurrencesLoop p),
+      "FVs in caps: " ++ show (countVirgoFVOccurrencesCaps p),
+      "FVs in ifs: " ++ show (countVirgoFVOccurrencesIf p),
+      "FVs in adds: " ++ show (countVirgoFVOccurrencesAdd p),
+      getVirgoParametricity p
+      ],
+     "]"]
   return ()
 
 -- | Verify a VIRGo program encoding using Dafny.

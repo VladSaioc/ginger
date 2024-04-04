@@ -5,7 +5,7 @@ import System.Environment
 
 import Go.Profiler (profileProgram)
 import IR.GetAst qualified as I
-import IR.Profiler (profileVirgo)
+import IR.Profiler (getVirgoParametricity)
 import IR.Simplifier (simplify)
 import IR.Utilities (interesting)
 import Pipeline.Translation.Metrics (metrics₀)
@@ -47,7 +47,7 @@ main = do
       putStrLn "VIRGo translation:"
       print ir''
       putStrLn "\n"
-      putStrLn $ unwords ["VirGo program parametricity:", profileVirgo ir']
+      putStrLn $ unwords ["VirGo program parametricity:", getVirgoParametricity ir']
       unless (m == metrics₀) $ print m
       return ir''
     Bad msg -> ioError $ userError $ "VIRGo translation failed: " ++ msg
