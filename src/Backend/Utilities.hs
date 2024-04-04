@@ -178,6 +178,7 @@ typeOfExp 𝛾 =
     _ :/ _ -> TInt
     _ :% _ -> TInt
     Not _ -> TBool
+    Neg _ -> TInt
     ETuple es -> Tuple $ L.map typeOf es
     Any -> TBad
     EVar x -> 𝛾 M.! x
@@ -231,6 +232,7 @@ propositionalPrintExp e =
     e1 :&& e2 -> bin e1 "∧" e2
     e1 :|| e2 -> bin e1 "∨" e2
     Not e' -> un "¬" e'
+    Neg e -> un "-" e
     e1 :== e2 -> bin e1 "=" e2
     e1 :!= e2 -> bin e1 "≠" e2
     e1 :>= e2 -> bin e1 "≥" e2

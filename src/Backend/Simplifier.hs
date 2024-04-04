@@ -192,6 +192,17 @@ eSimplify pe =
         e :+ ECon (CNum 0) -> eSimplify e
         -- b. 0 + e ==> e
         ECon (CNum 0) :+ e -> eSimplify e
+        -- Flip negation to subtraction
+        -- a. e + -e' ==> e - e'
+        e1 :+ Neg e2 -> bin (:-) e1 e2
+        -- b. -e + e' ==> e' - e
+        Neg e1 :+ e2 -> bin (:-) e2 e1
+        -- Unite if-else branches with common guard
+        -- (if e then e1 else e2) + (if e then e1' else e2') ==> if e then e1 + e1' else e2 + e2'
+        IfElse e1 e2 e3 :+ IfElse e1' e2' e3' ->
+          if e1 == e1'
+            then IfElse e1 (e2 :+ e2') (e3 :+ e3')
+            else bin (:+) (IfElse e1 e2 e3) (IfElse e1' e2' e3')
         e1 :+ e2 -> bin (:+) e1 e2
         -- Constant folding for subtraction
         -- n1 - n2 ==> n
@@ -215,6 +226,11 @@ eSimplify pe =
         _ :* ECon (CNum 0) -> (0 #)
         -- b. 0 * e ==> e
         ECon (CNum 0) :* _ -> (0 #)
+        -- Multiplication with -1 is equivalent to negation
+        -- a. -1 * e ==> -e
+        ECon (CNum (-1)) :* e -> eSimplify (Neg e)
+        -- b. e * -1 ==> -e
+        e :* ECon (CNum (-1)) -> eSimplify (Neg e)
         e1 :* e2 -> bin (:*) e1 e2
         -- One is right-hand-side neutral for division
         -- e / 1 ==> e
@@ -223,6 +239,11 @@ eSimplify pe =
         -- 0 / e ==> 0
         ECon (CNum 0) :/ _ -> (0 #)
         e1 :/ e2 -> bin (:/) e1 e2
+        -- Double negation elimination
+        -- -(-e) ==> e
+        Neg (Neg e) -> eSimplify e
+        Neg (ECon (CNum n)) -> ((-n) #)
+        Neg e -> un Neg e
         -- Reduction of statically determinable conditional statements
         -- to corresponding branch.
         -- a. if true then e1 else e2 ==> e1

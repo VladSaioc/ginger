@@ -148,6 +148,8 @@ data Exp
   | -- UNARY OPERATORS
     -- | > !𝐸
     Not Exp
+  | -- | > -𝐸
+    Neg Exp
   | -- | > (𝐸, ... 𝐸)
     ETuple [Exp]
   | -- TERMINAL EXPRESSIONS
@@ -278,6 +280,7 @@ newtype Program = Program [Decl] deriving (Eq, Ord, Read)
   let needParens =
         ( case (e1, e2) of
             (Not {}, Not {}) -> False
+            (Neg {}, Neg {}) -> True
             _ -> e1 > e2
         )
       trans = (if needParens then ("(" ++) . (++ ")") else id) . prettyPrint 0
@@ -406,6 +409,7 @@ instance PrettyPrint Exp where
           e1 :&& e2 -> bin e1 "&&" e2
           e1 :|| e2 -> bin e1 "||" e2
           Not e' -> un "!" e'
+          Neg e' -> un "-" e'
           e1 :== e2 -> bin e1 "==" e2
           e1 :!= e2 -> bin e1 "!=" e2
           e1 :>= e2 -> bin e1 ">=" e2

@@ -83,7 +83,12 @@ eSimplify pe =
         -- n1 + n2 ==> n
         Const n1 :+ Const n2 -> ((n1 + n2) #)
         -- e + e' - e' ==> e
-        (e :+ e1) :- e2 -> if e1 == e2 then eSimplify e else (eSimplify e :+ eSimplify e1) :- eSimplify e2
+        -- e + e' - e ==> e'
+        (e :+ e1) :- e2 ->
+          if e1 == e2 then eSimplify e
+          else if e == e2 then eSimplify e1
+            else bin (:-) (bin (:+) e e1) e2
+        e :+ (e1 :- e2) -> bin (:-) (bin (:+) e e1) e2
         -- e + 0 ==> e
         e :+ Const 0 -> eSimplify e
         -- 0 + e ==> e
