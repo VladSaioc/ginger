@@ -110,7 +110,7 @@ Depends on: 𝛯
 Produces:
 
 > switch S(step) {
->   ∀ p ∈ dom(𝛯). case p => processSwitch(p, 𝜙)
+>   ∀ (p, 𝜙) ∈ dom(𝛯). case p => processSwitch(p, 𝜙)
 > }
 -}
 scheduleSwitch :: 𝛯 -> Stmt
@@ -276,7 +276,7 @@ Produces:
 > {
 >   counterDef(𝛯);
 >   chanDef(𝜅);
->   loopVarDef(loop(P));
+>   loopVarDef(ℒ);
 >   step := 0;
 >   centralLoop(𝜅, 𝛯, ℳ)
 > }

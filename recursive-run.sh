@@ -19,9 +19,6 @@ recursiveVerify () {
           if [[ "$ctnt" = *"not parametric"* ]]; then
             continue
           fi
-          if [[ "$ctnt" = *"unexpected"* ]]; then
-            continue
-          fi
         fi
         echo "Now testing: $dir/$file"
         timeout 360 stack run -- "$dir/$file" &> "$dir/$file-results.res"

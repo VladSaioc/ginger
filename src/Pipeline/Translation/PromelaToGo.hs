@@ -358,12 +358,12 @@ translateStatements ρ = case syntax ρ of
             let -- Translation of primitive declaration with default zero value.
                 primitiveDecl zero = do
                   -- Construct translated variable name.
-                  let x' = prefix ρ ++ x
+                  let x' = x ++ show (calls ρ)
                   -- Translate right-hand side expression, or fall back on zero value.
                   rhs <- maybe (return zero) (translateExp (varenv ρ)) me
                   let Obj {decls = ods, stmts = oss} = curr ρ
                   -- Add declaration to the list of declarations.
-                  let obj = Obj {decls = ods ++ [Pos p (T.Decl x rhs)], stmts = oss}
+                  let obj = Obj {decls = ods ++ [Pos p (T.Decl x' rhs)], stmts = oss}
                   -- Insert the declared name in the variable environment,
                   -- bound to its translated name.
                   let ρ'' = ρ {varenv = M.insert x x' $ varenv ρ}
